@@ -46,6 +46,7 @@ const Comment: React.FC<CommentProps> = ({
   const [showReplies, setShowReplies] = useState(depth < 2);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLiked, setIsLiked] = useState(false);
+  const [showAllReplies, setShowAllReplies] = useState(false);
   const maxDepth = 3;
 
   useEffect(() => {
@@ -114,52 +115,6 @@ const Comment: React.FC<CommentProps> = ({
       }
     } catch (error) {
       console.error('Error toggling like:', error);
-    }
-  };
-
-  const handleReply = async (replyContent: string) => {
-    if (!currentUser) return;
-
-    try {
-      const table = sourceType === 'deal_comment' ? 'deal_comments' : 'promo_comments';
-      const { error } = await supabase
-        .from(table)
-        .insert({
-          [sourceType === 'deal_comment' ? 'deal_id' : 'promo_id']: sourceId,
-          user_id: currentUser.id,
-          content: replyContent,
-          parent_id: id
-        });
-
-      if (error) throw error;
-
-      // Create notification for the reply
-      if (user.id !== currentUser.id) {
-        await supabase
-          .from('notifications')
-          .insert({
-            user_id: user.id,
-            type: 'reply',
-            content: replyContent,
-            source_type: sourceType,
-            source_id: sourceId,
-            actor_id: currentUser.id
-          });
-      }
-
-      // Create notifications for mentions
-      await createMentionNotification(
-        supabase,
-        sourceType,
-        sourceId,
-        replyContent,
-        currentUser.id
-      );
-
-      setShowReplyInput(false);
-      onReply();
-    } catch (error) {
-      console.error('Error posting reply:', error);
     }
   };
 
@@ -234,7 +189,10 @@ const Comment: React.FC<CommentProps> = ({
               sourceType={sourceType}
               sourceId={sourceId}
               parentId={id}
-              onSubmit={handleReply}
+              onSubmit={() => {
+                setShowReplyInput(false);
+                onReply();
+              }}
               onCancel={() => setShowReplyInput(false)}
             />
           </div>
@@ -252,17 +210,29 @@ const Comment: React.FC<CommentProps> = ({
       )}
 
       {/* Replies */}
-      {showReplies && replies && depth < maxDepth && replies.map(reply => (
-        <Comment
-          key={reply.id}
-          {...reply}
-          sourceType={sourceType}
-          sourceId={sourceId}
-          parentId={id}
-          onReply={onReply}
-          depth={depth + 1}
-        />
-      ))}
+      {showReplies && replies && depth < maxDepth && (
+        <>
+          {(showAllReplies ? replies : replies.slice(0, 3)).map(reply => (
+            <Comment
+              key={reply.id}
+              {...reply}
+              sourceType={sourceType}
+              sourceId={sourceId}
+              parentId={id}
+              onReply={onReply}
+              depth={depth + 1}
+            />
+          ))}
+          {!showAllReplies && replies.length > 3 && (
+            <button
+              className="mt-2 text-orange-500 text-sm hover:text-orange-400"
+              onClick={() => setShowAllReplies(true)}
+            >
+              Show {replies.length - 3} more repl{replies.length - 3 === 1 ? 'y' : 'ies'}
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 };

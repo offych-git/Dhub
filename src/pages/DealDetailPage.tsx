@@ -207,28 +207,6 @@ const DealDetailPage: React.FC = () => {
     setIsFavorite(!!favorite);
   };
 
-  const handleComment = async () => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
-    if (!newComment.trim()) return;
-
-    const { error } = await supabase
-      .from('deal_comments')
-      .insert({
-        deal_id: id,
-        user_id: user.id,
-        content: newComment.trim()
-      });
-
-    if (!error) {
-      setNewComment('');
-      loadComments();
-    }
-  };
-
   const handleVote = async (voteType: boolean) => {
     if (!user) {
       navigate('/auth');
@@ -283,6 +261,48 @@ const DealDetailPage: React.FC = () => {
 
     setIsFavorite(!isFavorite);
   };
+
+  // Define a type for comment tree nodes
+  type CommentTreeNode = {
+    id: string;
+    content: string;
+    created_at: string;
+    profiles?: {
+      id?: string;
+      display_name?: string;
+      email?: string;
+    };
+    reply_count?: number;
+    like_count?: number;
+    replies?: CommentTreeNode[];
+  };
+
+  const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
+    <div key={comment.id} style={{ marginLeft: depth * 24 }}>
+      <Comment
+        id={comment.id}
+        content={comment.content}
+        createdAt={comment.created_at}
+        user={{
+          id: comment.profiles?.id,
+          name: comment.profiles?.display_name || comment.profiles?.email?.split('@')[0] || 'Anonymous',
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.display_name || comment.profiles?.email || 'Anonymous')}&background=random`
+        }}
+        replyCount={typeof comment.reply_count === 'number' ? comment.reply_count : 0}
+        likeCount={typeof comment.like_count === 'number' ? comment.like_count : 0}
+        replies={undefined}
+        sourceType="deal_comment"
+        sourceId={deal && deal.id ? String(deal.id) : ''}
+        onReply={loadComments}
+        depth={depth || 0}
+      />
+      {comment.replies && comment.replies.length > 0 && (
+        <div>
+          {comment.replies.map((reply: CommentTreeNode) => renderCommentTree(reply, (depth || 0) + 1))}
+        </div>
+      )}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -487,47 +507,14 @@ const DealDetailPage: React.FC = () => {
             <CommentInput
               sourceType="deal_comment"
               sourceId={deal.id}
-              onSubmit={async (content) => {
-                try {
-                  const { error } = await supabase
-                    .from('deal_comments')
-                    .insert({
-                      deal_id: deal.id,
-                      user_id: user?.id,
-                      content
-                    });
-
-                  if (error) throw error;
-                  loadComments();
-                } catch (err) {
-                  console.error('Error posting comment:', err);
-                }
-              }}
+              onSubmit={loadComments}
             />
           </div>
 
+          {/* Render comments as a tree */}
           {comments.length > 0 ? (
             <div className="space-y-4">
-              {comments.map(comment => (
-                <Comment
-                  key={comment.id}
-                  id={comment.id}
-                  content={comment.content}
-                  createdAt={comment.created_at}
-                  user={{
-                    id: comment.profiles?.id,
-                    name: comment.profiles?.display_name || comment.profiles?.email?.split('@')[0] || 'Anonymous',
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.display_name || comment.profiles?.email || 'Anonymous')}&background=random`
-                  }}
-                  replyCount={comment.reply_count}
-                  likeCount={comment.like_count}
-                  replies={comment.replies}
-                  sourceType="deal_comment"
-                  sourceId={id}
-                  onReply={loadComments}
-                  depth={0}
-                />
-              ))}
+              {comments.map(comment => renderCommentTree(comment))}
             </div>
           ) : (
             <div className="bg-gray-800 rounded-md p-4 text-gray-400 text-center">
