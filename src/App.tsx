@@ -34,7 +34,7 @@ function App() {
                 <Route path="/deals/:id" element={<DealDetailPage />} />
                 <Route path="/deals/new" element={<PrivateRoute><AddDealPage /></PrivateRoute>} />
                 <Route path="/promos/new" element={<PrivateRoute><AddPromoPage /></PrivateRoute>} />
-                <Route path="/promos" element={<PrivateRoute><PromosPage /></PrivateRoute>} />
+                <Route path="/promos" element={<PromosPage />} />
                 <Route path="/promos/:id" element={<PrivateRoute><PromoDetailPage /></PrivateRoute>} />
                 <Route path="/discussions" element={<PrivateRoute><DiscussionsPage /></PrivateRoute>} />
                 <Route path="/categories" element={<PrivateRoute><CategoriesPage /></PrivateRoute>} />

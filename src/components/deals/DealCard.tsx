@@ -161,7 +161,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
     : 0;
 
   return (
-    <Link to={user ? `/deals/${deal.id}` : '/auth'} className="block border-b border-gray-800 px-4 py-2.5">
+    <Link to={`/deals/${deal.id}`} className="block border-b border-gray-800 px-4 py-2.5">
       <div className="flex items-start justify-between">
         <div className="flex items-center text-gray-500 text-sm mr-3">
           <span className="inline-block h-5 w-5 mr-1">
@@ -238,8 +238,8 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
       <div className="mt-1.5 flex items-center">
         <div className="w-5 h-5 rounded-full overflow-hidden mr-1.5">
           <img 
-            src={deal.postedBy.avatar || `https://ui-avatars.com/api/?name=${deal.postedBy.name}&background=random`} 
-            alt={deal.postedBy.name} 
+            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(deal.postedBy.name)}&background=random`}
+            alt={deal.postedBy.name}
             className="w-full h-full object-cover"
           />
         </div>

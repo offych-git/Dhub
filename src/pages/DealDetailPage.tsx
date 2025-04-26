@@ -398,9 +398,10 @@ const DealDetailPage: React.FC = () => {
         ) : (
           <button
             onClick={() => navigate('/auth')}
-            className="mt-4 bg-gray-800 text-white py-3 rounded-md flex items-center justify-center font-medium w-full"
+            className="mt-4 bg-gray-500 text-white py-3 rounded-md flex items-center justify-center font-medium w-full cursor-pointer"
           >
-            Sign in to view deal
+            <span>Login to see deal</span>
+            <ExternalLink className="h-4 w-4 ml-2" />
           </button>
         )}
         

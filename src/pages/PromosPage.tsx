@@ -18,6 +18,8 @@ interface PromoCode {
   created_at: string;
   user: {
     id: string;
+    displayName: string;
+    avatarUrl: string;
     email: string;
   };
   votes: number;
@@ -49,7 +51,8 @@ const PromosPage: React.FC = () => {
           profiles (
             id,
             email,
-            display_name
+            display_name,
+            avatar_url
           )
         `);
 
@@ -91,14 +94,17 @@ const PromosPage: React.FC = () => {
           .select('id', { count: 'exact' })
           .eq('promo_id', promo.id);
 
-        const userEmail = promo.profiles?.email;
-        const userName = userEmail ? userEmail.split('@')[0] : 'Anonymous User';
+        const displayName = promo.profiles?.display_name || 'Anonymous User';
+        const avatarUrl = promo.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
+        const email = promo.profiles?.email || '';
 
         return {
           ...promo,
           user: {
             id: promo.profiles?.id || 'anonymous',
-            email: userName
+            displayName,
+            avatarUrl,
+            email
           },
           votes: voteCount,
           comments: commentCount || 0,
@@ -294,14 +300,20 @@ const PromosPage: React.FC = () => {
 
                   <div className="flex items-center space-x-2 mb-2">
                     <div className="bg-gray-700 px-2 py-1 rounded border border-gray-600">
-                      <span className="text-orange-500 font-mono text-sm">{promo.code}</span>
+                      {user ? (
+                        <span className="text-orange-500 font-mono text-sm">{promo.code}</span>
+                      ) : (
+                        <span className="italic text-gray-400 text-sm">Login to see code</span>
+                      )}
                     </div>
-                    <button 
-                      className="text-orange-500 text-sm"
-                      onClick={(e) => handleCopyCode(e, promo.code)}
-                    >
-                      Copy
-                    </button>
+                    {user && (
+                      <button 
+                        className="text-orange-500 text-sm"
+                        onClick={(e) => handleCopyCode(e, promo.code)}
+                      >
+                        Copy
+                      </button>
+                    )}
                     {promo.expires_at && (
                       <div className="flex items-center text-gray-400 text-xs ml-auto" title="Expiration Date">
                         <Calendar className="h-3 w-3 mr-1" />
@@ -314,13 +326,13 @@ const PromosPage: React.FC = () => {
                     <div className="flex items-center">
                       <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-700">
                         <img 
-                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(promo.user.email)}&background=random`}
-                          alt={promo.user.email}
+                          src={promo.user.avatarUrl}
+                          alt={promo.user.displayName}
                           className="w-full h-full object-cover"
                         />
                       </div>
                       <span className="text-gray-400 ml-1">
-                        {promo.user.email}
+                        {promo.user.displayName}
                       </span>
                     </div>
                     <div className="flex items-center text-gray-400">
