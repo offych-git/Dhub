@@ -48,11 +48,10 @@ const PromosPage: React.FC = () => {
         .from('promo_codes')
         .select(`
           *,
-          profiles (
+          profiles:user_id (
             id,
             email,
-            display_name,
-            avatar_url
+            display_name
           )
         `);
 
@@ -94,8 +93,10 @@ const PromosPage: React.FC = () => {
           .select('id', { count: 'exact' })
           .eq('promo_id', promo.id);
 
-        const displayName = promo.profiles?.display_name || 'Anonymous User';
-        const avatarUrl = promo.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
+        const displayName =
+          promo.profiles?.display_name
+          || (promo.profiles?.email ? promo.profiles.email.split('@')[0] : 'Anonymous User');
+        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
         const email = promo.profiles?.email || '';
 
         return {
