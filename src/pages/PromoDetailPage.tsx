@@ -1,0 +1,402 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+import Comment from '../components/comments/Comment';
+import CommentInput from '../components/comments/CommentInput';
+import AdminActions from '../components/admin/AdminActions';
+
+const PromoDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [promo, setPromo] = useState<any>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentCount, setCommentCount] = useState(0);
+  const [voteCount, setVoteCount] = useState(0);
+  const [userVote, setUserVote] = useState<boolean | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'popular'>('newest');
+
+  useEffect(() => {
+    if (id) {
+      loadPromo();
+      loadComments();
+      if (user) {
+        loadVoteStatus();
+        loadFavoriteStatus();
+      }
+    }
+  }, [id, user, sortBy]);
+
+  const loadPromo = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('promo_codes')
+        .select(`
+          *,
+          profiles (
+            id,
+            email,
+            display_name
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (!data) {
+        setError('Promo code not found');
+        return;
+      }
+
+      setPromo({
+        ...data,
+        user: {
+          id: data.profiles.id,
+          name: data.profiles.display_name || data.profiles.email.split('@')[0],
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(data.profiles.display_name || data.profiles.email)}&background=random`
+        }
+      });
+    } catch (err) {
+      console.error('Error loading promo:', err);
+      setError('Failed to load promo code details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadComments = async () => {
+    if (!id) return;
+
+    let query = supabase
+      .from('promo_comments')
+      .select(`
+        *,
+        profiles (
+          id,
+          email,
+          display_name
+        )
+      `)
+      .eq('promo_id', id);
+
+    switch (sortBy) {
+      case 'oldest':
+        query = query.order('created_at', { ascending: true });
+        break;
+      case 'popular':
+        query = query.order('like_count', { ascending: false })
+                    .order('created_at', { ascending: false });
+        break;
+      case 'newest':
+      default:
+        query = query.order('created_at', { ascending: false });
+        break;
+    }
+
+    const { data: comments, error } = await query;
+
+    if (!error && comments) {
+      const commentMap = new Map();
+      const rootComments = [];
+
+      comments.forEach(comment => {
+        commentMap.set(comment.id, {
+          ...comment,
+          replies: []
+        });
+      });
+
+      comments.forEach(comment => {
+        const commentWithReplies = commentMap.get(comment.id);
+        if (comment.parent_id) {
+          const parent = commentMap.get(comment.parent_id);
+          if (parent) {
+            parent.replies.push(commentWithReplies);
+          }
+        } else {
+          rootComments.push(commentWithReplies);
+        }
+      });
+
+      setComments(rootComments);
+      setCommentCount(comments.length);
+    }
+  };
+
+  const loadVoteStatus = async () => {
+    try {
+      const { data: votes } = await supabase
+        .from('promo_votes')
+        .select('vote_type')
+        .eq('promo_id', id)
+        .eq('user_id', user!.id);
+
+      if (votes && votes.length > 0) {
+        setUserVote(votes[0].vote_type);
+      }
+
+      const { data: allVotes } = await supabase
+        .from('promo_votes')
+        .select('vote_type')
+        .eq('promo_id', id);
+
+      const count = allVotes?.reduce((acc, vote) => {
+        return acc + (vote.vote_type ? 1 : -1);
+      }, 0) || 0;
+
+      setVoteCount(count);
+    } catch (error) {
+      console.error('Error loading vote status:', error);
+    }
+  };
+
+  const loadFavoriteStatus = async () => {
+    try {
+      const { data: favorite } = await supabase
+        .from('promo_favorites')
+        .select('id')
+        .eq('promo_id', id)
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      setIsFavorite(!!favorite);
+    } catch (error) {
+      console.error('Error loading favorite status:', error);
+    }
+  };
+
+  const handleVote = async (voteType: boolean) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    try {
+      if (userVote === voteType) {
+        await supabase
+          .from('promo_votes')
+          .delete()
+          .eq('promo_id', id)
+          .eq('user_id', user.id);
+        
+        setUserVote(null);
+      } else {
+        await supabase
+          .from('promo_votes')
+          .upsert({
+            promo_id: id,
+            user_id: user.id,
+            vote_type: voteType
+          }, {
+            onConflict: 'promo_id,user_id'
+          });
+        
+        setUserVote(voteType);
+      }
+
+      loadVoteStatus();
+    } catch (error) {
+      console.error('Error handling vote:', error);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    try {
+      if (isFavorite) {
+        await supabase
+          .from('promo_favorites')
+          .delete()
+          .eq('promo_id', id)
+          .eq('user_id', user.id);
+      } else {
+        await supabase
+          .from('promo_favorites')
+          .insert({
+            promo_id: id,
+            user_id: user.id
+          });
+      }
+
+      setIsFavorite(!isFavorite);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (error || !promo) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
+        <h2 className="text-white text-xl mb-4">{error || 'Promo code not found'}</h2>
+        <button 
+          onClick={() => navigate('/promos')}
+          className="bg-orange-500 text-white py-2 px-4 rounded-md flex items-center"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Promos
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pb-16 pt-16 bg-gray-900 min-h-screen">
+      <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <button onClick={() => navigate(-1)} className="text-white">
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+            <h1 className="text-white font-medium ml-4">Promo Details</h1>
+          </div>
+          <AdminActions
+            type="promo"
+            id={promo.id}
+            userId={promo.user.id}
+            onAction={() => navigate('/promos')}
+          />
+        </div>
+      </div>
+
+      <div className="p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-white text-xl font-medium">{promo.title}</h2>
+          <button 
+            onClick={toggleFavorite}
+            className={`p-2 rounded-full ${isFavorite ? 'text-red-500' : 'text-gray-400'}`}
+          >
+            <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'} />
+          </button>
+        </div>
+
+        <div className="mt-4 bg-gray-800 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-gray-700 px-3 py-1.5 rounded border border-gray-600">
+              <span className="text-orange-500 font-mono">{promo.code}</span>
+            </div>
+            <button
+              onClick={() => navigator.clipboard.writeText(promo.code)}
+              className="text-orange-500 font-medium"
+            >
+              Copy Code
+            </button>
+          </div>
+
+          <p className="text-gray-300">{promo.description}</p>
+
+          {promo.expires_at && (
+            <div className="mt-4 text-gray-400 text-sm">
+              Expires: {new Date(promo.expires_at).toLocaleDateString()}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button 
+              className={`flex items-center ${userVote === true ? 'text-red-500' : 'text-gray-400'}`}
+              onClick={() => handleVote(true)}
+            >
+              <ArrowUp className="h-5 w-5 mr-1" />
+              <span>Upvote</span>
+            </button>
+            
+            <span className={`font-medium ${voteCount > 0 ? 'text-red-500' : voteCount < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+              {voteCount > 0 ? '+' : ''}{voteCount}
+            </span>
+            
+            <button 
+              className={`flex items-center ${userVote === false ? 'text-blue-500' : 'text-gray-400'}`}
+              onClick={() => handleVote(false)}
+            >
+              <ArrowDown className="h-5 w-5 mr-1" />
+              <span>Downvote</span>
+            </button>
+          </div>
+
+          <a
+            href={promo.discount_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <span>Visit Store</span>
+            <ExternalLink className="h-4 w-4 ml-2" />
+          </a>
+        </div>
+
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-white font-medium">Comments ({commentCount})</h3>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'popular')}
+              className="bg-gray-700 text-white rounded-md px-3 py-1 text-sm"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="popular">Most Liked</option>
+            </select>
+          </div>
+
+          <div className="mb-4">
+            <CommentInput
+              sourceType="promo_comment"
+              sourceId={promo.id}
+              onSubmit={loadComments}
+            />
+          </div>
+
+          {comments.length > 0 ? (
+            <div className="space-y-4">
+              {comments.map(comment => (
+                <Comment
+                  key={comment.id}
+                  id={comment.id}
+                  content={comment.content}
+                  createdAt={comment.created_at}
+                  user={{
+                    id: comment.profiles.id,
+                    name: comment.profiles.display_name || comment.profiles.email.split('@')[0],
+                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles.display_name || comment.profiles.email)}&background=random`
+                  }}
+                  replyCount={comment.reply_count}
+                  likeCount={comment.like_count}
+                  replies={comment.replies}
+                  sourceType="promo_comment"
+                  sourceId={promo.id}
+                  onReply={loadComments}
+                  depth={0}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-gray-800 rounded-md p-4 text-gray-400 text-center">
+              No comments yet. Be the first to comment!
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PromoDetailPage;
