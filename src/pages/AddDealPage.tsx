@@ -61,6 +61,10 @@ const AddDealPage: React.FC = () => {
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
 
+useEffect(() => {
+  console.log('AddDealPage - isStoreSheetOpen state changed:', isStoreSheetOpen);
+}, [isStoreSheetOpen]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (categoryRef.current && !categoryRef.current.contains(event.target as Node)) {
