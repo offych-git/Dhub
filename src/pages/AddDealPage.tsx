@@ -12,6 +12,8 @@ import { supabase } from '../lib/supabase';
 import ImageUploader from '../components/deals/ImageUploader';
 import imageCompression from 'browser-image-compression';
 import { createPortal } from 'react-dom';
+import CategoryBottomSheet from '../components/deals/CategoryBottomSheet';
+import StoreBottomSheet from '../components/deals/StoreBottomSheet';
 
 interface Subcategory {
   id: string;
@@ -54,6 +56,8 @@ const AddDealPage: React.FC = () => {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [selectedImagePosition, setSelectedImagePosition] = useState<{ top: number; left: number } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+  const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -85,7 +89,7 @@ const AddDealPage: React.FC = () => {
 
   const handleImageClick = (imageId: string) => {
     setShowDeleteButton(prev => ({
-      ...prev,
+        ...prev,
       [imageId]: !prev[imageId]
     }));
   };
@@ -181,7 +185,7 @@ const AddDealPage: React.FC = () => {
 
         // Add one paragraph after each image for spacing
         editor.chain().focus().insertContent('<p></p>').run();
-      }
+    }
 
     } catch (error) {
       console.error('Error in image upload process:', error);
@@ -249,6 +253,21 @@ const AddDealPage: React.FC = () => {
       return false;
     }
 
+    // URL validation
+    const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+    if (!urlRegex.test(formData.dealUrl)) {
+      setError('Please enter a valid URL starting with http:// or https://');
+      return false;
+    }
+
+    // Ensure URL has protocol
+    if (!formData.dealUrl.startsWith('http://') && !formData.dealUrl.startsWith('https://')) {
+      setFormData(prev => ({
+        ...prev,
+        dealUrl: `https://${prev.dealUrl}`
+      }));
+    }
+
     return true;
   };
 
@@ -261,7 +280,8 @@ const AddDealPage: React.FC = () => {
       formData.store !== '' &&
       mainImage !== null &&
       formData.dealUrl !== '' &&
-      (!formData.originalPrice || Number(formData.currentPrice) <= Number(formData.originalPrice));
+      (!formData.originalPrice || Number(formData.currentPrice) <= Number(formData.originalPrice)) &&
+      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(formData.dealUrl);
 
     setIsValid(isFormValid);
   }, [formData, mainImage]);
@@ -302,6 +322,9 @@ const AddDealPage: React.FC = () => {
 
       // Find the store name from the selected store ID
       const selectedStore = stores.find(s => s.id === formData.store);
+      if (!selectedStore) {
+        throw new Error('Selected store not found');
+      }
       
       const { data: deal, error: dealError } = await supabase
         .from('deals')
@@ -310,7 +333,7 @@ const AddDealPage: React.FC = () => {
           description: formData.description,
           current_price: Number(formData.currentPrice),
           original_price: formData.originalPrice ? Number(formData.originalPrice) : null,
-          store_id: selectedStore?.name || formData.store,
+          store_id: formData.store,
           category_id: formData.category,
           subcategories: formData.subcategories,
           image_url: publicUrl,
@@ -449,6 +472,32 @@ const AddDealPage: React.FC = () => {
     console.log('descriptionImages updated:', descriptionImages.length);
   }, [descriptionImages]);
 
+  const handleStoreSelect = (storeId: string) => {
+    console.log('AddDealPage - handleStoreSelect called with storeId:', storeId);
+    console.log('AddDealPage - Current formData:', formData);
+    setFormData(prev => {
+      console.log('AddDealPage - Previous formData:', prev);
+      const newFormData = {
+        ...prev,
+        store: storeId
+      };
+      console.log('AddDealPage - New formData:', newFormData);
+      return newFormData;
+    });
+    console.log('AddDealPage - After setFormData');
+    setIsStoreSheetOpen(false);
+    console.log('AddDealPage - After setIsStoreSheetOpen');
+  };
+
+  // Add debug logging for StoreBottomSheet props
+  useEffect(() => {
+    console.log('AddDealPage - StoreBottomSheet props:', {
+      isOpen: isStoreSheetOpen,
+      selectedStore: formData.store,
+      onStoreSelect: handleStoreSelect
+    });
+  }, [isStoreSheetOpen, formData.store]);
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Header */}
@@ -488,13 +537,13 @@ const AddDealPage: React.FC = () => {
             </div>
 
             {/* Category Selection */}
-            <div className="relative" ref={categoryRef}>
+            <div>
               <button
                 type="button"
                 className={`w-full bg-gray-800 text-white rounded-md px-4 py-3 flex items-center justify-between ${
                   formData.category ? 'text-white' : 'text-gray-500'
                 }`}
-                onClick={() => setCategoryMenuOpen(!categoryMenuOpen)}
+                onClick={() => setIsCategorySheetOpen(true)}
               >
                 <span>
                   {formData.category 
@@ -504,78 +553,8 @@ const AddDealPage: React.FC = () => {
                     : 'Select Category *'
                   }
                 </span>
-                <ChevronDown className={`h-5 w-5 text-gray-400 transform transition-transform ${
-                  categoryMenuOpen ? 'rotate-180' : ''
-                }`} />
+                <ChevronDown className="h-5 w-5 text-gray-400" />
               </button>
-
-              {categoryMenuOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 rounded-md shadow-lg z-20 max-h-[300px] overflow-y-auto">
-                  <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-2 flex justify-between items-center">
-                    <span className="text-white font-medium">{t('filters.categories')}</span>
-                    {formData.category && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormData(prev => ({ ...prev, category: '', subcategories: [] }));
-                          setSelectedMainCategory(null);
-                        }}
-                        className="text-gray-400 hover:text-white"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="divide-y divide-gray-700">
-                    {categories.map(category => {
-                      const Icon = categoryIcons[category.name];
-                      const isSelected = category.id === selectedMainCategory;
-
-                      return (
-                        <div key={category.id}>
-                          <button
-                            type="button"
-                            className={`w-full px-4 py-2 flex items-center justify-between ${
-                              isSelected ? 'bg-gray-700' : ''
-                            }`}
-                            onClick={() => handleMainCategorySelect(category.id)}
-                          >
-                            <div className="flex items-center">
-                              {Icon && <Icon className="h-5 w-5 mr-2 text-orange-500" />}
-                              <span className="text-white">
-                                {language === 'ru' ? category.name : t(category.id)}
-                              </span>
-                            </div>
-                            <ChevronDown className={`h-4 w-4 text-gray-400 transform transition-transform ${
-                              isSelected ? 'rotate-180' : ''
-                            }`} />
-                          </button>
-
-                          {isSelected && category.subcategories && (
-                            <div className="bg-gray-700 p-2 grid grid-cols-2 gap-1">
-                              {category.subcategories.map((subcategory: Subcategory) => (
-                                <button
-                                  key={subcategory.id}
-                                  type="button"
-                                  onClick={() => handleSubcategoryChange(subcategory.id)}
-                                  className={`px-2 py-1 text-sm text-left rounded ${
-                                    formData.subcategories.includes(subcategory.id)
-                                      ? 'bg-orange-500 text-white'
-                                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                                  }`}
-                                >
-                                  {language === 'ru' ? subcategory.name : t(subcategory.id)}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Selected Subcategories */}
@@ -600,19 +579,29 @@ const AddDealPage: React.FC = () => {
             )}
 
             <div>
-              <select
-                className="w-full bg-gray-800 text-white rounded-md px-4 py-3"
-                value={formData.store}
-                onChange={(e) => setFormData({ ...formData, store: e.target.value })}
-                required
+              {formData.store ? (
+                <div className="w-full bg-gray-800 text-white rounded-md px-4 py-3 flex items-center justify-between">
+                  <span>
+                    {stores.find(s => s.id === formData.store)?.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsStoreSheetOpen(true)}
+                    className="text-gray-400 hover:text-white"
               >
-                <option value="">Select Store *</option>
-                {stores.map(store => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
+                    <ChevronDown className="h-5 w-5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="w-full bg-gray-800 text-gray-500 rounded-md px-4 py-3 flex items-center justify-between"
+                  onClick={() => setIsStoreSheetOpen(true)}
+                >
+                  <span>Select Store *</span>
+                  <ChevronDown className="h-5 w-5" />
+                </button>
+              )}
             </div>
 
             <div className="flex space-x-4">
@@ -650,30 +639,30 @@ const AddDealPage: React.FC = () => {
             {/* Description Editor */}
             <div className="relative" ref={editorRef}>
               <div className="flex items-center space-x-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => editor?.chain().focus().toggleBold().run()}
+                  <button
+                    type="button"
+                    onClick={() => editor?.chain().focus().toggleBold().run()}
                   className={`formatting-button p-2 rounded ${editor?.isActive('bold') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
-                >
-                  <Bold className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => editor?.chain().focus().toggleItalic().run()}
+                  >
+                    <Bold className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => editor?.chain().focus().toggleItalic().run()}
                   className={`formatting-button p-2 rounded ${editor?.isActive('italic') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
-                >
-                  <Italic className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => editor?.chain().focus().toggleUnderline().run()}
+                  >
+                    <Italic className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => editor?.chain().focus().toggleUnderline().run()}
                   className={`formatting-button p-2 rounded ${editor?.isActive('underline') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
-                >
-                  <UnderlineIcon className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                  >
+                    <UnderlineIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => editor?.chain().focus().toggleBulletList().run()}
                   className={`formatting-button p-2 rounded ${editor?.isActive('bulletList') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
                 >
                   <List className="h-5 w-5" />
@@ -730,7 +719,7 @@ const AddDealPage: React.FC = () => {
                     </svg>
                   </button>
                 )}
-              </div>
+                </div>
               <div className="bg-gray-800 rounded-lg p-4 min-h-[200px]">
                 <EditorContent editor={editor} />
               </div>
@@ -757,7 +746,7 @@ const AddDealPage: React.FC = () => {
                   src={URL.createObjectURL(mainImage)}
                   alt="Main deal image"
                   className="mt-2 w-full h-48 object-cover rounded-lg"
-                />
+                  />
               )}
             </div>
 
@@ -945,6 +934,28 @@ const AddDealPage: React.FC = () => {
           }
         `}
       </style>
+
+      <CategoryBottomSheet
+        isOpen={isCategorySheetOpen}
+        onClose={() => setIsCategorySheetOpen(false)}
+        selectedCategory={selectedMainCategory}
+        onCategorySelect={handleMainCategorySelect}
+        selectedSubcategories={formData.subcategories}
+        onSubcategorySelect={handleSubcategoryChange}
+      />
+
+      <StoreBottomSheet
+        isOpen={isStoreSheetOpen}
+        onClose={() => {
+          console.log('AddDealPage - StoreBottomSheet onClose called');
+          setIsStoreSheetOpen(false);
+        }}
+        selectedStore={formData.store}
+        onStoreSelect={(storeId) => {
+          console.log('AddDealPage - StoreBottomSheet onStoreSelect called with:', storeId);
+          handleStoreSelect(storeId);
+        }}
+      />
     </div>
   );
 };

@@ -105,7 +105,7 @@ const UserCommentsPage: React.FC = () => {
           break;
         case 'popular':
           dealCommentsQuery = dealCommentsQuery.order('like_count', { ascending: false })
-                                              .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false });
           break;
         case 'newest':
         default:
@@ -203,7 +203,7 @@ const UserCommentsPage: React.FC = () => {
           break;
         case 'popular':
           promoCommentsQuery = promoCommentsQuery.order('like_count', { ascending: false })
-                                               .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false });
           break;
         case 'newest':
         default:
@@ -252,11 +252,11 @@ const UserCommentsPage: React.FC = () => {
     <div className="min-h-screen bg-gray-900 pb-16 pt-16">
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate(-1)} className="text-white">
-              <ArrowLeft className="h-6 w-6" />
-            </button>
-            <h1 className="text-white font-medium ml-4">My Comments</h1>
+        <div className="flex items-center">
+          <button onClick={() => navigate(-1)} className="text-white">
+            <ArrowLeft className="h-6 w-6" />
+          </button>
+          <h1 className="text-white font-medium ml-4">My Comments</h1>
           </div>
           <div className="relative">
             <select
@@ -298,14 +298,14 @@ const UserCommentsPage: React.FC = () => {
                       <DealCard deal={deal} onVoteChange={loadUserComments} />
                       {deal.userComment && (
                         <div className="space-y-2">
-                          <div className="bg-gray-800 rounded-md p-3 ml-4 border-l-2 border-orange-500">
-                            <div className="text-gray-400 text-sm mb-1">
-                              Your comment on {deal.userComment.createdAt}:
-                            </div>
-                            <div className="text-white">
-                              {deal.userComment.content}
-                            </div>
-                          </div>
+                      <div className="bg-gray-800 rounded-md p-3 ml-4 border-l-2 border-orange-500">
+                        <div className="text-gray-400 text-sm mb-1">
+                          Your comment on {deal.userComment.createdAt}:
+                        </div>
+                        <div className="text-white">
+                          {deal.userComment.content}
+                        </div>
+                      </div>
                           {/* Display replies */}
                           {deal.userComment.replies && deal.userComment.replies.length > 0 && (
                             <div className="ml-8 space-y-2">
@@ -345,14 +345,14 @@ const UserCommentsPage: React.FC = () => {
                         </div>
                         {promo.userComment && (
                           <div className="space-y-2">
-                            <div className="mt-4 bg-gray-700 rounded-md p-3 border-l-2 border-orange-500">
-                              <div className="text-gray-400 text-sm mb-1">
-                                Your comment on {promo.userComment.createdAt}:
-                              </div>
-                              <div className="text-white">
-                                {promo.userComment.content}
-                              </div>
-                            </div>
+                        <div className="mt-4 bg-gray-700 rounded-md p-3 border-l-2 border-orange-500">
+                          <div className="text-gray-400 text-sm mb-1">
+                            Your comment on {promo.userComment.createdAt}:
+                          </div>
+                          <div className="text-white">
+                            {promo.userComment.content}
+                          </div>
+                        </div>
                             {/* Display replies */}
                             {promo.userComment.replies && promo.userComment.replies.length > 0 && (
                               <div className="ml-8 space-y-2">

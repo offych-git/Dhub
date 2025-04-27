@@ -15,7 +15,6 @@ export const categories: Category[] = [
     id: 'electronics',
     name: 'Электроника',
     subcategories: [
-      { id: 'electronics-general', name: 'Электроника' },
       { id: 'smartphones', name: 'Смартфоны и гаджеты' },
       { id: 'laptops', name: 'Ноутбуки и компьютеры' },
       { id: 'tv', name: 'Телевизоры и видео' },
@@ -33,7 +32,6 @@ export const categories: Category[] = [
     id: 'appliances',
     name: 'Бытовая техника',
     subcategories: [
-      { id: 'appliances-general', name: 'Бытовая техника' },
       { id: 'major-appliances', name: 'Крупная бытовая техника' },
       { id: 'small-appliances', name: 'Мелкая бытовая техника' },
       { id: 'climate', name: 'Климатическая техника' },
@@ -46,7 +44,6 @@ export const categories: Category[] = [
     id: 'auto',
     name: 'Автомобили',
     subcategories: [
-      { id: 'auto-general', name: 'Автомобили' },
       { id: 'vehicles', name: 'Транспортные средства' },
       { id: 'tires', name: 'Шины и диски' },
       { id: 'auto-accessories', name: 'Автоаксессуары' },
@@ -62,7 +59,6 @@ export const categories: Category[] = [
     id: 'home-garden',
     name: 'Дом и сад',
     subcategories: [
-      { id: 'home-general', name: 'Дом и сад' },
       { id: 'furniture', name: 'Мебель' },
       { id: 'textiles', name: 'Текстиль' },
       { id: 'lighting', name: 'Освещение' },
@@ -79,7 +75,6 @@ export const categories: Category[] = [
     id: 'kids',
     name: 'Детские товары',
     subcategories: [
-      { id: 'kids-general', name: 'Детские товары' },
       { id: 'kids-clothes', name: 'Детская одежда' },
       { id: 'kids-shoes', name: 'Детская обувь' },
       { id: 'toys', name: 'Игрушки' },
@@ -95,7 +90,6 @@ export const categories: Category[] = [
     id: 'beauty-health',
     name: 'Красота и здоровье',
     subcategories: [
-      { id: 'beauty-general', name: 'Красота и здоровье' },
       { id: 'cosmetics', name: 'Косметика' },
       { id: 'perfume', name: 'Парфюмерия' },
       { id: 'hair-care', name: 'Уход за волосами' },
@@ -111,7 +105,6 @@ export const categories: Category[] = [
     id: 'clothing',
     name: 'Одежда и обувь',
     subcategories: [
-      { id: 'clothing-general', name: 'Одежда и обувь' },
       { id: 'mens-clothes', name: 'Мужская одежда' },
       { id: 'womens-clothes', name: 'Женская одежда' },
       { id: 'kids-clothes', name: 'Детская одежда' },
@@ -127,7 +120,6 @@ export const categories: Category[] = [
     id: 'food',
     name: 'Продукты питания',
     subcategories: [
-      { id: 'food-general', name: 'Продукты питания' },
       { id: 'grocery', name: 'Бакалея' },
       { id: 'dairy', name: 'Молочные продукты' },
       { id: 'meat-fish', name: 'Мясо и рыба' },
@@ -143,7 +135,6 @@ export const categories: Category[] = [
     id: 'sports',
     name: 'Спорт и отдых',
     subcategories: [
-      { id: 'sports-general', name: 'Спорт и отдых' },
       { id: 'sports-nutrition', name: 'Спортивное питание' },
       { id: 'fitness', name: 'Фитнес' },
       { id: 'tourism', name: 'Туризм' },
@@ -159,7 +150,6 @@ export const categories: Category[] = [
     id: 'entertainment',
     name: 'Развлечения',
     subcategories: [
-      { id: 'entertainment-general', name: 'Развлечения' },
       { id: 'movies', name: 'Кино' },
       { id: 'music', name: 'Музыка' },
       { id: 'books', name: 'Книги' },
@@ -175,7 +165,6 @@ export const categories: Category[] = [
     id: 'finance',
     name: 'Финансы',
     subcategories: [
-      { id: 'finance-general', name: 'Финансы' },
       { id: 'loans', name: 'Кредиты' },
       { id: 'insurance', name: 'Страхование' },
       { id: 'investments', name: 'Инвестиции' },
@@ -190,23 +179,19 @@ export const categories: Category[] = [
     id: 'services',
     name: 'Услуги',
     subcategories: [
-      { id: 'services-general', name: 'Услуги' },
       { id: 'delivery', name: 'Доставка' },
       { id: 'repair-services', name: 'Ремонт' },
       { id: 'education', name: 'Образование' },
       { id: 'medicine', name: 'Медицина' },
       { id: 'legal', name: 'Юридические услуги' },
       { id: 'it-services', name: 'IT-услуги' },
-      { id: 'beauty-services', name: 'Красота' },
-      { id: 'moving', name: 'Переезды' },
-      { id: 'cleaning-services', name: 'Клининг' }
+      { id: 'beauty-services', name: 'Красота' }
     ]
   },
   {
     id: 'other',
     name: 'Другое',
     subcategories: [
-      { id: 'other-general', name: 'Другое' },
       { id: 'jobs', name: 'Работа' },
       { id: 'real-estate', name: 'Недвижимость' },
       { id: 'pets', name: 'Животные' },
