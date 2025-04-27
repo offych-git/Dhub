@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Deal } from '../../types';
-import { ArrowUp, ArrowDown, MessageSquare, ExternalLink, Heart } from 'lucide-react';
+import { ArrowUp, ArrowDown, MessageSquare, ExternalLink, Heart, Share2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import AdminActions from '../admin/AdminActions';
@@ -260,10 +260,28 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
           </div>
           
           {user && (
-            <button className="ml-3 text-orange-500 flex items-center">
-              <span className="text-xs mr-1">View</span>
-              <ExternalLink className="h-3 w-3" />
-            </button>
+            <>
+              <button 
+                className="ml-3 text-orange-500 flex items-center"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (navigator.share) {
+                    navigator.share({
+                      title: `${deal.title} - ${deal.store.name}`,
+                      text: `Скидка ${discountPercent}%! ${deal.title} за $${deal.currentPrice.toFixed(2)} (было $${deal.originalPrice?.toFixed(2)})`,
+                      url: window.location.href
+                    }).catch(console.error);
+                  }
+                }}
+              >
+                <Share2 className="h-4 w-4" />
+              </button>
+              <button className="ml-3 text-orange-500 flex items-center">
+                <span className="text-xs mr-1">View</span>
+                <ExternalLink className="h-3 w-3" />
+              </button>
+            </>
           )}
         </div>
       </div>

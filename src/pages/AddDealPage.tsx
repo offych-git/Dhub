@@ -370,6 +370,7 @@ useEffect(() => {
   }, [formData.currentPrice, formData.originalPrice]);
 
   const handleMainCategorySelect = (categoryId: string) => {
+    console.log('Category selected in parent:', categoryId);
     if (selectedMainCategory === categoryId) {
       setSelectedMainCategory(null);
       setFormData(prev => ({

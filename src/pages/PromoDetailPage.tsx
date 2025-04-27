@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart } from 'lucide-react';
+import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Comment from '../components/comments/Comment';
@@ -20,6 +20,7 @@ const PromoDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'popular'>('newest');
+  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -279,24 +280,49 @@ const PromoDetailPage: React.FC = () => {
       <div className="p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-white text-xl font-medium">{promo.title}</h2>
-          <button 
-            onClick={toggleFavorite}
-            className={`p-2 rounded-full ${isFavorite ? 'text-red-500' : 'text-gray-400'}`}
-          >
-            <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'} />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: promo.title,
+                    text: `Use promo code ${promo.code} at ${new URL(promo.discount_url).hostname}`,
+                    url: window.location.href
+                  }).catch(console.error);
+                } else {
+                  navigator.clipboard.writeText(window.location.href);
+                  alert('Link copied to clipboard!');
+                }
+              }}
+              className="p-2 rounded-full text-gray-400 hover:text-orange-500"
+            >
+              <Share2 className="h-6 w-6" />
+            </button>
+            <button 
+              onClick={toggleFavorite}
+              className={`p-2 rounded-full ${isFavorite ? 'text-red-500' : 'text-gray-400'}`}
+            >
+              <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'} />
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 bg-gray-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2 mb-4">
             <div className="bg-gray-700 px-3 py-1.5 rounded border border-gray-600">
               <span className="text-orange-500 font-mono">{promo.code}</span>
             </div>
             <button
-              onClick={() => navigator.clipboard.writeText(promo.code)}
-              className="text-orange-500 font-medium"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigator.clipboard.writeText(promo.code);
+                setCopiedCodeId(promo.id);
+                setTimeout(() => setCopiedCodeId(null), 2000);
+              }}
+              className={`font-medium px-3 py-1.5 rounded border ${copiedCodeId === promo.id ? 'bg-green-500 text-white border-green-500' : 'text-orange-500 border-orange-500'}`}
             >
-              Copy Code
+              {copiedCodeId === promo.id ? 'Copied!' : 'Copy Code'}
             </button>
           </div>
 
@@ -316,7 +342,6 @@ const PromoDetailPage: React.FC = () => {
               onClick={() => handleVote(true)}
             >
               <ArrowUp className="h-5 w-5 mr-1" />
-              <span>Upvote</span>
             </button>
             
             <span className={`font-medium ${voteCount > 0 ? 'text-red-500' : voteCount < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
@@ -328,7 +353,6 @@ const PromoDetailPage: React.FC = () => {
               onClick={() => handleVote(false)}
             >
               <ArrowDown className="h-5 w-5 mr-1" />
-              <span>Downvote</span>
             </button>
           </div>
 

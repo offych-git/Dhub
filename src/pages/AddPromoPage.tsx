@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Info } from 'lucide-react';
-import { categories } from '../data/mockData';
+import { ArrowLeft, Info, ChevronDown } from 'lucide-react';
+import { categories, categoryIcons } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomSheet';
 
 const AddPromoPage: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +20,9 @@ const AddPromoPage: React.FC = () => {
     discountUrl: '',
     expiryDate: ''
   });
+
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+  const categoryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const isFormValid = formData.promoCode.trim() !== '' &&
@@ -36,9 +40,11 @@ const AddPromoPage: React.FC = () => {
 
     if (!isValid) {
       setError('Please fill in all required fields');
+      console.log('Form validation failed:', formData);
       return;
     }
 
+    console.log('Submitting form data:', formData);
     setLoading(true);
 
     try {
@@ -58,8 +64,10 @@ const AddPromoPage: React.FC = () => {
 
       if (promoError) throw promoError;
 
+      console.log('Promo code successfully created:', promo);
       navigate('/promos');
     } catch (err: any) {
+      console.error('Error creating promo code:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -137,18 +145,38 @@ const AddPromoPage: React.FC = () => {
             </div>
 
             <div>
-              <select
-                className="w-full bg-gray-800 text-white rounded-md px-4 py-3"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              <div ref={categoryRef} className="relative">
+              <button
+                type="button"
+                className="w-full bg-gray-800 text-white rounded-md px-4 py-3 flex items-center justify-between"
+                onClick={() => setIsCategorySheetOpen(true)}
               >
-                <option value="">Select Category *</option>
-                {categories.map(category => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+                <span>
+                  {formData.category
+                    ? categories.find(c => c.id === formData.category)?.name
+                    : 'Select Category *'}
+                </span>
+                <ChevronDown className="h-5 w-5" />
+              </button>
+            </div>
+            <CategorySimpleBottomSheet
+              isOpen={isCategorySheetOpen}
+              onClose={() => setIsCategorySheetOpen(false)}
+              categories={categories}
+              categoryIcons={categoryIcons}
+              selectedCategory={formData.category}
+              onCategorySelect={(categoryId) => {
+                console.log('Before category selection:', formData);
+                setFormData(prev => {
+                  const newData = { ...prev, category: categoryId };
+                  console.log('After category selection:', newData);
+                  return newData;
+                });
+                setIsCategorySheetOpen(false);
+                console.log('Selected category:', categoryId);
+                console.log('Current form state:', formData);
+              }}
+            />
             </div>
 
             <div>

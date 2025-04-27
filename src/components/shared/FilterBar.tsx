@@ -32,37 +32,29 @@ const FilterBar: React.FC<FilterBarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleMainCategorySelect = (categoryId: string) => {
-    if (selectedMainCategory === categoryId) {
-      setSelectedMainCategory(null);
-    } else {
-      setSelectedMainCategory(categoryId);
-    }
-  };
-
-  const handleSubcategorySelect = (subcategoryId: string) => {
-    const newCategories = selectedCategories.includes(subcategoryId)
-      ? selectedCategories.filter(id => id !== subcategoryId)
-      : [...selectedCategories, subcategoryId];
+  const handleCategorySelect = (categoryId: string) => {
+    const newCategories = selectedCategories.includes(categoryId)
+      ? selectedCategories.filter(id => id !== categoryId)
+      : [...selectedCategories, categoryId];
     onFilterChange('categories', newCategories);
   };
 
+  const handleStoreClick = () => {
+    setCategoryMenuOpen(false);
+    setStoreMenuOpen(!storeMenuOpen);
+  };
   const handleStoreSelect = (storeId: string) => {
     const newStores = selectedStores.includes(storeId)
       ? selectedStores.filter(id => id !== storeId)
       : [...selectedStores, storeId];
     onFilterChange('stores', newStores);
+    setStoreMenuOpen(false);
   };
 
   const getSelectedCategoryNames = () => {
     return selectedCategories.map(id => {
-      for (const category of categories) {
-        const subcategory = category.subcategories?.find(sub => sub.id === id);
-        if (subcategory) {
-          return language === 'ru' ? subcategory.name : t(subcategory.id);
-        }
-      }
-      return '';
+      const category = categories.find(c => c.id === id);
+      return category ? (language === 'ru' ? category.name : t(category.id)) : '';
     }).filter(Boolean);
   };
 
@@ -129,7 +121,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
                         className={`dropdown-item w-full px-3 py-2 flex items-center justify-between hover:bg-gray-700 ${
                           isMainSelected || hasSelectedSubcategories ? 'bg-gray-700' : ''
                         }`}
-                        onClick={() => handleMainCategorySelect(category.id)}
+                        onClick={() => handleCategorySelect(category.id)}
                       >
                         <div className="flex items-center">
                           {Icon && <Icon className="h-4 w-4 mr-2 text-orange-500" />}
@@ -144,23 +136,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
                         />
                       </button>
                       
-                      {isMainSelected && category.subcategories && (
-                        <div className="bg-gray-700 p-2 grid grid-cols-2 gap-1">
-                          {category.subcategories.map(subcategory => (
-                            <button
-                              key={subcategory.id}
-                              className={`px-2 py-1 text-sm text-left rounded ${
-                                selectedCategories.includes(subcategory.id)
-                                  ? 'bg-orange-500 text-white'
-                                  : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                              }`}
-                              onClick={() => handleSubcategorySelect(subcategory.id)}
-                            >
-                              {language === 'ru' ? subcategory.name : t(subcategory.id)}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      
                     </div>
                   );
                 })}
@@ -169,8 +145,8 @@ const FilterBar: React.FC<FilterBarProps> = ({
           )}
         </div>
 
-        {/* Stores Filter */}
-        <div className="relative">
+        {/* Stores Filter - Commented out */}
+        {/* <div className="relative">
           <button
             className={`flex items-center rounded-md px-3 py-1.5 text-sm ${
               selectedStores.length > 0 ? 'bg-orange-500 text-white' : 'bg-gray-800 text-white'
@@ -220,18 +196,13 @@ const FilterBar: React.FC<FilterBarProps> = ({
               </div>
             </div>
           )}
-        </div>
+        </div> */}
       </div>
 
       {/* Selected Filters */}
-      {(selectedCategories.length > 0 || selectedStores.length > 0) && (
+      {(selectedCategories.length > 0) && (
         <div className="flex flex-wrap gap-2 mt-2">
           {getSelectedCategoryNames().map(name => (
-            <span key={name} className="bg-orange-500 text-white text-sm px-2 py-0.5 rounded">
-              {name}
-            </span>
-          ))}
-          {getSelectedStoreNames().map(name => (
             <span key={name} className="bg-orange-500 text-white text-sm px-2 py-0.5 rounded">
               {name}
             </span>

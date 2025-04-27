@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ChevronDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart } from 'lucide-react';
+import { ChevronDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2 } from 'lucide-react';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/shared/FilterBar';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
@@ -344,6 +344,25 @@ const PromosPage: React.FC = () => {
                     <div className="flex items-center text-gray-400">
                       <MessageSquare className="h-3 w-3 mr-1" />
                       <span>{promo.comments}</span>
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (navigator.share) {
+                            navigator.share({
+                              title: promo.title,
+                              text: `Промокод: ${promo.code}`,
+                              url: window.location.href
+                            }).catch(console.error);
+                          } else {
+                            navigator.clipboard.writeText(window.location.href);
+                            alert('Ссылка скопирована в буфер обмена!');
+                          }
+                        }}
+                        className="ml-2 text-gray-400 hover:text-orange-500"
+                      >
+                        <Share2 className="h-3 w-3" />
+                      </button>
                     </div>
                   </div>
                 </div>

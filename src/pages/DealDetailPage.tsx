@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart } from 'lucide-react';
+import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2 } from 'lucide-react';
 import { mockDeals, generatePriceHistory } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -351,12 +351,31 @@ const DealDetailPage: React.FC = () => {
       <div className="p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-white text-xl font-medium">{deal.title}</h2>
-          <button 
-            onClick={toggleFavorite}
-            className={`p-2 rounded-full ${isFavorite ? 'text-red-500' : 'text-gray-400'}`}
-          >
-            <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'} />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: deal.title,
+                    text: deal.description || `Check out this deal at ${deal.store.name}`,
+                    url: window.location.href
+                  }).catch(console.error);
+                } else {
+                  navigator.clipboard.writeText(window.location.href);
+                  alert('Link copied to clipboard!');
+                }
+              }}
+              className="p-2 rounded-full text-gray-400 hover:text-orange-500"
+            >
+              <Share2 className="h-6 w-6" />
+            </button>
+            <button 
+              onClick={toggleFavorite}
+              className={`p-2 rounded-full ${isFavorite ? 'text-red-500' : 'text-gray-400'}`}
+            >
+              <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'} />
+            </button>
+          </div>
         </div>
         
         <div className="mt-3 flex items-center">
@@ -388,7 +407,6 @@ const DealDetailPage: React.FC = () => {
               onClick={() => handleVote(true)}
             >
               <ArrowUp className="h-5 w-5 mr-1" />
-              <span>Upvote</span>
             </button>
             
             <span className={`font-medium ${voteCount > 0 ? 'text-red-500' : voteCount < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
@@ -400,7 +418,6 @@ const DealDetailPage: React.FC = () => {
               onClick={() => handleVote(false)}
             >
               <ArrowDown className="h-5 w-5 mr-1" />
-              <span>Downvote</span>
             </button>
           </div>
         </div>

@@ -102,7 +102,7 @@ const CategoryBottomSheet: React.FC<CategoryBottomSheetProps> = ({
               {categories.map(category => (
                 <button
                   key={category.id}
-                  onClick={() => onCategorySelect(category.id)}
+                  onClick={() => onCategorySelect && onCategorySelect(category.id)}
                   className="w-full bg-gray-800 text-white rounded-lg p-4 flex items-center justify-between hover:bg-gray-700 transition-colors"
                 >
                   <span>{language === 'ru' ? category.name : t(category.id)}</span>
@@ -114,7 +114,7 @@ const CategoryBottomSheet: React.FC<CategoryBottomSheetProps> = ({
             // Subcategories list
             <div className="space-y-2 p-4">
               <button
-                onClick={() => onCategorySelect('')}
+                onClick={() => onCategorySelect && onCategorySelect('')}
                 className="w-full bg-gray-800 text-white rounded-lg p-4 flex items-center hover:bg-gray-700 transition-colors"
               >
                 <ChevronLeft className="h-5 w-5 mr-2" />
@@ -140,7 +140,7 @@ const CategoryBottomSheet: React.FC<CategoryBottomSheetProps> = ({
         </div>
 
         {/* Selected subcategories bar */}
-        {selectedSubcategories.length > 0 && (
+        {selectedSubcategories?.length > 0 && selectedCategoryData?.subcategories && (
           <div className="border-t border-gray-800 p-4">
             <div className="flex flex-wrap gap-2">
               {selectedSubcategories.map(subId => {
@@ -168,4 +168,4 @@ const CategoryBottomSheet: React.FC<CategoryBottomSheetProps> = ({
   );
 };
 
-export default CategoryBottomSheet; 
+export default CategoryBottomSheet;

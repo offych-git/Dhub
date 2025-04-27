@@ -18,10 +18,31 @@ const DealsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('q');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   
   useEffect(() => {
+    setPage(1);
+    setHasMore(true);
     fetchDeals();
   }, [activeTab, searchQuery]);
+
+  const handleScroll = () => {
+    if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || 
+        !hasMore || isFetchingMore) {
+      return;
+    }
+    
+    setIsFetchingMore(true);
+    setPage(prev => prev + 1);
+    fetchDeals();
+  };
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasMore, isFetchingMore]);
 
   const fetchDeals = async () => {
     setLoading(true);
@@ -52,15 +73,13 @@ const DealsPage: React.FC = () => {
         }
       }
 
-      // For NEW tab, only fetch deals from the last 4 hours
+      // For NEW tab, fetch all deals sorted by date
       if (activeTab === 'new') {
-        const fourHoursAgo = new Date();
-        fourHoursAgo.setHours(fourHoursAgo.getHours() - DEAL_SETTINGS.newTimeWindow);
-        
-        query = query
-          .gte('created_at', fourHoursAgo.toISOString())
-          .order('created_at', { ascending: false });
+        query = query.order('created_at', { ascending: false });
       }
+
+      // Add pagination
+      query = query.range((page - 1) * 20, page * 20 - 1);
 
       const { data: deals, error: fetchError } = await query;
 
@@ -108,7 +127,13 @@ const DealsPage: React.FC = () => {
         };
       }));
 
-      setDbDeals(dealsWithStats);
+      if (page === 1) {
+        setDbDeals(dealsWithStats);
+      } else {
+        setDbDeals(prev => [...prev, ...dealsWithStats]);
+      }
+      setHasMore(dealsWithStats.length === 20);
+      setIsFetchingMore(false);
     } catch (err: any) {
       console.error('Error fetching deals:', err);
       setError('Failed to load deals');
@@ -135,8 +160,15 @@ const DealsPage: React.FC = () => {
       ...dbDeals.filter(deal => deal.positiveVotes >= DEAL_SETTINGS.hotThreshold)
     ].sort((a, b) => b.popularity - a.popularity);
   } else if (activeTab === 'new') {
-    // Show only real deals from the last 4 hours
-    displayDeals = dbDeals;
+    // Combine and sort all deals by date (newest first)
+    displayDeals = [
+      ...mockDeals,
+      ...dbDeals
+    ].sort((a, b) => {
+      const dateA = a.createdAt || new Date(0);
+      const dateB = b.createdAt || new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
   } else if (activeTab === 'discussed') {
     // Sort by comment count (descending) and then by creation date (newest first)
     displayDeals = [
