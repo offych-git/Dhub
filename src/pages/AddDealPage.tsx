@@ -37,6 +37,8 @@ const AddDealPage: React.FC = () => {
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [mainImage, setMainImage] = useState<File | null>(null);
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
+  const selectedStoreName = stores.find(store => store.id === selectedStoreId)?.name || '';
   const categoryRef = useRef<HTMLDivElement>(null);
   
   const [formData, setFormData] = useState({
@@ -46,7 +48,7 @@ const AddDealPage: React.FC = () => {
     description: '',
     category: '',
     subcategories: [] as string[],
-    store: '',
+    // store: '', // Удалено
     dealUrl: '',
     expiryDate: ''
   });
@@ -238,11 +240,6 @@ const AddDealPage: React.FC = () => {
       return false;
     }
 
-    if (!formData.store) {
-      setError('Store is required');
-      return false;
-    }
-
     if (!mainImage) {
       setError('Main image is required');
       return false;
@@ -277,7 +274,6 @@ const AddDealPage: React.FC = () => {
       formData.currentPrice !== '' &&
       formData.category !== '' &&
       formData.subcategories.length > 0 &&
-      formData.store !== '' &&
       mainImage !== null &&
       formData.dealUrl !== '' &&
       (!formData.originalPrice || Number(formData.currentPrice) <= Number(formData.originalPrice)) &&
@@ -321,10 +317,10 @@ const AddDealPage: React.FC = () => {
         .getPublicUrl(filePath);
 
       // Find the store name from the selected store ID
-      const selectedStore = stores.find(s => s.id === formData.store);
-      if (!selectedStore) {
-        throw new Error('Selected store not found');
-      }
+      // const selectedStore = stores.find(s => s.id === formData.store);
+      // if (!selectedStore) {
+      //   throw new Error('Selected store not found');
+      // }
       
       const { data: deal, error: dealError } = await supabase
         .from('deals')
@@ -333,7 +329,7 @@ const AddDealPage: React.FC = () => {
           description: formData.description,
           current_price: Number(formData.currentPrice),
           original_price: formData.originalPrice ? Number(formData.originalPrice) : null,
-          store_id: formData.store,
+          store_id: selectedStoreId,
           category_id: formData.category,
           subcategories: formData.subcategories,
           image_url: publicUrl,
@@ -472,31 +468,21 @@ const AddDealPage: React.FC = () => {
     console.log('descriptionImages updated:', descriptionImages.length);
   }, [descriptionImages]);
 
-  const handleStoreSelect = (storeId: string) => {
+  const handleStoreSelect = (storeId: string | null) => {
+    console.log('AddDealPage - Выбран магазин с ID (обновляем отдельное состояние):', storeId);
     console.log('AddDealPage - handleStoreSelect called with storeId:', storeId);
-    console.log('AddDealPage - Current formData:', formData);
-    setFormData(prev => {
-      console.log('AddDealPage - Previous formData:', prev);
-      const newFormData = {
-        ...prev,
-        store: storeId
-      };
-      console.log('AddDealPage - New formData:', newFormData);
-      return newFormData;
-    });
-    console.log('AddDealPage - After setFormData');
+    setSelectedStoreId(storeId);
     setIsStoreSheetOpen(false);
-    console.log('AddDealPage - After setIsStoreSheetOpen');
   };
 
   // Add debug logging for StoreBottomSheet props
   useEffect(() => {
     console.log('AddDealPage - StoreBottomSheet props:', {
       isOpen: isStoreSheetOpen,
-      selectedStore: formData.store,
+      selectedStore: selectedStoreId,
       onStoreSelect: handleStoreSelect
     });
-  }, [isStoreSheetOpen, formData.store]);
+  }, [isStoreSheetOpen, selectedStoreId]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
@@ -578,17 +564,17 @@ const AddDealPage: React.FC = () => {
               </div>
             )}
 
-            <div>
-              {formData.store ? (
+            {/* <div>
+              {selectedStoreId ? (
                 <div className="w-full bg-gray-800 text-white rounded-md px-4 py-3 flex items-center justify-between">
                   <span>
-                    {stores.find(s => s.id === formData.store)?.name}
+                    {selectedStoreName}
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsStoreSheetOpen(true)}
                     className="text-gray-400 hover:text-white"
-              >
+                  >
                     <ChevronDown className="h-5 w-5" />
                   </button>
                 </div>
@@ -602,8 +588,8 @@ const AddDealPage: React.FC = () => {
                   <ChevronDown className="h-5 w-5" />
                 </button>
               )}
-            </div>
-
+            </div> */}
+            
             <div className="flex space-x-4">
               <div className="flex-1">
                 <input
@@ -946,14 +932,14 @@ const AddDealPage: React.FC = () => {
 
       <StoreBottomSheet
         isOpen={isStoreSheetOpen}
-        onClose={() => {
-          console.log('AddDealPage - StoreBottomSheet onClose called');
-          setIsStoreSheetOpen(false);
-        }}
-        selectedStore={formData.store}
+        selectedStore={selectedStoreId}
         onStoreSelect={(storeId) => {
           console.log('AddDealPage - StoreBottomSheet onStoreSelect called with:', storeId);
           handleStoreSelect(storeId);
+        }}
+        onClose={() => {
+          console.log('AddDealPage - StoreBottomSheet onClose called');
+          setIsStoreSheetOpen(false);
         }}
       />
     </div>

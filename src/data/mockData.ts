@@ -8,8 +8,43 @@ export const stores: Store[] = [
   { id: '5', name: 'Newegg' },
   { id: '6', name: 'eBay' },
   { id: '7', name: 'Costco' },
+  { id: 'amazon', name: 'Amazon', url: 'https://www.amazon.com' },
+  { id: 'walmart', name: 'Walmart', url: 'https://www.walmart.com' },
+  { id: 'target', name: 'Target', url: 'https://www.target.com' },
+  { id: 'bestbuy', name: 'Best Buy', url: 'https://www.bestbuy.com' },
+  { id: 'costco', name: 'Costco', url: 'https://www.costco.com' },
+  { id: 'macys', name: 'Macy\'s', url: 'https://www.macys.com' },
+  { id: 'ebay', name: 'eBay', url: 'https://www.ebay.com' },
+  { id: 'adidas', name: 'Adidas', url: 'https://www.adidas.com' },
+  { id: 'dell', name: 'Dell', url: 'https://www.dell.com' },
+  { id: 'samsclub', name: 'Sam\'s Club', url: 'https://www.samsclub.com' },
+  { id: 'rei', name: 'REI', url: 'https://www.rei.com' },
+  { id: 'woot', name: 'Woot!', url: 'https://www.woot.com' },
+  { id: 'humblebundle', name: 'Humble Bundle', url: 'https://www.humblebundle.com' },
+  { id: 'academy', name: 'Academy Sports', url: 'https://www.academy.com' },
+  { id: 'rakuten', name: 'Rakuten', url: 'https://www.rakuten.com' },
+  { id: 'walgreens', name: 'Walgreens', url: 'https://www.walgreens.com' },
+  { id: 'cvs', name: 'CVS', url: 'https://www.cvs.com' },
+  { id: 'riteaid', name: 'RiteAid', url: 'https://www.riteaid.com' },
+  { id: 'staples', name: 'Staples', url: 'https://www.staples.com' },
+  { id: 'kohls', name: 'Kohl\'s', url: 'https://www.kohls.com' },
+  { id: 'underarmour', name: 'Under Armour', url: 'https://www.underarmour.com' },
+  { id: 'tommyhilfiger', name: 'Tommy Hilfiger', url: 'https://usa.tommy.com' },
+  { id: 'carhartt', name: 'Carhartt', url: 'https://www.carhartt.com' },
+  { id: 'apple', name: 'Apple', url: 'https://www.apple.com' },
+  { id: 'google', name: 'Google', url: 'https://store.google.com' },
+  { id: 'acer', name: 'Acer', url: 'https://www.acer.com' },
+  { id: 'ecoflow', name: 'Ecoflow', url: 'https://www.ecoflow.com' },
+  { id: 'crkd', name: 'CRKD', url: 'https://www.crkdgaming.com' },
+  { id: '8bitdo', name: '8BitDo', url: 'https://www.8bitdo.com' },
+  { id: 'alessiasdollhouse', name: 'Alessia\'s Dollhouse', url: 'https://www.alessiasdollhouse.com' },
+  { id: 'cascadianfarm', name: 'Cascadian Farm', url: 'https://www.cascadianfarm.com' },
+  { id: 'buddhaspices', name: 'Buddha Spices', url: 'https://www.buddhaspices.com' }, 
+  
 ];
 
+// Логирование изменений в массиве stores
+console.log('Текущие магазины:', stores.map(store => store.id));
 export const categories: Category[] = [
   {
     id: 'electronics',
