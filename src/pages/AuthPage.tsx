@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Facebook, ArrowRight, KeyRound } from 'lucide-react';
+import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const AuthPage: React.FC = () => {
@@ -79,6 +79,14 @@ const AuthPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 px-4 py-8">
       <div className="max-w-md mx-auto">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-gray-400 hover:text-white mb-6"
+        >
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          Back
+        </button>
+
         <h1 className="text-3xl font-bold text-white text-center mb-8">
           {isResetPassword ? 'Reset Password' : isSignUp ? 'Create Account' : 'Welcome Back'}
         </h1>

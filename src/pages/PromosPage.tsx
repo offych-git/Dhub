@@ -37,6 +37,7 @@ const PromosPage: React.FC = () => {
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('q');
+  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPromoCodes();
@@ -171,10 +172,12 @@ const PromosPage: React.FC = () => {
     }
   };
 
-  const handleCopyCode = (e: React.MouseEvent, code: string) => {
+  const handleCopyCode = (e: React.MouseEvent, code: string, promoId: string) => {
     e.preventDefault();
     e.stopPropagation();
     navigator.clipboard.writeText(code);
+    setCopiedCodeId(promoId);
+    setTimeout(() => setCopiedCodeId(null), 2000);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -246,9 +249,9 @@ const PromosPage: React.FC = () => {
               <Link
                 key={promo.id}
                 to={`/promos/${promo.id}`}
-                className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 transition-colors"
+                className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 transition-colors flex flex-col h-full"
               >
-                <div className="p-3">
+                <div className="p-3 flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-gray-400 text-xs">
                       {formatTimeAgo(promo.created_at)}
@@ -309,10 +312,12 @@ const PromosPage: React.FC = () => {
                     </div>
                     {user && (
                       <button 
-                        className="text-orange-500 text-sm"
-                        onClick={(e) => handleCopyCode(e, promo.code)}
+                        className={`text-sm transition-colors duration-200 ${
+                          copiedCodeId === promo.id ? 'text-green-500' : 'text-orange-500'
+                        }`}
+                        onClick={(e) => handleCopyCode(e, promo.code, promo.id)}
                       >
-                        Copy
+                        {copiedCodeId === promo.id ? 'Copied!' : 'Copy'}
                       </button>
                     )}
                     {promo.expires_at && (

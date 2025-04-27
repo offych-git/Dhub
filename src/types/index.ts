@@ -15,6 +15,14 @@ export interface Deal {
   description?: string;
   url?: string;
   createdAt?: Date;
+  userComment?: {
+    content: string;
+    createdAt: string;
+    replies?: {
+      content: string;
+      createdAt: string;
+    }[];
+  };
 }
 
 export interface Store {

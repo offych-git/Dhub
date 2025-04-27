@@ -1,13 +1,28 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bold, Italic, Underline as UnderlineIcon, List, Image as ImageIcon, Link as LinkIcon, Info, ChevronDown, X } from 'lucide-react';
+import { ArrowLeft, Bold, Italic, Underline as UnderlineIcon, List, Image as ImageIcon, Link as LinkIcon, Info, ChevronDown, X, Plus } from 'lucide-react';
 import { categories, stores, categoryIcons } from '../data/mockData';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
+import Image from '@tiptap/extension-image';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
+import ImageUploader from '../components/deals/ImageUploader';
+import imageCompression from 'browser-image-compression';
+import { createPortal } from 'react-dom';
+
+interface Subcategory {
+  id: string;
+  name: string;
+}
+
+interface ImageWithId {
+  file: File;
+  id: string;
+  publicUrl: string;
+}
 
 const AddDealPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +33,8 @@ const AddDealPage: React.FC = () => {
   const [isValid, setIsValid] = useState(false);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [mainImage, setMainImage] = useState<File | null>(null);
   const categoryRef = useRef<HTMLDivElement>(null);
   
   const [formData, setFormData] = useState({
@@ -25,13 +42,18 @@ const AddDealPage: React.FC = () => {
     currentPrice: '',
     originalPrice: '',
     description: '',
-    imageUrl: '',
     category: '',
     subcategories: [] as string[],
     store: '',
     dealUrl: '',
     expiryDate: ''
   });
+
+  const [descriptionImages, setDescriptionImages] = useState<ImageWithId[]>([]);
+  const [showDeleteButton, setShowDeleteButton] = useState<{ [key: string]: boolean }>({});
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const [selectedImagePosition, setSelectedImagePosition] = useState<{ top: number; left: number } | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -44,19 +66,137 @@ const AddDealPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline
-    ],
-    content: '',
-    onUpdate: ({ editor }) => {
-      setFormData(prev => ({
-        ...prev,
-        description: editor.getHTML()
-      }));
+  const compressImage = async (file: File): Promise<File> => {
+    const options = {
+      maxSizeMB: 0.2,
+      maxWidthOrHeight: 1200,
+      useWebWorker: true,
+      fileType: 'image/jpeg',
+      initialQuality: 0.8,
+    };
+
+    try {
+      return await imageCompression(file, options);
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      return file;
     }
-  });
+  };
+
+  const handleImageClick = (imageId: string) => {
+    setShowDeleteButton(prev => ({
+      ...prev,
+      [imageId]: !prev[imageId]
+    }));
+  };
+
+  const handleDeleteImage = (imageId: string) => {
+    if (editor) {
+      const imageNode = editor.view.dom.querySelector(`img[alt="${imageId}"]`);
+      if (imageNode) {
+        const pos = editor.view.posAtDOM(imageNode, 0);
+        editor.chain().focus().deleteRange({ from: pos, to: pos + 1 }).run();
+        
+        // Remove the image from descriptionImages state using the ID
+        setDescriptionImages(prev => {
+          console.log('Current images in state:', prev.length);
+          const newImages = prev.filter(img => img.id !== imageId);
+          console.log('Images after filtering:', newImages.length);
+          return newImages;
+        });
+        
+        setSelectedImageId(null);
+      }
+    }
+  };
+
+  const handleDescriptionImageUpload = async (files: FileList | null) => {
+    if (!files || !files.length || !editor) {
+      console.log('Missing required data:', { files, editor });
+      return;
+    }
+
+    // Check if adding new images would exceed the limit
+    const newImageCount = descriptionImages.length + files.length;
+    if (newImageCount > 4) {
+      alert('You can upload a maximum of 4 images');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      // Process all selected files
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        console.log('Processing file:', file.name, file.size, file.type);
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          throw new Error('Please select only image files');
+        }
+
+        const compressedImage = await compressImage(file);
+        console.log('Compressed file:', compressedImage.name, compressedImage.size, compressedImage.type);
+        
+        // Generate unique ID for the image
+        const imageId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Upload image to Supabase Storage first
+        const fileExt = compressedImage.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${user?.id}/description/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('deal-images')
+          .upload(filePath, compressedImage, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Error uploading description image:', uploadError);
+          throw new Error('Failed to upload description image');
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('deal-images')
+          .getPublicUrl(filePath);
+        
+        // Store the image in state with its ID and public URL
+        setDescriptionImages(prev => [...prev, { 
+          file: compressedImage, 
+          id: imageId,
+          publicUrl: publicUrl 
+        }]);
+        
+        // Insert image with wrapper for better styling
+        editor.chain()
+          .focus()
+          .insertContent(`
+            <div class="image-wrapper" data-image-id="${imageId}">
+              <img src="${publicUrl}" alt="${imageId}" class="max-w-full h-auto rounded-lg my-4" />
+            </div>
+          `)
+          .run();
+
+        // Add one paragraph after each image for spacing
+        editor.chain().focus().insertContent('<p></p>').run();
+      }
+
+    } catch (error) {
+      console.error('Error in image upload process:', error);
+      alert(`Failed to process images: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleMainImageUpload = async (files: FileList | null) => {
+    if (!files || !files[0]) return;
+    const file = files[0];
+    const compressedImage = await compressImage(file);
+    setMainImage(compressedImage);
+  };
 
   const validateForm = () => {
     if (!formData.title.trim()) {
@@ -99,8 +239,8 @@ const AddDealPage: React.FC = () => {
       return false;
     }
 
-    if (!formData.imageUrl) {
-      setError('Image URL is required');
+    if (!mainImage) {
+      setError('Main image is required');
       return false;
     }
 
@@ -119,12 +259,12 @@ const AddDealPage: React.FC = () => {
       formData.category !== '' &&
       formData.subcategories.length > 0 &&
       formData.store !== '' &&
-      formData.imageUrl !== '' &&
+      mainImage !== null &&
       formData.dealUrl !== '' &&
       (!formData.originalPrice || Number(formData.currentPrice) <= Number(formData.originalPrice));
 
     setIsValid(isFormValid);
-  }, [formData]);
+  }, [formData, mainImage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +277,29 @@ const AddDealPage: React.FC = () => {
     setLoading(true);
 
     try {
+      // Upload main image to Supabase Storage
+      if (!mainImage) throw new Error('Main image is required');
+
+      const fileExt = mainImage.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${user?.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('deal-images')
+        .upload(filePath, mainImage, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Error uploading main image:', uploadError);
+        throw new Error('Failed to upload main image');
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('deal-images')
+        .getPublicUrl(filePath);
+
       // Find the store name from the selected store ID
       const selectedStore = stores.find(s => s.id === formData.store);
       
@@ -150,7 +313,7 @@ const AddDealPage: React.FC = () => {
           store_id: selectedStore?.name || formData.store,
           category_id: formData.category,
           subcategories: formData.subcategories,
-          image_url: formData.imageUrl,
+          image_url: publicUrl,
           deal_url: formData.dealUrl,
           user_id: user?.id,
           expires_at: formData.expiryDate || null
@@ -158,12 +321,15 @@ const AddDealPage: React.FC = () => {
         .select()
         .single();
 
-      if (dealError) throw dealError;
+      if (dealError) {
+        console.error('Error creating deal:', dealError);
+        throw new Error('Failed to create deal');
+      }
 
       navigate(`/deals/${deal.id}`);
-    } catch (err: any) {
-      console.error('Error creating deal:', err);
-      setError(err.message);
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create deal');
     } finally {
       setLoading(false);
     }
@@ -198,16 +364,90 @@ const AddDealPage: React.FC = () => {
     }
   };
 
-  const handleSubcategoryToggle = (subcategoryId: string) => {
-    setFormData(prev => {
-      const subcategories = prev.subcategories.includes(subcategoryId)
-        ? prev.subcategories.filter(id => id !== subcategoryId)
-        : [...prev.subcategories, subcategoryId];
-      return { ...prev, subcategories };
-    });
+  const handleSubcategoryChange = (subcategory: string) => {
+    setFormData(prev => ({
+      ...prev,
+      subcategories: prev.subcategories.includes(subcategory)
+        ? prev.subcategories.filter((sub: string) => sub !== subcategory)
+        : [...prev.subcategories, subcategory]
+    }));
   };
 
   const selectedCategory = categories.find(cat => cat.id === selectedMainCategory);
+
+  // Add global handlers
+  useEffect(() => {
+    (window as any).handleImageClick = handleImageClick;
+    (window as any).handleDeleteImage = handleDeleteImage;
+  }, [showDeleteButton]);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        bulletList: {
+          HTMLAttributes: {
+            class: 'list-disc pl-4',
+          },
+        },
+      }),
+      Underline,
+      Image.configure({
+        HTMLAttributes: {
+          class: 'max-w-full h-auto rounded-lg my-4 relative delete-button-container',
+        },
+        allowBase64: true,
+      }),
+    ],
+    content: '',
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      console.log('Editor content updated:', html);
+      setFormData(prev => ({
+        ...prev,
+        description: html
+      }));
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[200px]',
+      },
+    },
+  });
+
+  // Add effect to log editor state
+  useEffect(() => {
+    if (editor) {
+      console.log('Editor initialized with extensions:', editor.extensionManager.extensions);
+    }
+  }, [editor]);
+
+  // Track image selection
+  useEffect(() => {
+    if (editor) {
+      const handleClick = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const imageNode = target.closest('img[alt^="img-"]');
+        if (imageNode) {
+          const imageId = imageNode.getAttribute('alt');
+          if (imageId) {
+            setSelectedImageId(imageId);
+          }
+        } else {
+          setSelectedImageId(null);
+        }
+      };
+
+      editor.view.dom.addEventListener('click', handleClick);
+      return () => {
+        editor.view.dom.removeEventListener('click', handleClick);
+      };
+    }
+  }, [editor]);
+
+  // Add effect to track descriptionImages changes
+  useEffect(() => {
+    console.log('descriptionImages updated:', descriptionImages.length);
+  }, [descriptionImages]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
@@ -314,11 +554,11 @@ const AddDealPage: React.FC = () => {
 
                           {isSelected && category.subcategories && (
                             <div className="bg-gray-700 p-2 grid grid-cols-2 gap-1">
-                              {category.subcategories.map(subcategory => (
+                              {category.subcategories.map((subcategory: Subcategory) => (
                                 <button
                                   key={subcategory.id}
                                   type="button"
-                                  onClick={() => handleSubcategoryToggle(subcategory.id)}
+                                  onClick={() => handleSubcategoryChange(subcategory.id)}
                                   className={`px-2 py-1 text-sm text-left rounded ${
                                     formData.subcategories.includes(subcategory.id)
                                       ? 'bg-orange-500 text-white'
@@ -341,11 +581,18 @@ const AddDealPage: React.FC = () => {
             {/* Selected Subcategories */}
             {formData.subcategories.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {formData.subcategories.map(subId => {
-                  const subcategory = selectedCategory?.subcategories?.find(sub => sub.id === subId);
+                {formData.subcategories.map((sub: string) => {
+                  const subcategory = selectedCategory?.subcategories?.find((s: Subcategory) => s.id === sub);
                   return subcategory ? (
-                    <span key={subId} className="bg-gray-700 text-white px-2 py-1 rounded-md text-sm">
-                      {language === 'ru' ? subcategory.name : t(subcategory.id)}
+                    <span key={sub} className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium bg-gray-700 text-white">
+                      {sub}
+                      <button
+                        type="button"
+                        onClick={() => handleSubcategoryChange(sub)}
+                        className="ml-1 text-gray-400 hover:text-white"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </span>
                   ) : null;
                 })}
@@ -401,69 +648,116 @@ const AddDealPage: React.FC = () => {
             )}
 
             {/* Description Editor */}
-            <div>
-              <div className="bg-gray-800 rounded-md">
-                <div className="flex items-center space-x-2 px-3 py-2 border-b border-gray-700">
+            <div className="relative" ref={editorRef}>
+              <div className="flex items-center space-x-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => editor?.chain().focus().toggleBold().run()}
+                  className={`formatting-button p-2 rounded ${editor?.isActive('bold') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <Bold className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editor?.chain().focus().toggleItalic().run()}
+                  className={`formatting-button p-2 rounded ${editor?.isActive('italic') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <Italic className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editor?.chain().focus().toggleUnderline().run()}
+                  className={`formatting-button p-2 rounded ${editor?.isActive('underline') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <UnderlineIcon className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                  className={`formatting-button p-2 rounded ${editor?.isActive('bulletList') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <List className="h-5 w-5" />
+                </button>
+                <div className="relative">
                   <button
                     type="button"
-                    onClick={() => editor?.chain().focus().toggleBold().run()}
-                    className={`text-gray-400 hover:text-white ${editor?.isActive('bold') ? 'text-white' : ''}`}
+                    onClick={() => document.getElementById('description-image-upload')?.click()}
+                    className={`formatting-button p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors duration-200 ${
+                      descriptionImages.length >= 4 ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                    disabled={descriptionImages.length >= 4}
+                    title={descriptionImages.length >= 4 ? 'Maximum 4 images allowed' : 'Add images'}
                   >
-                    <Bold className="h-5 w-5" />
+                    <div className="flex items-center">
+                      <ImageIcon className="h-5 w-5" />
+                      <span className="text-xs ml-1 text-gray-500">({descriptionImages.length}/4)</span>
+                    </div>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => editor?.chain().focus().toggleItalic().run()}
-                    className={`text-gray-400 hover:text-white ${editor?.isActive('italic') ? 'text-white' : ''}`}
-                  >
-                    <Italic className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => editor?.chain().focus().toggleUnderline().run()}
-                    className={`text-gray-400 hover:text-white ${editor?.isActive('underline') ? 'text-white' : ''}`}
-                  >
-                    <UnderlineIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => editor?.chain().focus().toggleBulletList().run()}
-                    className={`text-gray-400 hover:text-white ${editor?.isActive('bulletList') ? 'text-white' : ''}`}
-                  >
-                    <List className="h-5 w-5" />
-                  </button>
-                </div>
-                <EditorContent
-                  editor={editor}
-                  className="w-full bg-transparent text-white placeholder-gray-500 px-4 py-3 min-h-[100px] focus:outline-none"
-                />
-                <div className="px-4 py-2 text-gray-500 text-sm">
-                  Description is required *
-                </div>
-              </div>
-            </div>
-
-            {/* Image Upload */}
-            <div className="bg-gray-800 rounded-md p-4">
-              <input
-                type="url"
-                placeholder="Enter image URL *"
-                className="w-full bg-gray-700 text-white placeholder-gray-500 rounded-md px-4 py-2"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                required
-              />
-              {formData.imageUrl && (
-                <div className="mt-2 relative w-full h-40 bg-gray-700 rounded-md overflow-hidden">
-                  <img
-                    src={formData.imageUrl}
-                    alt="Deal preview"
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Invalid+Image+URL';
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="description-image-upload"
+                    className="hidden"
+                    multiple
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files) {
+                        const remainingSlots = 4 - descriptionImages.length;
+                        if (files.length > remainingSlots) {
+                          alert(`You can only add ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'}`);
+                          return;
+                        }
+                        handleDescriptionImageUpload(files);
+                      }
                     }}
                   />
                 </div>
+                {selectedImageId && (
+                  <button
+                    type="button"
+                    className="delete-image-button flex items-center justify-center px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
+                    onClick={() => {
+                      if (selectedImageId) {
+                        handleDeleteImage(selectedImageId);
+                        setSelectedImageId(null);
+                      }
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <div className="bg-gray-800 rounded-lg p-4 min-h-[200px]">
+                <EditorContent editor={editor} />
+              </div>
+            </div>
+
+            {/* Main Image Upload */}
+            <div>
+              <label className="block text-gray-400 mb-2">Main Image *</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleMainImageUpload(e.target.files)}
+                className="hidden"
+                id="main-image-upload"
+              />
+              <label
+                htmlFor="main-image-upload"
+                className="block w-full bg-gray-800 text-white rounded-md px-4 py-3 cursor-pointer hover:bg-gray-700"
+              >
+                {mainImage ? 'Change Main Image' : 'Select Main Image'}
+              </label>
+              {mainImage && (
+                <img
+                  src={URL.createObjectURL(mainImage)}
+                  alt="Main deal image"
+                  className="mt-2 w-full h-48 object-cover rounded-lg"
+                />
               )}
             </div>
 
@@ -523,10 +817,10 @@ const AddDealPage: React.FC = () => {
                 )}
                 {formData.subcategories.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.subcategories.map(subId => {
-                      const subcategory = selectedCategory?.subcategories?.find(sub => sub.id === subId);
+                    {formData.subcategories.map((sub: string) => {
+                      const subcategory = selectedCategory?.subcategories?.find((s: Subcategory) => s.id === sub);
                       return subcategory ? (
-                        <span key={subId} className="bg-gray-800 text-gray-300 px-2 py-1 rounded-md text-sm">
+                        <span key={sub} className="bg-gray-800 text-gray-300 px-2 py-1 rounded-md text-sm">
                           {language === 'ru' ? subcategory.name : t(subcategory.id)}
                         </span>
                       ) : null;
@@ -578,6 +872,79 @@ const AddDealPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      <style>
+        {`
+          .image-wrapper {
+            margin: 1rem 0;
+          }
+          .image-container {
+            position: relative;
+            display: inline-block;
+          }
+          .delete-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 32px;
+            height: 32px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s;
+          }
+          .delete-button:hover {
+            background-color: #dc2626;
+          }
+          .delete-button svg {
+            width: 20px;
+            height: 20px;
+            color: white;
+          }
+
+          /* Mobile-friendly formatting buttons */
+          @media (max-width: 640px) {
+            .formatting-button {
+              padding: 12px !important;
+              margin: 0 4px !important;
+              min-width: 48px !important;
+              height: 48px !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+            }
+            
+            .formatting-button svg {
+              width: 24px !important;
+              height: 24px !important;
+            }
+
+            .formatting-button.active {
+              background-color: #4B5563 !important;
+              transform: scale(1.1);
+            }
+
+            .delete-image-button {
+              padding: 8px !important;
+              margin-left: 4px !important;
+              height: 40px !important;
+              width: 40px !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+            }
+
+            .delete-image-button svg {
+              width: 20px !important;
+              height: 20px !important;
+            }
+          }
+        `}
+      </style>
     </div>
   );
 };

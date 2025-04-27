@@ -181,18 +181,18 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
         />
         
         <div className="ml-auto flex items-center text-sm">
-          <div className={`flex items-center ${voteCount > 0 ? 'text-red-500' : voteCount < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
-            <span className="font-medium">{voteCount > 0 ? '+' : ''}{voteCount}</span>
-          </div>
           <button
             onClick={(e) => handleVote(e, true)}
-            className={`ml-2 ${userVote === true ? 'text-red-500' : 'text-gray-400'}`}
+            className={`${userVote === true ? 'text-red-500' : 'text-gray-400'}`}
           >
             <ArrowUp className="h-4 w-4" />
           </button>
+          <div className={`flex items-center mx-2 ${voteCount > 0 ? 'text-red-500' : voteCount < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+            <span className="font-medium">{voteCount > 0 ? '+' : ''}{voteCount}</span>
+          </div>
           <button
             onClick={(e) => handleVote(e, false)}
-            className={`ml-2 ${userVote === false ? 'text-blue-500' : 'text-gray-400'}`}
+            className={`${userVote === false ? 'text-blue-500' : 'text-gray-400'}`}
           >
             <ArrowDown className="h-4 w-4" />
           </button>
