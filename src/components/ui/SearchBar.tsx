@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useDebounce } from '../../hooks/useDebounce';
+import { supabase } from '../../lib/supabase';
 
 const SearchBar: React.FC = () => {
   const navigate = useNavigate();
@@ -12,9 +14,41 @@ const SearchBar: React.FC = () => {
 
   useEffect(() => {
     if (debouncedSearch) {
-      setSearchParams({ q: debouncedSearch });
+      const searchAllContent = async () => {
+        const searchQuery = debouncedSearch.split(' ').join(' & ');
+        
+        const { data: searchResults, error } = await supabase.rpc('search_all_content', {
+          search_query: searchQuery
+        });
+
+        if (error) {
+          console.error('Search error:', error);
+          return;
+        }
+
+        const deals = new Set();
+        const promos = new Set();
+
+        searchResults?.forEach(result => {
+          if (result.type === 'deal' || result.type === 'deal_comment') {
+            deals.add(result.id);
+          } else if (result.type === 'promo' || result.type === 'promo_comment') {
+            promos.add(result.id);
+          }
+        });
+
+        setSearchParams({ 
+          q: debouncedSearch,
+          deals: Array.from(deals).join(','),
+          promos: Array.from(promos).join(',')
+        });
+      };
+
+      searchAllContent();
     } else {
       searchParams.delete('q');
+      searchParams.delete('deals');
+      searchParams.delete('promos');
       setSearchParams(searchParams);
     }
   }, [debouncedSearch]);
@@ -26,6 +60,8 @@ const SearchBar: React.FC = () => {
   const clearSearch = () => {
     setSearchTerm('');
     searchParams.delete('q');
+    searchParams.delete('deals');
+    searchParams.delete('promos');
     setSearchParams(searchParams);
   };
 
@@ -37,7 +73,7 @@ const SearchBar: React.FC = () => {
           type="text"
           value={searchTerm}
           onChange={handleSearch}
-          placeholder="Search deals, promos, brands..."
+          placeholder="Search deals, promos, comments..."
           className="search-input bg-transparent text-gray-300 placeholder-gray-400 outline-none flex-1"
         />
         {searchTerm && (

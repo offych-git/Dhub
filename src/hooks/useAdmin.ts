@@ -1,34 +1,81 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
+type Role = 'user' | 'moderator' | 'admin' | 'super_admin';
+
+interface AdminPermissions {
+  canDeleteContent: boolean;
+  canManageUsers: boolean;
+  canManageRoles: boolean;
+  canManageComments: boolean;
+  canManageDeals: boolean;
+  canManagePromos: boolean;
+}
+
 export const useAdmin = () => {
   const { user } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<Role>('user');
   const [loading, setLoading] = useState(true);
+
+  const permissions: Record<Role, AdminPermissions> = {
+    user: {
+      canDeleteContent: false,
+      canManageUsers: false,
+      canManageRoles: false,
+      canManageComments: false,
+      canManageDeals: false,
+      canManagePromos: false
+    },
+    moderator: {
+      canDeleteContent: true,
+      canManageUsers: false,
+      canManageRoles: false,
+      canManageComments: true,
+      canManageDeals: false,
+      canManagePromos: false
+    },
+    admin: {
+      canDeleteContent: true,
+      canManageUsers: true,
+      canManageRoles: false,
+      canManageComments: true,
+      canManageDeals: true,
+      canManagePromos: true
+    },
+    super_admin: {
+      canDeleteContent: true,
+      canManageUsers: true,
+      canManageRoles: true,
+      canManageComments: true,
+      canManageDeals: true,
+      canManagePromos: true
+    }
+  };
 
   useEffect(() => {
     if (user) {
-      checkAdminStatus();
+      checkRole();
     } else {
-      setIsAdmin(false);
+      setRole('user');
       setLoading(false);
     }
   }, [user]);
 
-  const checkAdminStatus = async () => {
+  const checkRole = async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('is_admin')
+        .select('role')
         .eq('id', user!.id)
         .single();
 
       if (error) throw error;
-      setIsAdmin(data?.is_admin || false);
+      setRole(data?.role || 'user');
     } catch (error) {
-      console.error('Error checking admin status:', error);
-      setIsAdmin(false);
+      console.error('Error checking role:', error);
+      setRole('user');
     } finally {
       setLoading(false);
     }
@@ -38,7 +85,7 @@ export const useAdmin = () => {
     type: 'deal' | 'promo' | 'deal_comment' | 'promo_comment',
     id: string
   ) => {
-    if (!isAdmin) return false;
+    if (!permissions[role].canDeleteContent) return false;
 
     try {
       const table = {
@@ -61,8 +108,25 @@ export const useAdmin = () => {
     }
   };
 
+  const manageUserRole = async (userId: string, newRole: Role) => {
+    if (!permissions[role].canManageRoles) return false;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      return false;
+    }
+  };
+
   const banUser = async (userId: string) => {
-    if (!isAdmin) return false;
+    if (!permissions[role].canManageUsers) return false;
 
     try {
       const { error } = await supabase
@@ -78,64 +142,12 @@ export const useAdmin = () => {
     }
   };
 
-  const unbanUser = async (userId: string) => {
-    if (!isAdmin) return false;
-
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ user_status: 'active' })
-        .eq('id', userId);
-
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Error unbanning user:', error);
-      return false;
-    }
-  };
-
-  const makeAdmin = async (userId: string) => {
-    if (!isAdmin) return false;
-
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: true })
-        .eq('id', userId);
-
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Error making user admin:', error);
-      return false;
-    }
-  };
-
-  const removeAdmin = async (userId: string) => {
-    if (!isAdmin) return false;
-
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: false })
-        .eq('id', userId);
-
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Error removing admin:', error);
-      return false;
-    }
-  };
-
   return {
-    isAdmin,
+    role,
     loading,
+    permissions: permissions[role],
     deleteContent,
-    banUser,
-    unbanUser,
-    makeAdmin,
-    removeAdmin
+    manageUserRole,
+    banUser
   };
 };

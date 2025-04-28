@@ -17,7 +17,8 @@ const PromoDetailPage: React.FC = () => {
   const [voteCount, setVoteCount] = useState(0);
   const [userVote, setUserVote] = useState<boolean | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
-  // Define comment tree node type
+
+// Define comment tree node type
 type CommentTreeNode = {
   id: string;
   content: string;
@@ -145,8 +146,6 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
     const { data: comments, error } = await query;
 
     if (!error && comments) {
-      console.log('Raw comments data:', comments);
-      console.log('First comment structure:', comments[0]);
       const commentMap = new Map();
       const rootComments = [];
 
@@ -169,8 +168,6 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
         }
       });
 
-      console.log('Processed comments tree:', rootComments);
-      console.log('First processed comment with replies:', rootComments[0]?.replies);
       setComments(rootComments);
       setCommentCount(comments.length);
     }
@@ -178,11 +175,16 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
 
   const loadVoteStatus = async () => {
     try {
+      if (!user) {
+        setUserVote(null);
+        return;
+      }
+      
       const { data: votes } = await supabase
         .from('promo_votes')
         .select('vote_type')
         .eq('promo_id', id)
-        .eq('user_id', user!.id);
+        .eq('user_id', user.id);
 
       if (votes && votes.length > 0) {
         setUserVote(votes[0].vote_type);
@@ -437,25 +439,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
 
           {comments.length > 0 ? (
             <div className="space-y-4">
-              {comments.map(comment => (
-                <Comment
-                  key={comment.id}
-                  id={comment.id}
-                  content={comment.content}
-                  createdAt={comment.created_at}
-                  user={{
-                    id: comment.profiles.id,
-                    name: comment.profiles.display_name || comment.profiles.email.split('@')[0],
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles.display_name || comment.profiles.email)}&background=random`
-                  }}
-                  replyCount={comment.reply_count}
-                  likeCount={comment.like_count}
-                  sourceType="promo_comment"
-                  sourceId={promo.id}
-                  onReply={loadComments}
-                  depth={0}
-                />
-              ))}
+              {comments.map(comment => renderCommentTree(comment))}
             </div>
           ) : (
             <div className="bg-gray-800 rounded-md p-4 text-gray-400 text-center">

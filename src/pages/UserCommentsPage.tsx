@@ -42,6 +42,20 @@ const UserCommentsPage: React.FC = () => {
   const [promoComments, setPromoComments] = useState<any[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredDeals = deals.filter(deal => 
+    deal.userComment?.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    deal.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredPromos = promoComments.filter(promo => 
+    promo.userComment?.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    promo.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const [activeTab, setActiveTab] = useState<'deals' | 'promos'>('deals');
+
 
   const sortComments = (comments: Comment[], sortBy: SortOption): Comment[] => {
     // Сначала сортируем корневые комментарии
@@ -50,7 +64,9 @@ const UserCommentsPage: React.FC = () => {
         case 'oldest':
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         case 'popular':
-          return (b.like_count || 0) - (a.like_count || 0);
+          const aLikes = typeof a.like_count === 'number' ? a.like_count : 0;
+          const bLikes = typeof b.like_count === 'number' ? b.like_count : 0;
+          return bLikes - aLikes;
         case 'newest':
         default:
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -228,7 +244,7 @@ const UserCommentsPage: React.FC = () => {
       // Apply sorting to promo comments
       const sortedPromos = promosWithComments?.sort((a, b) => {
         if (!a.userComment || !b.userComment) return 0;
-        
+
         switch (sortBy) {
           case 'oldest':
             return new Date(a.userComment.createdAt).getTime() - new Date(b.userComment.createdAt).getTime();
@@ -251,29 +267,56 @@ const UserCommentsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 pb-16 pt-16">
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
-        <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <button onClick={() => navigate(-1)} className="text-white">
-            <ArrowLeft className="h-6 w-6" />
-          </button>
-          <h1 className="text-white font-medium ml-4">My Comments</h1>
-          </div>
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="appearance-none bg-gray-800 text-white text-sm rounded-md pl-3 pr-8 py-1 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="popular">Most Popular</option>
-            </select>
-            <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center">
+            <button onClick={() => navigate(-1)} className="text-white">
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+            <h1 className="text-white font-medium ml-4">My Comments</h1>
           </div>
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="relative mx-4 my-3">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <div className="flex items-center bg-gray-700 rounded-lg px-4 py-2">
+              <input
+                type="text"
+                placeholder="Search comments..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-transparent text-gray-300 placeholder-gray-400 outline-none flex-1"
+              />
+            </div>
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="ml-3 bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none"
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="popular">Popular</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="p-4 max-w-lg mx-auto">
+        <div className="flex space-x-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+          <button 
+            className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'deals' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
+            onClick={() => setActiveTab('deals')}
+          >
+            Deals ({filteredDeals.length})
+          </button>
+          <button 
+            className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'promos' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
+            onClick={() => setActiveTab('promos')}
+          >
+            Promos ({filteredPromos.length})
+          </button>
+        </div>
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
@@ -282,19 +325,19 @@ const UserCommentsPage: React.FC = () => {
           <div className="text-center text-gray-400 py-8">
             Please sign in to view your comments
           </div>
-        ) : deals.length === 0 && promoComments.length === 0 ? (
+        ) : filteredDeals.length === 0 && filteredPromos.length === 0 ? (
           <div className="text-center text-gray-400 py-8">
             You haven't commented on any deals or promos yet
           </div>
         ) : (
           <div className="space-y-6">
             {/* Deal Comments */}
-            {deals.length > 0 && (
+            {activeTab === 'deals' && filteredDeals.length > 0 && (
               <div>
                 <h2 className="text-white font-medium mb-4">Deal Comments</h2>
                 <div className="space-y-4">
-                  {deals.map(deal => (
-                    <div key={deal.id} className="space-y-2">
+                  {filteredDeals.map((deal, index) => (
+                    <div key={`deal-${deal.id}-${index}`} className="space-y-2">
                       <DealCard deal={deal} onVoteChange={loadUserComments} />
                       {deal.userComment && (
                         <div className="space-y-2">
@@ -330,12 +373,12 @@ const UserCommentsPage: React.FC = () => {
             )}
 
             {/* Promo Comments */}
-            {promoComments.length > 0 && (
+            {activeTab === 'promos' && filteredPromos.length > 0 && (
               <div>
                 <h2 className="text-white font-medium mb-4">Promo Comments</h2>
                 <div className="space-y-4">
-                  {promoComments.map(promo => (
-                    <div key={promo.id} className="bg-gray-800 rounded-lg overflow-hidden">
+                  {filteredPromos.map((promo, index) => (
+                    <div key={`promo-${promo.id}-${index}`} className="bg-gray-800 rounded-lg overflow-hidden">
                       <div className="p-4">
                         <h3 className="text-white font-medium">{promo.title}</h3>
                         <div className="mt-2 flex items-center space-x-2">

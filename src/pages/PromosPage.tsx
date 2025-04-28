@@ -82,12 +82,12 @@ const PromosPage: React.FC = () => {
 
         const voteCount = votes?.reduce((acc, vote) => acc + (vote.vote_type ? 1 : -1), 0) || 0;
 
-        const { data: userVote } = await supabase
+        const userVote = user ? await supabase
           .from('promo_votes')
           .select('vote_type')
           .eq('promo_id', promo.id)
-          .eq('user_id', user?.id)
-          .maybeSingle();
+          .eq('user_id', user.id)
+          .maybeSingle() : { data: null };
 
         const { count: commentCount } = await supabase
           .from('promo_comments')
