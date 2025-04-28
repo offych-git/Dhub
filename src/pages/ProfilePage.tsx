@@ -24,6 +24,60 @@ const ProfilePage: React.FC = () => {
     promosCount: 0,
     commentsCount: 0
   });
+  const [userStatus, setUserStatus] = useState('Newcomer');
+
+  const getUserStatusColor = (status: string) => {
+    switch (status) {
+      case 'Admin':
+        return 'bg-red-500/20 text-red-400 dark:text-red-300';
+      case 'Deal Master':
+        return 'bg-purple-500/20 text-purple-600 dark:text-purple-300';
+      case 'Deal Expert':
+        return 'bg-orange-500/20 text-orange-600 dark:text-orange-300';
+      case 'Moderator':
+        return 'bg-pink-500/20 text-pink-600 dark:text-pink-300';
+      case 'Active Contributor':
+        return 'bg-green-500/20 text-green-600 dark:text-green-300';
+      case 'Regular Member':
+        return 'bg-blue-500/20 text-blue-600 dark:text-blue-300';
+      case 'Rising Star':
+        return 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-300';
+      default:
+        return 'bg-gray-500/20 text-gray-600 dark:text-gray-300';
+    }
+  };
+
+  const calculateUserStatus = async (stats: { dealsCount: number; commentsCount: number }) => {
+    try {
+      if (!user?.id) return 'Newcomer';
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('user_status')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return 'Newcomer';
+      }
+
+      if (profile?.user_status === 'admin') return 'Admin';
+      if (profile?.user_status === 'moderator') return 'Moderator';
+
+      const totalContributions = stats.dealsCount + stats.commentsCount;
+
+      if (totalContributions >= 1000) return 'Deal Master';
+      if (totalContributions >= 500) return 'Deal Expert';
+      if (totalContributions >= 150) return 'Active Contributor';
+      if (totalContributions >= 100) return 'Regular Member';
+      if (totalContributions >= 50) return 'Rising Star';
+      return 'Newcomer';
+    } catch (error) {
+      console.error('Error calculating user status:', error);
+      return 'Newcomer';
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -100,11 +154,15 @@ const ProfilePage: React.FC = () => {
         .select('id', { count: 'exact' })
         .eq('user_id', user.id);
 
-      setStats({
+      const newStats = {
         dealsCount: (dealsCount || 0) + (promosCount || 0), // Total of deals and promos
         promosCount: promosCount || 0,
         commentsCount: (dealCommentsCount || 0) + (promoCommentsCount || 0)
-      });
+      };
+
+      setStats(newStats);
+      const status = await calculateUserStatus(newStats);
+      setUserStatus(status);
     } catch (err) {
       console.error('Error loading user stats:', err);
     }
@@ -116,10 +174,10 @@ const ProfilePage: React.FC = () => {
 
   const handleNameSave = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -131,7 +189,7 @@ const ProfilePage: React.FC = () => {
       setOriginalName(displayName);
       setIsEditingName(false);
       setSuccess('Name updated successfully');
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
@@ -163,7 +221,7 @@ const ProfilePage: React.FC = () => {
 
   const handlePasswordReset = async () => {
     if (!user?.email) return;
-    
+
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -186,7 +244,7 @@ const ProfilePage: React.FC = () => {
 
   const handleDeleteAccount = async () => {
     if (!user?.id) return;
-    
+
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -300,25 +358,75 @@ const ProfilePage: React.FC = () => {
             </button>
           </div>
         </div>
-        
-        {/* Stats */}
+
+        {/* User Status & Rating */}
         <div className="bg-gray-800 rounded-lg p-4 mb-6">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-orange-500 text-xl font-bold">{stats.dealsCount}</div>
-              <div className="text-gray-400 text-sm">Deals Shared</div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <div className="text-gray-400 text-sm mb-1 flex items-center justify-center gap-2">
+                Status
+                <div className="relative group">
+                  <button className="text-gray-500 hover:text-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                  </button>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                    <div className="bg-white dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300 py-2 px-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                      <div className="font-medium mb-1 text-gray-900 dark:text-white">Status Progression:</div>
+                      <div className="space-y-1">
+                        <div>Newcomer (0)</div>
+                        <div>Rising Star (50+)</div>
+                        <div>Regular Member (100+)</div>
+                        <div>Active Contributor (150+)</div>
+                        <div>Deal Expert (500+)</div>
+                        <div>Deal Master (1000+)</div>
+                      </div>
+                    </div>
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                      <div className="border-8 border-transparent border-t-white dark:border-t-gray-800"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-center">
+                  <div className={`px-3 py-1 rounded-full text-sm ${getUserStatusColor(userStatus)}`}>
+                    {userStatus}
+                  </div>
+                </div>
+                <div className="text-xs text-gray-400">
+                  {(() => {
+                    const totalContributions = stats.dealsCount + stats.commentsCount;
+                    if (userStatus === 'Admin' || userStatus === 'Moderator') {
+                      return 'Special status';
+                    } else if (userStatus === 'Deal Master') {
+                      return `${totalContributions}/1000+ contributions`;
+                    } else {
+                      const nextThreshold = totalContributions < 50 ? 50 
+                        : totalContributions < 100 ? 100
+                        : totalContributions < 150 ? 150
+                        : totalContributions < 500 ? 500
+                        : totalContributions < 1000 ? 1000
+                        : 1000;
+                      const progress = Math.min(100, (totalContributions / nextThreshold) * 100);
+                      return `${totalContributions}/${nextThreshold} contributions (${Math.floor(progress)}%)`;
+                    }
+                  })()}
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="text-orange-500 text-xl font-bold">{stats.commentsCount}</div>
-              <div className="text-gray-400 text-sm">Comments</div>
-            </div>
-            <div>
-              <div className="text-orange-500 text-xl font-bold">{stats.promosCount}</div>
-              <div className="text-gray-400 text-sm">Promos</div>
+            <div className="text-center border-l border-gray-700">
+              <div className="text-gray-400 text-sm mb-1">Rating</div>
+              <div className="text-xl font-bold text-orange-500">
+                {Math.min(5, Math.floor((stats.dealsCount + stats.commentsCount) / 10))}.0
+              </div>
             </div>
           </div>
         </div>
-        
+
         {/* Menu items */}
         <div className="bg-gray-800 rounded-lg overflow-hidden mb-6">
           <div className="divide-y divide-gray-700">
@@ -334,13 +442,22 @@ const ProfilePage: React.FC = () => {
             </div>
             <div className="px-4 py-3 flex items-center">
               <Tag className="h-5 w-5 text-orange-500 mr-3" />
-              <span className="text-white">My Posted Deals</span>
+              <button
+                onClick={() => navigate('/posted')}
+                className="text-white flex-1 text-left"
+              >
+                My Posted Items
+              </button>
               <span className="ml-auto text-gray-400">{stats.dealsCount}</span>
             </div>
             <div className="px-4 py-3 flex items-center">
               <Bell className="h-5 w-5 text-orange-500 mr-3" />
-              <span className="text-white">Notifications</span>
-              <span className="ml-auto bg-orange-500 text-white text-xs px-2 py-1 rounded-full">3</span>
+              <button
+                onClick={() => navigate('/settings/notifications')}
+                className="text-white flex-1 text-left"
+              >
+                Notification Settings
+              </button>
             </div>
             <div className="px-4 py-3 flex items-center">
               <MessageSquare className="h-5 w-5 text-orange-500 mr-3" />
@@ -354,7 +471,7 @@ const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Sign Out button */}
         <button
           onClick={handleSignOut}

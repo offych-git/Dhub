@@ -16,6 +16,7 @@ import CategoriesPage from './pages/CategoriesPage';
 import ProfilePage from './pages/ProfilePage';
 import SavedItemsPage from './pages/SavedItemsPage';
 import UserCommentsPage from './pages/UserCommentsPage';
+import UserPostedItemsPage from './pages/UserPostedItemsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
 import PrivateRoute from './components/PrivateRoute';
@@ -41,6 +42,7 @@ function App() {
                 <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
                 <Route path="/saved" element={<PrivateRoute><SavedItemsPage /></PrivateRoute>} />
                 <Route path="/comments" element={<PrivateRoute><UserCommentsPage /></PrivateRoute>} />
+            <Route path="/posted" element={<PrivateRoute><UserPostedItemsPage /></PrivateRoute>} />
                 <Route path="/settings/notifications" element={<PrivateRoute><NotificationSettingsPage /></PrivateRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>

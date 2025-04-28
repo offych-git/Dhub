@@ -42,7 +42,7 @@ const DealDetailPage: React.FC = () => {
       loadVoteStatus();
       loadFavoriteStatus();
     }
-  }, [id]);
+  }, [id, sortBy]);
 
   const loadDeal = async () => {
     try {
@@ -113,7 +113,7 @@ const DealDetailPage: React.FC = () => {
   const loadComments = async () => {
     if (!id) return;
 
-    let query = supabase
+    const { data: comments, error } = await supabase
       .from('deal_comments')
       .select(`
         *,
@@ -121,22 +121,27 @@ const DealDetailPage: React.FC = () => {
       `)
       .eq('deal_id', id);
 
-    // Apply sorting
-    switch (sortBy) {
-      case 'oldest':
-        query = query.order('created_at', { ascending: true });
-        break;
-      case 'popular':
-        query = query.order('like_count', { ascending: false })
-                    .order('created_at', { ascending: false });
-        break;
-      case 'newest':
-      default:
-        query = query.order('created_at', { ascending: false });
-        break;
+    if (error) {
+      console.error('Error loading comments:', error);
+      return;
     }
 
-    const { data: comments, error } = await query;
+    if (!comments) {
+      return;
+    }
+
+    // Sort comments before building the tree
+    const sortedComments = [...comments].sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'popular':
+          return (b.like_count || 0) - (a.like_count || 0);
+        case 'newest':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
 
     if (!error && comments) {
       // Build comment tree
@@ -152,7 +157,7 @@ const DealDetailPage: React.FC = () => {
       });
 
       // Second pass: build tree structure
-      comments.forEach(comment => {
+      sortedComments.forEach(comment => {
         const commentWithReplies = commentMap.get(comment.id);
         if (comment.parent_id) {
           const parent = commentMap.get(comment.parent_id);
@@ -164,6 +169,27 @@ const DealDetailPage: React.FC = () => {
         }
       });
 
+      // Sort replies recursively
+      const sortReplies = (comments) => {
+        comments.forEach(comment => {
+          if (comment.replies && comment.replies.length > 0) {
+            comment.replies.sort((a, b) => {
+              switch (sortBy) {
+                case 'oldest':
+                  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                case 'popular':
+                  return (b.like_count || 0) - (a.like_count || 0);
+                case 'newest':
+                default:
+                  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+              }
+            });
+            sortReplies(comment.replies);
+          }
+        });
+      };
+
+      sortReplies(rootComments);
       setComments(rootComments);
       setCommentCount(comments.length);
     }

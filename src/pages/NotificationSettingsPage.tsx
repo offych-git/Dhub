@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -20,15 +21,19 @@ const NotificationSettingsPage: React.FC = () => {
   useEffect(() => {
     if (user) {
       loadPreferences();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
   const loadPreferences = async () => {
+    if (!user?.id) return;
+    
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('notification_preferences')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single();
 
       if (error) throw error;
@@ -44,6 +49,8 @@ const NotificationSettingsPage: React.FC = () => {
   };
 
   const handleToggle = async (key: keyof typeof preferences) => {
+    if (!user?.id) return;
+
     try {
       setSaving(true);
       const newPreferences = { ...preferences, [key]: !preferences[key] };
@@ -51,7 +58,7 @@ const NotificationSettingsPage: React.FC = () => {
       const { error } = await supabase
         .from('profiles')
         .update({ notification_preferences: newPreferences })
-        .eq('id', user?.id);
+        .eq('id', user.id);
 
       if (error) throw error;
 
@@ -62,6 +69,22 @@ const NotificationSettingsPage: React.FC = () => {
       setSaving(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <p>Please sign in to access notification settings</p>
+          <button 
+            onClick={() => navigate('/auth')}
+            className="mt-4 bg-orange-500 px-4 py-2 rounded-md"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 pb-16 pt-16">
