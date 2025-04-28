@@ -325,7 +325,7 @@ const ProfilePage: React.FC = () => {
                   <h2 className="text-white text-xl font-bold">{displayName}</h2>
                   <button
                     onClick={handleNameEdit}
-                    className="ml-2 text-gray-400 hover:text-white"
+                    className="ml-2 text-gray-400 hover:text-orange-500 cursor-pointer transition-colors"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
@@ -365,15 +365,36 @@ const ProfilePage: React.FC = () => {
             <div className="text-center">
               <div className="text-gray-400 text-sm mb-1 flex items-center justify-center gap-2">
                 Status
-                <div className="relative group">
-                  <button className="text-gray-500 hover:text-gray-300">
+                <div className="relative w-4 h-4 flex items-center justify-center">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const tooltip = e.currentTarget.nextElementSibling;
+                      if (tooltip) {
+                        tooltip.classList.toggle('opacity-0');
+                        if (!tooltip.classList.contains('opacity-0')) {
+                          const closeTooltip = (event: MouseEvent) => {
+                            if (!tooltip.contains(event.target as Node)) {
+                              tooltip.classList.add('opacity-0');
+                              document.removeEventListener('click', closeTooltip);
+                            }
+                          };
+                          // Add listener on next tick to avoid immediate closure
+                          setTimeout(() => {
+                            document.addEventListener('click', closeTooltip);
+                          }, 0);
+                        }
+                      }
+                    }}
+                    className="text-gray-500 hover:text-gray-300 p-0 flex items-center justify-center"
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10"></circle>
                       <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                       <line x1="12" y1="17" x2="12.01" y2="17"></line>
                     </svg>
                   </button>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 opacity-0 transition-opacity duration-200 pointer-events-none">
                     <div className="bg-white dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300 py-2 px-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                       <div className="font-medium mb-1 text-gray-900 dark:text-white">Status Progression:</div>
                       <div className="space-y-1">
