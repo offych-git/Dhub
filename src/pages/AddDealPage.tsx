@@ -8,6 +8,7 @@ import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
 import ImageUploader from '../components/deals/ImageUploader';
 import imageCompression from 'browser-image-compression';
@@ -29,7 +30,9 @@ interface ImageWithId {
 const AddDealPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { role } = useAdmin();
   const { t, language } = useLanguage();
+  const canMarkHot = role === 'admin' || role === 'moderator';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);
@@ -40,7 +43,7 @@ const AddDealPage: React.FC = () => {
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const selectedStoreName = stores.find(store => store.id === selectedStoreId)?.name || '';
   const categoryRef = useRef<HTMLDivElement>(null);
-  
+
   const [formData, setFormData] = useState({
     title: '',
     currentPrice: '',
@@ -48,9 +51,9 @@ const AddDealPage: React.FC = () => {
     description: '',
     category: '',
     subcategories: [] as string[],
-    // store: '', // Удалено
     dealUrl: '',
-    expiryDate: ''
+    expiryDate: '',
+    isHot: false
   });
 
   const [descriptionImages, setDescriptionImages] = useState<ImageWithId[]>([]);
@@ -106,7 +109,7 @@ useEffect(() => {
       if (imageNode) {
         const pos = editor.view.posAtDOM(imageNode, 0);
         editor.chain().focus().deleteRange({ from: pos, to: pos + 1 }).run();
-        
+
         // Remove the image from descriptionImages state using the ID
         setDescriptionImages(prev => {
           console.log('Current images in state:', prev.length);
@@ -114,7 +117,7 @@ useEffect(() => {
           console.log('Images after filtering:', newImages.length);
           return newImages;
         });
-        
+
         setSelectedImageId(null);
       }
     }
@@ -147,10 +150,10 @@ useEffect(() => {
 
         const compressedImage = await compressImage(file);
         console.log('Compressed file:', compressedImage.name, compressedImage.size, compressedImage.type);
-        
+
         // Generate unique ID for the image
         const imageId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
+
         // Upload image to Supabase Storage first
         const fileExt = compressedImage.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
@@ -171,14 +174,14 @@ useEffect(() => {
         const { data: { publicUrl } } = supabase.storage
           .from('deal-images')
           .getPublicUrl(filePath);
-        
+
         // Store the image in state with its ID and public URL
         setDescriptionImages(prev => [...prev, { 
           file: compressedImage, 
           id: imageId,
           publicUrl: publicUrl 
         }]);
-        
+
         // Insert image with wrapper for better styling
         editor.chain()
           .focus()
@@ -320,12 +323,7 @@ useEffect(() => {
         .from('deal-images')
         .getPublicUrl(filePath);
 
-      // Find the store name from the selected store ID
-      // const selectedStore = stores.find(s => s.id === formData.store);
-      // if (!selectedStore) {
-      //   throw new Error('Selected store not found');
-      // }
-      
+
       const { data: deal, error: dealError } = await supabase
         .from('deals')
         .insert({
@@ -339,7 +337,8 @@ useEffect(() => {
           image_url: publicUrl,
           deal_url: formData.dealUrl,
           user_id: user?.id,
-          expires_at: formData.expiryDate || null
+          expires_at: formData.expiryDate || null,
+          is_hot: formData.isHot // Added is_hot field
         })
         .select()
         .single();
@@ -569,32 +568,7 @@ useEffect(() => {
               </div>
             )}
 
-            {/* <div>
-              {selectedStoreId ? (
-                <div className="w-full bg-gray-800 text-white rounded-md px-4 py-3 flex items-center justify-between">
-                  <span>
-                    {selectedStoreName}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsStoreSheetOpen(true)}
-                    className="text-gray-400 hover:text-white"
-                  >
-                    <ChevronDown className="h-5 w-5" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="w-full bg-gray-800 text-gray-500 rounded-md px-4 py-3 flex items-center justify-between"
-                  onClick={() => setIsStoreSheetOpen(true)}
-                >
-                  <span>Select Store *</span>
-                  <ChevronDown className="h-5 w-5" />
-                </button>
-              )}
-            </div> */}
-            
+
             <div className="flex space-x-4">
               <div className="flex-1">
                 <input
@@ -756,16 +730,53 @@ useEffect(() => {
             </div>
 
             <div>
-              <input
-                type="date"
-                className="w-full bg-gray-800 text-white rounded-md px-4 py-3"
-                value={formData.expiryDate}
-                onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-              />
+              <div className="relative">
+                <input
+                  type="date"
+                  className="w-full bg-gray-800 text-white rounded-md px-4 py-3"
+                  value={formData.expiryDate}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => {
+                    const selectedDate = new Date(e.target.value);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    if (selectedDate < today) {
+                      setError('Expiry date cannot be earlier than today');
+                      return;
+                    }
+                    setError(null);
+                    setFormData({ ...formData, expiryDate: e.target.value });
+                  }}
+                />
+                {formData.expiryDate && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, expiryDate: '' })}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
               <p className="text-gray-500 text-sm mt-1">
                 Expiry date (optional)
               </p>
             </div>
+
+            {canMarkHot && (
+              <div className="flex items-center space-x-2 mt-4">
+                <input
+                  type="checkbox"
+                  id="isHot"
+                  checked={formData.isHot}
+                  onChange={(e) => setFormData({ ...formData, isHot: e.target.checked })}
+                  className="form-checkbox h-5 w-5 text-orange-500"
+                />
+                <label htmlFor="isHot" className="text-white">Mark as HOT</label>
+              </div>
+            )}
+
 
             {/* Preview */}
             <div className="bg-gray-800 rounded-md p-4">
@@ -897,7 +908,7 @@ useEffect(() => {
               align-items: center !important;
               justify-content: center !important;
             }
-            
+
             .formatting-button svg {
               width: 24px !important;
               height: 24px !important;
@@ -932,7 +943,15 @@ useEffect(() => {
         selectedCategory={selectedMainCategory}
         onCategorySelect={handleMainCategorySelect}
         selectedSubcategories={formData.subcategories}
-        onSubcategorySelect={handleSubcategoryChange}
+        onSubcategorySelect={(subcategoryId) => {
+          const updatedSubcategories = formData.subcategories.includes(subcategoryId)
+            ? formData.subcategories.filter(id => id !== subcategoryId)
+            : [...formData.subcategories, subcategoryId];
+          setFormData(prev => ({
+            ...prev,
+            subcategories: updatedSubcategories
+          }));
+        }}
       />
 
       <StoreBottomSheet

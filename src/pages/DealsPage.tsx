@@ -5,6 +5,20 @@ import FilterBar from '../components/shared/FilterBar';
 import DealCard from '../components/deals/DealCard';
 import { Deal } from '../types';
 import { supabase } from '../lib/supabase';
+
+const formatRelativeTime = (date: Date) => {
+  const now = new Date();
+  const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+  
+  if (diffInMinutes < 1) return 'just now';
+  if (diffInMinutes < 5) return '1m';
+  if (diffInMinutes < 15) return '5m';
+  if (diffInMinutes < 30) return '15m';
+  if (diffInMinutes < 60) return '30m';
+  if (diffInMinutes < 120) return '1h';
+  if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
+  return `${Math.floor(diffInMinutes / 1440)}d`;
+};
 import { mockDeals } from '../data/mockData';
 import { DEAL_SETTINGS } from '../config/settings';
 import { useSearchParams } from 'react-router-dom';
@@ -112,7 +126,10 @@ const DealsPage: React.FC = () => {
           store: { id: deal.store_id, name: deal.store_id },
           category: { id: deal.category_id, name: deal.category_id },
           image: deal.image_url || 'https://via.placeholder.com/400x300?text=No+Image',
-          postedAt: new Date(deal.created_at).toLocaleDateString(),
+          postedAt: {
+            relative: formatRelativeTime(new Date(deal.created_at)),
+            exact: new Date(deal.created_at).toLocaleString()
+          },
           popularity: voteCount,
           positiveVotes,
           comments: commentCount || 0,
@@ -123,7 +140,8 @@ const DealsPage: React.FC = () => {
           },
           description: deal.description,
           url: deal.deal_url,
-          createdAt: new Date(deal.created_at)
+          createdAt: new Date(deal.created_at),
+          is_hot: deal.is_hot
         };
       }));
 
@@ -154,11 +172,45 @@ const DealsPage: React.FC = () => {
   let displayDeals: Deal[] = [];
 
   if (activeTab === 'hot') {
-    // Show mock deals and real deals that have 10+ positive votes
+    // Show mock deals and real deals that have 10+ positive votes or is_hot flag
+    const hotDeals = dbDeals.filter(deal => 
+      deal.positiveVotes >= DEAL_SETTINGS.hotThreshold || 
+      deal.is_hot
+    );
+
+    // Разделяем сделки на те, что стали HOT через голоса и изначально HOT
+    // Все HOT сделки (отмеченные или набравшие голоса)
+    const allHotDeals = hotDeals.filter(deal => 
+      deal.is_hot || deal.positiveVotes >= DEAL_SETTINGS.hotThreshold
+    );
+
+    // Сортируем по времени попадания в HOT
     displayDeals = [
       ...mockDeals,
-      ...dbDeals.filter(deal => deal.positiveVotes >= DEAL_SETTINGS.hotThreshold)
-    ].sort((a, b) => b.popularity - a.popularity);
+      ...allHotDeals
+    ].sort((a, b) => {
+      // Для сделок с голосами используем текущее время как hot_at
+      const getHotTime = (deal: Deal) => {
+        if (deal.hot_at) return new Date(deal.hot_at);
+        if (deal.is_hot) return deal.createdAt || new Date(0);
+        if (deal.positiveVotes >= DEAL_SETTINGS.hotThreshold) return new Date();
+        return new Date(0);
+      };
+
+      const timeA = getHotTime(a);
+      const timeB = getHotTime(b);
+      return timeB.getTime() - timeA.getTime();
+    });
+  } else if (activeTab === 'new') {
+    // Показываем только не HOT deals в NEW
+    displayDeals = [
+      ...mockDeals,
+      ...dbDeals.filter(deal => !deal.is_hot)
+    ].sort((a, b) => {
+      const dateA = a.createdAt || new Date(0);
+      const dateB = b.createdAt || new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
   } else if (activeTab === 'new') {
     // Combine and sort all deals by date (newest first)
     displayDeals = [

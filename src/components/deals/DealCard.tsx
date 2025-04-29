@@ -170,7 +170,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
               <path d="M12 7V12L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          {deal.postedAt}
+          <span title={deal.postedAt.exact}>{deal.postedAt.relative}</span>
         </div>
 
         <AdminActions

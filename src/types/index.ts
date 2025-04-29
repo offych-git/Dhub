@@ -7,7 +7,10 @@ export interface Deal {
   store: Store;
   category: Category;
   image: string;
-  postedAt: string;
+  postedAt: {
+    relative: string;
+    exact: string;
+  };
   popularity: number;
   positiveVotes?: number;
   comments: number;
@@ -15,6 +18,8 @@ export interface Deal {
   description?: string;
   url?: string;
   createdAt?: Date;
+  is_hot: boolean;
+  hot_at?: Date;
   userComment?: {
     content: string;
     createdAt: string;

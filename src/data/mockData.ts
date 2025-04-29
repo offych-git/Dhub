@@ -43,8 +43,6 @@ export const stores: Store[] = [
   
 ];
 
-// Логирование изменений в массиве stores
-console.log('Текущие магазины:', stores.map(store => store.id));
 export const categories: Category[] = [
   {
     id: 'electronics',
