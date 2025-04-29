@@ -38,12 +38,41 @@ const PromosPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('q');
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   useEffect(() => {
+    setPage(1);
+    setHasMore(true);
+    setPromoCodes([]);
     fetchPromoCodes();
   }, [searchQuery]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000 &&
+          !isFetchingMore && hasMore) {
+        setPage(prev => prev + 1);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasMore, isFetchingMore]);
+
+  useEffect(() => {
+    if (page > 1) {
+      fetchPromoCodes();
+    }
+  }, [page]);
+
   const fetchPromoCodes = async () => {
+    if (page === 1) {
+      setLoading(true);
+    } else {
+      setIsFetchingMore(true);
+    }
     try {
       let query = supabase
         .from('promo_codes')
@@ -68,7 +97,9 @@ const PromosPage: React.FC = () => {
         }
       }
 
-      query = query.order('created_at', { ascending: false });
+      query = query
+        .order('created_at', { ascending: false })
+        .range((page - 1) * 20, page * 20 - 1);
 
       const { data, error } = await query;
 
@@ -114,12 +145,18 @@ const PromosPage: React.FC = () => {
         };
       }));
 
-      setPromoCodes(promosWithVotes);
+      if (page === 1) {
+        setPromoCodes(promosWithVotes);
+      } else {
+        setPromoCodes(prev => [...prev, ...promosWithVotes]);
+      }
+      setHasMore(promosWithVotes.length === 20);
     } catch (err: any) {
       console.error('Error fetching promo codes:', err);
       setError('Failed to load promo codes');
     } finally {
       setLoading(false);
+      setIsFetchingMore(false);
     }
   };
 

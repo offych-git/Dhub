@@ -43,6 +43,9 @@ const UserCommentsPage: React.FC = () => {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   const filteredDeals = deals.filter(deal => 
     deal.userComment?.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -82,16 +85,44 @@ const UserCommentsPage: React.FC = () => {
 
   useEffect(() => {
     if (user?.id) {
+      setPage(1);
+      setHasMore(true);
+      setDeals([]);
+      setPromoComments([]);
       loadUserComments();
     } else {
       setLoading(false);
     }
   }, [user, sortBy]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000 &&
+          !isFetchingMore && hasMore) {
+        setPage(prev => prev + 1);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasMore, isFetchingMore]);
+
+  useEffect(() => {
+    if (page > 1 && user?.id) {
+      loadUserComments();
+    }
+  }, [page]);
+
   const loadUserComments = async () => {
     if (!user?.id) {
       setLoading(false);
       return;
+    }
+
+    if (page === 1) {
+      setLoading(true);
+    } else {
+      setIsFetchingMore(true);
     }
 
     try {
@@ -121,13 +152,15 @@ const UserCommentsPage: React.FC = () => {
           break;
         case 'popular':
           dealCommentsQuery = dealCommentsQuery.order('like_count', { ascending: false })
-        .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false });
           break;
         case 'newest':
         default:
           dealCommentsQuery = dealCommentsQuery.order('created_at', { ascending: false });
           break;
       }
+
+      dealCommentsQuery = dealCommentsQuery.range((page - 1) * 20, page * 20 - 1);
 
       const { data: dealCommentsData, error: dealCommentsError } = await dealCommentsQuery;
 
@@ -194,7 +227,12 @@ const UserCommentsPage: React.FC = () => {
           }
         }));
 
-      setDeals(dealsWithComments);
+      if (page === 1) {
+        setDeals(dealsWithComments);
+      } else {
+        setDeals(prev => [...prev, ...dealsWithComments]);
+      }
+      setHasMore(dealsWithComments.length === 20);
 
       // Load promo comments
       let promoCommentsQuery = supabase

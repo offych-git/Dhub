@@ -17,18 +17,49 @@ const UserPostedItemsPage: React.FC = () => {
   const [promos, setPromos] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'deals' | 'promos'>('deals');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
+      setPage(1);
+      setHasMore(true);
+      setDeals([]);
+      setPromos([]);
       loadUserItems();
     }
-  }, [user, sortBy]);
+  }, [user, sortBy, activeTab]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000 &&
+          !isFetchingMore && hasMore) {
+        setPage(prev => prev + 1);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasMore, isFetchingMore]);
+
+  useEffect(() => {
+    if (page > 1 && user) {
+      loadUserItems();
+    }
+  }, [page]);
 
   const loadUserItems = async () => {
     if (!user?.id) {
       setLoading(false);
       return;
+    }
+
+    if (page === 1) {
+      setLoading(true);
+    } else {
+      setIsFetchingMore(true);
     }
 
     try {
@@ -62,6 +93,7 @@ const UserPostedItemsPage: React.FC = () => {
           break;
       }
 
+      dealsQuery = dealsQuery.range((page - 1) * 20, page * 20 - 1);
       const { data: dealsData, error: dealsError } = await dealsQuery;
 
       if (dealsError) throw dealsError;
@@ -86,7 +118,12 @@ const UserPostedItemsPage: React.FC = () => {
         url: deal.deal_url
       }));
 
-      setDeals(transformedDeals || []);
+      if (page === 1) {
+        setDeals(transformedDeals || []);
+      } else {
+        setDeals(prev => [...prev, ...(transformedDeals || [])]);
+      }
+      setHasMore((transformedDeals || []).length === 20);
 
       // Load promos with sorting
       let promosQuery = supabase
