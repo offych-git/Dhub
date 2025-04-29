@@ -278,44 +278,39 @@ const UserCommentsPage: React.FC = () => {
       </div>
 
       <div className="relative mx-4 my-3">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <div className="flex items-center bg-gray-700 rounded-lg px-4 py-2">
-              <input
-                type="text"
-                placeholder="Search comments..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-transparent text-gray-300 placeholder-gray-400 outline-none flex-1"
-              />
-            </div>
+        <div className="flex items-center bg-gray-700 rounded-lg px-4 py-2 mb-4">
+          <input
+            type="text"
+            placeholder="Search comments..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bg-transparent text-gray-300 placeholder-gray-400 outline-none flex-1"
+          />
+        </div>
+        <div className="flex items-center gap-4 pb-2">
+          <div className="flex-grow flex space-x-2 overflow-x-auto scrollbar-hide">
+            <button 
+              className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'deals' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
+              onClick={() => setActiveTab('deals')}
+            >
+              Deals ({filteredDeals.length})
+            </button>
+            <button 
+              className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'promos' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
+              onClick={() => setActiveTab('promos')}
+            >
+              Promos ({filteredPromos.length})
+            </button>
           </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="ml-3 bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none"
+            className="bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none flex-shrink-0"
           >
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
             <option value="popular">Popular</option>
           </select>
-        </div>
-      </div>
-
-      <div className="p-4 max-w-lg mx-auto">
-        <div className="flex space-x-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-          <button 
-            className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'deals' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
-            onClick={() => setActiveTab('deals')}
-          >
-            Deals ({filteredDeals.length})
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'promos' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
-            onClick={() => setActiveTab('promos')}
-          >
-            Promos ({filteredPromos.length})
-          </button>
         </div>
         {loading ? (
           <div className="flex justify-center items-center py-8">
