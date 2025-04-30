@@ -138,9 +138,12 @@ const CommentInput: React.FC<CommentInputProps> = ({
     setPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async () => {
-    if (!user || !comment.trim()) return;
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleSubmit = async () => {
+    if (!user || !comment.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
     try {
       const imageUrls = [];
       if (images.length > 0) {
@@ -199,6 +202,8 @@ const CommentInput: React.FC<CommentInputProps> = ({
       setPreviews([]);
     } catch (error) {
       console.error('Error posting comment:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -263,10 +268,14 @@ const CommentInput: React.FC<CommentInputProps> = ({
             )}
             <button
               onClick={handleSubmit}
-              disabled={!comment.trim()}
-              className="bg-orange-500 text-white px-4 py-2 rounded-md disabled:opacity-50"
+              disabled={!comment.trim() || isSubmitting}
+              className="bg-orange-500 text-white px-4 py-2 rounded-md disabled:opacity-50 flex items-center"
             >
-              {parentId ? 'Reply' : 'Comment'}
+              {isSubmitting ? (
+                <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-2"></div>
+              ) : (
+                parentId ? 'Reply' : 'Comment'
+              )}
             </button>
           </div>
         </div>

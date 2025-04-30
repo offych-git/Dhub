@@ -12,6 +12,7 @@ interface Comment {
   id: string;
   content: string;
   created_at: string;
+  images?: string[];
   like_count?: number;
   parent_id?: string;
   replies: Comment[];
@@ -220,9 +221,11 @@ const UserCommentsPage: React.FC = () => {
           userComment: {
             content: comment.content,
             createdAt: new Date(comment.created_at).toLocaleString(),
+            images: comment.images, // Added images
             replies: comment.replies.map(reply => ({
               content: reply.content,
-              createdAt: new Date(reply.created_at).toLocaleString()
+              createdAt: new Date(reply.created_at).toLocaleString(),
+              images: reply.images // Added images to replies
             }))
           }
         }));
@@ -275,7 +278,8 @@ const UserCommentsPage: React.FC = () => {
           ...comment.promo_codes,
           userComment: {
             content: comment.content,
-            createdAt: new Date(comment.created_at).toLocaleString()
+            createdAt: new Date(comment.created_at).toLocaleString(),
+            images: comment.images // Added images
           }
         }));
 
@@ -380,6 +384,42 @@ const UserCommentsPage: React.FC = () => {
                         </div>
                         <div className="text-white">
                           {deal.userComment.content}
+                          {deal.userComment.images && deal.userComment.images.length > 0 && (
+                            <div className="flex gap-2 mt-2">
+                              {deal.userComment.images.map((image, index) => (
+                                <div key={index} className="relative">
+                                  <img
+                                    src={image}
+                                    alt={`Comment image ${index + 1}`}
+                                    className="w-16 h-16 object-cover rounded cursor-pointer"
+                                    onClick={() => {
+                                      const modal = document.createElement('div');
+                                      modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                                      modal.onclick = () => document.body.removeChild(modal);
+
+                                      const content = document.createElement('div');
+                                      content.className = 'relative max-w-4xl max-h-[90vh]';
+                                      content.onclick = e => e.stopPropagation();
+
+                                      const closeBtn = document.createElement('button');
+                                      closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
+                                      closeBtn.textContent = '×';
+                                      closeBtn.onclick = () => document.body.removeChild(modal);
+
+                                      const img = document.createElement('img');
+                                      img.src = image;
+                                      img.className = 'max-w-full max-h-[90vh] object-contain';
+
+                                      content.appendChild(closeBtn);
+                                      content.appendChild(img);
+                                      modal.appendChild(content);
+                                      document.body.appendChild(modal);
+                                    }}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                           {/* Display replies */}
@@ -392,6 +432,42 @@ const UserCommentsPage: React.FC = () => {
                                   </div>
                                   <div className="text-white">
                                     {reply.content}
+                                    {reply.images && reply.images.length > 0 && (
+                                      <div className="flex gap-2 mt-2">
+                                        {reply.images.map((image, i) => (
+                                          <div key={i} className="relative">
+                                            <img
+                                              src={image}
+                                              alt={`Reply image ${i + 1}`}
+                                              className="w-16 h-16 object-cover rounded cursor-pointer"
+                                              onClick={() => {
+                                                const modal = document.createElement('div');
+                                                modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                                                modal.onclick = () => document.body.removeChild(modal);
+
+                                                const content = document.createElement('div');
+                                                content.className = 'relative max-w-4xl max-h-[90vh]';
+                                                content.onclick = e => e.stopPropagation();
+
+                                                const closeBtn = document.createElement('button');
+                                                closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
+                                                closeBtn.textContent = '×';
+                                                closeBtn.onclick = () => document.body.removeChild(modal);
+
+                                                const img = document.createElement('img');
+                                                img.src = image;
+                                                img.className = 'max-w-full max-h-[90vh] object-contain';
+
+                                                content.appendChild(closeBtn);
+                                                content.appendChild(img);
+                                                modal.appendChild(content);
+                                                document.body.appendChild(modal);
+                                              }}
+                                            />
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -427,6 +503,42 @@ const UserCommentsPage: React.FC = () => {
                           </div>
                           <div className="text-white">
                             {promo.userComment.content}
+                            {promo.userComment.images && promo.userComment.images.length > 0 && (
+                              <div className="flex gap-2 mt-2">
+                                {promo.userComment.images.map((image, index) => (
+                                  <div key={index} className="relative">
+                                    <img
+                                      src={image}
+                                      alt={`Comment image ${index + 1}`}
+                                      className="w-16 h-16 object-cover rounded cursor-pointer"
+                                      onClick={() => {
+                                        const modal = document.createElement('div');
+                                        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                                        modal.onclick = () => document.body.removeChild(modal);
+
+                                        const content = document.createElement('div');
+                                        content.className = 'relative max-w-4xl max-h-[90vh]';
+                                        content.onclick = e => e.stopPropagation();
+
+                                        const closeBtn = document.createElement('button');
+                                        closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
+                                        closeBtn.textContent = '×';
+                                        closeBtn.onclick = () => document.body.removeChild(modal);
+
+                                        const img = document.createElement('img');
+                                        img.src = image;
+                                        img.className = 'max-w-full max-h-[90vh] object-contain';
+
+                                        content.appendChild(closeBtn);
+                                        content.appendChild(img);
+                                        modal.appendChild(content);
+                                        document.body.appendChild(modal);
+                                      }}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                             {/* Display replies */}

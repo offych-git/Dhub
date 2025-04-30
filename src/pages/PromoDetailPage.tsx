@@ -46,6 +46,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
       }}
       replyCount={typeof comment.reply_count === 'number' ? comment.reply_count : 0}
       likeCount={typeof comment.like_count === 'number' ? comment.like_count : 0}
+      images={comment.images || []}
       replies={undefined}
       sourceType="promo_comment"
       sourceId={promo && promo.id ? String(promo.id) : ''}
