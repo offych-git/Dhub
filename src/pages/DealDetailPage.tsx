@@ -25,16 +25,16 @@ const DealDetailPage: React.FC = () => {
 
   const priceHistory = useMemo(() => {
     if (!deal) return [];
-    
+
     // Use original price if available, otherwise use 120% of current price as reference
     const referencePrice = deal.originalPrice || (deal.currentPrice * 1.2);
-    
+
     // Only generate price history if we have valid prices
     if (deal.currentPrice <= 0 || referencePrice <= 0) return [];
-    
+
     return generatePriceHistory(referencePrice, deal.currentPrice);
   }, [deal?.originalPrice, deal?.currentPrice]);
-  
+
   useEffect(() => {
     if (id) {
       loadDeal();
@@ -245,7 +245,7 @@ const DealDetailPage: React.FC = () => {
         .delete()
         .eq('deal_id', id)
         .eq('user_id', user.id);
-      
+
       setUserVote(null);
     } else {
       await supabase
@@ -257,7 +257,7 @@ const DealDetailPage: React.FC = () => {
         }, {
           onConflict: 'deal_id,user_id'
         });
-      
+
       setUserVote(voteType);
     }
 
@@ -300,6 +300,7 @@ const DealDetailPage: React.FC = () => {
     };
     reply_count?: number;
     like_count?: number;
+    images?: string[]; // Added images property
     replies?: CommentTreeNode[];
   };
 
@@ -309,6 +310,7 @@ const DealDetailPage: React.FC = () => {
         id={comment.id}
         content={comment.content}
         createdAt={comment.created_at}
+        images={comment.images || []}
         user={{
           id: comment.profiles?.id,
           name: comment.profiles?.display_name || comment.profiles?.email?.split('@')[0] || 'Anonymous',
@@ -365,7 +367,7 @@ const DealDetailPage: React.FC = () => {
         </button>
         <h1 className="text-white font-medium ml-4 truncate">Deal Details</h1>
       </div>
-      
+
       <div className="h-64 bg-gray-800">
         <img 
           src={deal.image} 
@@ -373,7 +375,7 @@ const DealDetailPage: React.FC = () => {
           className="w-full h-full object-contain"
         />
       </div>
-      
+
       <div className="p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-white text-xl font-medium">{deal.title}</h2>
@@ -403,30 +405,30 @@ const DealDetailPage: React.FC = () => {
             </button>
           </div>
         </div>
-        
+
         <div className="mt-3 flex items-center">
           <span className="text-orange-500 font-bold text-2xl">
             ${deal.currentPrice.toFixed(2)}
           </span>
-          
+
           {deal.originalPrice && (
             <span className="ml-3 text-gray-400 line-through text-base">
               ${deal.originalPrice.toFixed(2)}
             </span>
           )}
-          
+
           {discountPercent > 0 && (
             <span className="ml-2 text-green-500 text-base">
               (-{discountPercent}%)
             </span>
           )}
         </div>
-        
+
         <div className="mt-2 flex items-center justify-between">
           <div className="bg-gray-800 px-3 py-1 rounded-md text-white">
             {deal.store.name}
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <button 
               className={`flex items-center ${userVote === true ? 'text-red-500' : 'text-gray-400'}`}
@@ -434,11 +436,11 @@ const DealDetailPage: React.FC = () => {
             >
               <ArrowUp className="h-5 w-5 mr-1" />
             </button>
-            
+
             <span className={`font-medium ${voteCount > 0 ? 'text-red-500' : voteCount < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
               {voteCount > 0 ? '+' : ''}{voteCount}
             </span>
-            
+
             <button 
               className={`flex items-center ${userVote === false ? 'text-blue-500' : 'text-gray-400'}`}
               onClick={() => handleVote(false)}
@@ -447,7 +449,7 @@ const DealDetailPage: React.FC = () => {
             </button>
           </div>
         </div>
-        
+
         {user ? (
           <a
             href={deal.url}
@@ -467,7 +469,7 @@ const DealDetailPage: React.FC = () => {
             <ExternalLink className="h-4 w-4 ml-2" />
           </button>
         )}
-        
+
         <div className="mt-6">
           <h3 className="text-white font-medium mb-2">Description</h3>
           <div 
@@ -483,7 +485,7 @@ const DealDetailPage: React.FC = () => {
             </button>
           )}
         </div>
-        
+
         <div className="mt-6">
           <h3 className="text-white font-medium mb-2">Price History</h3>
           {priceHistory.length > 0 ? (
@@ -495,7 +497,7 @@ const DealDetailPage: React.FC = () => {
                     <stop offset="100%" stopColor="rgba(249, 115, 22, 0)" />
                   </linearGradient>
                 </defs>
-                
+
                 <path
                   d={`
                     M0,${100 - (priceHistory[0].price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80)}
@@ -509,7 +511,7 @@ const DealDetailPage: React.FC = () => {
                   fill="url(#chartGradient)"
                   stroke="none"
                 />
-                
+
                 <path
                   d={`
                     M0,${100 - (priceHistory[0].price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80)}
@@ -531,7 +533,7 @@ const DealDetailPage: React.FC = () => {
             </div>
           )}
         </div>
-        
+
         <div className="mt-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white font-medium">Comments ({commentCount})</h3>
