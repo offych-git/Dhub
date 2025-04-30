@@ -18,7 +18,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
   const [userVote, setUserVote] = useState<boolean | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [commentCount, setCommentCount] = useState(deal.comments);
-  
+
   useEffect(() => {
     if (user) {
       loadVoteStatus();
@@ -101,7 +101,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
           .delete()
           .eq('deal_id', deal.id)
           .eq('user_id', user.id);
-        
+
         setUserVote(null);
       } else {
         // Upsert vote
@@ -114,7 +114,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
           }, {
             onConflict: 'deal_id,user_id'
           });
-        
+
         setUserVote(voteType);
       }
 
@@ -160,6 +160,8 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
     ? Math.round(((deal.originalPrice - deal.currentPrice) / deal.originalPrice) * 100) 
     : 0;
 
+  const isExpired = deal.expires_at && new Date(deal.expires_at) < new Date();
+
   return (
     <Link to={`/deals/${deal.id}`} className="block border-b border-gray-800 px-4 py-2.5">
       <div className="flex items-start justify-between">
@@ -179,7 +181,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
           userId={deal.postedBy.id}
           onAction={onVoteChange}
         />
-        
+
         <div className="ml-auto flex items-center text-sm">
           <button
             onClick={(e) => handleVote(e, true)}
@@ -198,7 +200,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
           </button>
         </div>
       </div>
-      
+
       <div className="flex mt-1.5">
         <div className="w-16 h-16 bg-gray-800 rounded-md overflow-hidden mr-3 flex-shrink-0">
           <img 
@@ -207,34 +209,42 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
             className="w-full h-full object-contain"
           />
         </div>
-        
+
         <div className="flex-1 min-w-0">
           <h3 className="text-white font-medium text-sm line-clamp-2">{deal.title}</h3>
-          
+
           <div className="mt-1 flex items-center">
             <span className="text-orange-500 font-bold text-base">
               ${deal.currentPrice.toFixed(2)}
             </span>
-            
+
             {deal.originalPrice && (
               <span className="ml-2 text-gray-400 line-through text-xs">
                 ${deal.originalPrice.toFixed(2)}
               </span>
             )}
-            
+
             {discountPercent > 0 && (
               <span className="ml-2 text-green-500 text-xs">
                 (-{discountPercent}%)
               </span>
             )}
           </div>
-          
+
           <div className="mt-0.5 text-gray-400 text-xs">
             {deal.store.name}
           </div>
+          {isExpired && (
+            <div className="flex items-center bg-red-500/10 px-2 py-1 rounded-md text-red-500 font-medium mt-1">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Expired
+            </div>
+          )}
         </div>
       </div>
-      
+
       <div className="mt-1.5 flex items-center">
         <div className="w-5 h-5 rounded-full overflow-hidden mr-1.5">
           <img 
@@ -243,9 +253,9 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
             className="w-full h-full object-cover"
           />
         </div>
-        
+
         <span className="author-name text-xs">{deal.postedBy.name}</span>
-        
+
         <div className="ml-auto flex items-center">
           <button
             onClick={toggleFavorite}
@@ -253,12 +263,12 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
           >
             <Heart className="h-4 w-4" fill={isFavorite ? 'currentColor' : 'none'} />
           </button>
-          
+
           <div className="ml-3 text-gray-400 flex items-center">
             <MessageSquare className="h-4 w-4 mr-1" />
             <span className="text-xs">{commentCount}</span>
           </div>
-          
+
           {user && (
             <>
               <button 

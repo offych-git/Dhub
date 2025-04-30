@@ -406,6 +406,15 @@ const DealDetailPage: React.FC = () => {
           </div>
         </div>
 
+        {isExpired && (
+          <div className="flex items-center bg-red-500/10 px-2 py-1 rounded-md text-red-500 font-medium mt-2 w-fit">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Expired
+          </div>
+        )}
+
         <div className="mt-3 flex items-center">
           <span className="text-orange-500 font-bold text-2xl">
             ${deal.currentPrice.toFixed(2)}

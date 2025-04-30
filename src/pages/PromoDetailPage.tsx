@@ -17,6 +17,7 @@ const PromoDetailPage: React.FC = () => {
   const [voteCount, setVoteCount] = useState(0);
   const [userVote, setUserVote] = useState<boolean | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const isExpired = promo?.expires_at && new Date(promo.expires_at) < new Date();
 
 // Define comment tree node type
 type CommentTreeNode = {
@@ -355,6 +356,15 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
             </button>
           </div>
         </div>
+
+        {isExpired && (
+          <div className="flex items-center bg-red-500/10 px-2 py-1 rounded-md text-red-500 font-medium mt-2 w-fit">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Expired
+          </div>
+        )}
 
         <div className="mt-4 bg-gray-800 rounded-lg p-4">
           <div className="flex items-center space-x-2 mb-4">

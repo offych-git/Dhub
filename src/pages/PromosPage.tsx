@@ -329,7 +329,17 @@ const PromosPage: React.FC = () => {
                   </div>
 
                   <div className="mb-2">
-                    <h3 className="text-white font-medium text-sm">{promo.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-white font-medium text-sm">{promo.title}</h3>
+                      {promo.expires_at && new Date(promo.expires_at) < new Date() && (
+                        <div className="flex items-center bg-red-500/10 px-2 py-0.5 rounded text-red-500 text-xs font-medium">
+                          <svg className="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Expired
+                        </div>
+                      )}
+                    </div>
                     <div className="text-orange-500 text-xs mt-0.5">
                       {getStoreName(promo.discount_url)}
                     </div>
