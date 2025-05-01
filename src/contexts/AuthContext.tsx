@@ -47,21 +47,113 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    navigate('/');
+    try {
+      // First clear any existing sessions to avoid conflicts
+      await supabase.auth.signOut({ scope: 'local' });
+      
+      // Validate email and password format before sending request
+      if (!email || !email.includes('@')) {
+        throw new Error('Please enter a valid email address');
+      }
+      
+      if (!password || password.length < 6) {
+        throw new Error('Password must be at least 6 characters long');
+      }
+      
+      console.log('Attempting to sign in with:', { email });
+      
+      // Try to sign in with clean credentials
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password.trim()
+      });
+      
+      if (error) {
+        console.error('Sign in error details:', error);
+        
+        // Provide more specific error messages
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('The email or password you entered is incorrect. Please try again.');
+        }
+        
+        throw error;
+      }
+      
+      // Verify we have a valid session
+      if (!data.session) {
+        throw new Error('Authentication succeeded but no session was created');
+      }
+      
+      console.log('Sign in successful, session established');
+      navigate('/');
+      return data;
+    } catch (err) {
+      console.error('Authentication error:', err);
+      throw err;
+    }
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) throw error;
-    navigate('/');
+    try {
+      // First clear any existing auth state
+      await supabase.auth.signOut({ scope: 'local' });
+      
+      // Basic validation
+      if (!email || !email.includes('@')) {
+        throw new Error('Please enter a valid email address');
+      }
+      
+      if (!password || password.length < 6) {
+        throw new Error('Password must be at least 6 characters long');
+      }
+      
+      // Check if a user with this email already exists in auth
+      const { data: { users } } = await supabase.auth.admin.listUsers({
+        filters: {
+          email: email.trim()
+        }
+      }).catch(() => ({ data: { users: [] } }));
+      
+      if (users && users.length > 0) {
+        throw new Error('User already registered with this email. Please sign in instead.');
+      }
+      
+      console.log('Registering new user with email:', email);
+      
+      // Register the new user with clean credentials
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            email: email.trim(),
+          }
+        },
+      });
+      
+      if (error) {
+        console.error('SignUp error details:', error);
+        
+        if (error.message.includes('already registered')) {
+          throw new Error('This email is already registered. Please sign in instead.');
+        }
+        
+        throw error;
+      }
+      
+      // Check registration result
+      if (!data.user) {
+        throw new Error('Registration failed - no user account was created');
+      }
+      
+      console.log('Registration successful, user created:', data.user.id);
+      
+      return data;
+    } catch (err) {
+      console.error('Registration error:', err);
+      throw err;
+    }
   };
 
   const signInWithFacebook = async () => {

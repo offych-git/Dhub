@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug';
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,16 +15,46 @@ const AuthPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [configValid, setConfigValid] = useState(true);
+  
+  // Проверяем настройки Supabase при загрузке страницы
+  useEffect(() => {
+    const validateConfig = async () => {
+      const configResult = validateSupabaseConfig();
+      setConfigValid(configResult.isValid);
+      
+      if (!configResult.isValid) {
+        setError('Supabase configuration is missing or invalid. Please check your environment variables.');
+        return;
+      }
+      
+      // Проверяем текущее состояние авторизации
+      const authStatus = await checkAuthStatus();
+      console.log('Auth status check:', authStatus);
+    };
+    
+    validateConfig();
+  }, []);
 
   const validateForm = () => {
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    // Trim the email and password to avoid whitespace issues
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError('Please enter a valid email address');
       return false;
     }
 
-    if (!isResetPassword && (!password || password.length < 6)) {
+    if (!isResetPassword && (!trimmedPassword || trimmedPassword.length < 6)) {
       setError('Password must be at least 6 characters long');
       return false;
+    }
+
+    // Update state with trimmed values
+    setEmail(trimmedEmail);
+    if (!isResetPassword) {
+      setPassword(trimmedPassword);
     }
 
     return true;
@@ -32,6 +63,7 @@ const AuthPage: React.FC = () => {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     
     if (!validateForm()) {
       return;
@@ -40,23 +72,75 @@ const AuthPage: React.FC = () => {
     setLoading(true);
 
     try {
+      // Add debug information
+      console.log(`Attempting to ${isResetPassword ? 'reset password' : isSignUp ? 'sign up' : 'sign in'} with email: ${email}`);
+      
       if (isResetPassword) {
         await resetPassword(email);
         setSuccessMessage('Password reset instructions have been sent to your email');
         setIsResetPassword(false);
       } else if (isSignUp) {
-        await signUp(email, password);
-        setSuccessMessage('Account created successfully! Please check your email to verify your account.');
+        try {
+          const result = await signUp(email, password);
+          console.log('Sign up result:', result);
+          
+          // Check for specific signup outcomes
+          if (result?.user?.identities?.length === 0) {
+            // User already exists
+            setError('An account with this email already exists. Please sign in instead.');
+            setIsSignUp(false);
+          } else if (result?.user?.confirmed_at) {
+            // Email already confirmed (rare case)
+            setSuccessMessage('Account created and verified successfully!');
+            setTimeout(() => navigate('/'), 2000);
+          } else if (result?.user) {
+            // Standard case - email confirmation needed
+            setSuccessMessage('Account created! Please check your email to verify your account before signing in.');
+          } else {
+            throw new Error('Registration failed with an unknown error');
+          }
+        } catch (signupErr: any) {
+          if (signupErr.message?.includes('already registered') || 
+              signupErr.message?.includes('already exists')) {
+            setError('This email is already registered. Please use the Sign In option instead.');
+            setIsSignUp(false);
+          } else {
+            throw signupErr; // Re-throw for the outer catch block
+          }
+        }
       } else {
-        await signIn(email, password);
+        // Sign In flow
+        try {
+          const signInResult = await signIn(email, password);
+          console.log('Sign in successful:', signInResult);
+        } catch (signInErr: any) {
+          console.error('Specific sign in error:', signInErr);
+          
+          if (signInErr.message?.includes('incorrect') || 
+              signInErr.code === 'invalid_credentials' ||
+              signInErr.message?.includes('Invalid login credentials')) {
+            setError('Invalid email or password. Please check your credentials and try again.');
+          } else {
+            throw signInErr; // Re-throw for the outer catch block
+          }
+        }
       }
     } catch (err: any) {
-      if (err.message.includes('invalid_credentials')) {
-        setError('Invalid email or password. Please try again or reset your password.');
-      } else if (err.message.includes('email already exists')) {
+      console.error('Auth error:', err);
+      
+      // Handle errors not caught in inner try/catch blocks
+      if (err.code === 'invalid_credentials' || 
+          err.message?.includes('invalid_credentials') ||
+          err.message?.includes('Invalid login credentials')) {
+        setError('The email or password you entered is incorrect. Please try again.');
+      } else if (err.message?.includes('already exists') || 
+                err.message?.includes('already registered')) {
         setError('An account with this email already exists. Please sign in instead.');
+        setIsSignUp(false);
+      } else if (err.message?.includes('password')) {
+        setError('Password must be at least 6 characters. Please try a stronger password.');
       } else {
-        setError(err.message);
+        setError(err.message || 'An error occurred. Please try again later.');
       }
     } finally {
       setLoading(false);
