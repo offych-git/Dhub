@@ -42,10 +42,10 @@ const CategoryBottomSheet: React.FC<CategoryBottomSheetProps> = ({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!sheetRef.current) return;
-    
+
     currentY.current = e.touches[0].clientY;
     const diff = currentY.current - startY.current;
-    
+
     if (diff > 0) { // Only allow dragging down
       sheetRef.current.style.transform = `translateY(${diff}px)`;
     }
@@ -53,7 +53,7 @@ const CategoryBottomSheet: React.FC<CategoryBottomSheetProps> = ({
 
   const handleTouchEnd = () => {
     if (!sheetRef.current) return;
-    
+
     const diff = currentY.current - startY.current;
     if (diff > 100) { // If dragged more than 100px, close the sheet
       onClose();
@@ -114,7 +114,13 @@ const CategoryBottomSheet: React.FC<CategoryBottomSheetProps> = ({
             // Subcategories list
             <div className="space-y-2 p-4">
               <button
-                onClick={() => onCategorySelect && onCategorySelect('')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Попытка возврата к списку категорий");
+                  // Принудительно вызываем с пустой строкой
+                  onCategorySelect('');
+                }}
                 className="w-full bg-gray-800 text-white rounded-lg p-4 flex items-center hover:bg-gray-700 transition-colors"
               >
                 <ChevronLeft className="h-5 w-5 mr-2" />

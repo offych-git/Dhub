@@ -498,6 +498,18 @@ const DealDetailPage: React.FC = () => {
           <div 
             className={`description-text ${!showFullDescription ? 'line-clamp-3' : ''}`}
             dangerouslySetInnerHTML={{ __html: deal.description }}
+            ref={(element) => {
+              if (element) {
+                const links = element.querySelectorAll('a');
+                links.forEach(link => {
+                  link.setAttribute('target', '_blank');
+                  link.setAttribute('rel', 'noopener noreferrer');
+                  if (!link.classList.contains('text-orange-500')) {
+                    link.classList.add('text-orange-500', 'hover:underline');
+                  }
+                });
+              }
+            }}
           />
           {deal.description && deal.description.length > 150 && (
             <button 

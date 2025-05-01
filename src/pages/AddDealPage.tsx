@@ -6,6 +6,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
+import Link from '@tiptap/extension-link';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAdmin } from '../hooks/useAdmin';
@@ -366,6 +367,19 @@ useEffect(() => {
 
   const handleMainCategorySelect = (categoryId: string) => {
     console.log('Category selected in parent:', categoryId);
+    // Если пришла пустая строка, это значит переход на уровень выше
+    if (categoryId === '') {
+      console.log('Возврат на уровень выбора категорий');
+      setSelectedMainCategory(null);
+      setFormData(prev => ({
+        ...prev,
+        category: '',
+        subcategories: []
+      }));
+      return;
+    }
+    
+    // Если нажата та же категория, но это не пустая строка
     if (selectedMainCategory === categoryId) {
       setSelectedMainCategory(null);
       setFormData(prev => ({
@@ -408,8 +422,17 @@ useEffect(() => {
             class: 'list-disc pl-4',
           },
         },
+        link: false, // Отключаем встроенную ссылку StarterKit
       }),
       Underline,
+      Link.configure({
+        HTMLAttributes: {
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          class: 'text-orange-500 hover:underline',
+        },
+        openOnClick: false, // Не открывать при клике в редакторе
+      }),
       Image.configure({
         HTMLAttributes: {
           class: 'max-w-full h-auto rounded-lg my-4 relative delete-button-container',
@@ -421,10 +444,34 @@ useEffect(() => {
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       console.log('Editor content updated:', html);
+      
+      // Обновляем описание в форме
       setFormData(prev => ({
         ...prev,
         description: html
       }));
+      
+      // Проверяем, были ли удалены изображения
+      if (editor && descriptionImages.length > 0) {
+        // Получаем все текущие изображения в редакторе по их идентификаторам (атрибут alt)
+        const currentImageIds = new Set();
+        const imgElements = editor.view.dom.querySelectorAll('img[alt^="img-"]');
+        imgElements.forEach(img => {
+          const imgId = img.getAttribute('alt');
+          if (imgId) {
+            currentImageIds.add(imgId);
+          }
+        });
+        
+        // Проверяем, есть ли изображения, которые были удалены из DOM
+        const removedImages = descriptionImages.filter(img => !currentImageIds.has(img.id));
+        
+        // Если такие изображения есть, удаляем их из состояния
+        if (removedImages.length > 0) {
+          console.log('Обнаружены удаленные изображения:', removedImages.length);
+          setDescriptionImages(prev => prev.filter(img => currentImageIds.has(img.id)));
+        }
+      }
     },
     editorProps: {
       attributes: {
@@ -599,7 +646,7 @@ useEffect(() => {
 
             {/* Description Editor */}
             <div className="relative" ref={editorRef}>
-              <div className="flex items-center space-x-2 mb-2">
+              <div className="flex flex-wrap items-center gap-1 mb-2">
                   <button
                     type="button"
                     onClick={() => editor?.chain().focus().toggleBold().run()}
@@ -736,7 +783,7 @@ useEffect(() => {
                     const selectedDate = new Date(e.target.value);
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    
+
                     if (selectedDate < today) {
                       setError('Expiry date cannot be earlier than today');
                       return;
@@ -864,17 +911,25 @@ useEffect(() => {
         {`
           .image-wrapper {
             margin: 1rem 0;
-          }
-          .image-container {
             position: relative;
             display: inline-block;
           }
+          .image-wrapper img {
+            transition: opacity 0.2s;
+          }
+          .image-wrapper:hover img {
+            opacity: 0.8;
+          }
+          .image-wrapper:hover .delete-button {
+            opacity: 1;
+          }
           .delete-button {
             position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 32px;
-            height: 32px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
             background-color: #ef4444;
             border-radius: 50%;
             display: flex;
@@ -882,7 +937,9 @@ useEffect(() => {
             justify-content: center;
             cursor: pointer;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            transition: background-color 0.2s;
+            transition: all 0.2s;
+            opacity: 0;
+            z-index: 10;
           }
           .delete-button:hover {
             background-color: #dc2626;
@@ -896,38 +953,38 @@ useEffect(() => {
           /* Mobile-friendly formatting buttons */
           @media (max-width: 640px) {
             .formatting-button {
-              padding: 12px !important;
-              margin: 0 4px !important;
-              min-width: 48px !important;
-              height: 48px !important;
+              padding: 8px !important;
+              margin: 0 2px !important;
+              min-width: 40px !important;
+              height: 40px !important;
               display: flex !important;
               align-items: center !important;
               justify-content: center !important;
             }
 
             .formatting-button svg {
-              width: 24px !important;
-              height: 24px !important;
+              width: 20px !important;
+              height: 20px !important;
             }
 
             .formatting-button.active {
               background-color: #4B5563 !important;
-              transform: scale(1.1);
+              transform: scale(1.05);
             }
 
             .delete-image-button {
-              padding: 8px !important;
-              margin-left: 4px !important;
-              height: 40px !important;
-              width: 40px !important;
+              padding: 6px !important;
+              margin-top: 4px !important;
+              height: 36px !important;
+              width: auto !important;
               display: flex !important;
               align-items: center !important;
               justify-content: center !important;
             }
 
             .delete-image-button svg {
-              width: 20px !important;
-              height: 20px !important;
+              width: 18px !important;
+              height: 18px !important;
             }
           }
         `}
