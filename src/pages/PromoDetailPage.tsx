@@ -322,7 +322,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
             type="promo"
             id={promo.id}
             userId={promo.user.id}
-            onAction={() => navigate('/promos')}
+            onAction={() => navigate(-1)}
           />
         </div>
       </div>

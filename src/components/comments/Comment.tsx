@@ -150,13 +150,7 @@ const Comment: React.FC<CommentProps> = ({
             <div className="text-white font-medium">{user.name}</div>
             <div className="text-gray-400 text-xs">{formatDate(createdAt)}</div>
           </div>
-
-          <AdminActions
-            type={sourceType}
-            id={id}
-            userId={user.id}
-            onAction={onReply}
-          />
+          <AdminActions type={sourceType} id={id} userId={user.id} onAction={onReply} />
         </div>
 
         {/* Comment content */}
@@ -174,20 +168,20 @@ const Comment: React.FC<CommentProps> = ({
                       const modal = document.createElement('div');
                       modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
                       modal.onclick = () => document.body.removeChild(modal);
-                      
+
                       const content = document.createElement('div');
                       content.className = 'relative max-w-4xl max-h-[90vh]';
                       content.onclick = e => e.stopPropagation();
-                      
+
                       const closeBtn = document.createElement('button');
                       closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
                       closeBtn.textContent = '×';
                       closeBtn.onclick = () => document.body.removeChild(modal);
-                      
+
                       const img = document.createElement('img');
                       img.src = image;
                       img.className = 'max-w-full max-h-[90vh] object-contain';
-                      
+
                       content.appendChild(closeBtn);
                       content.appendChild(img);
                       modal.appendChild(content);

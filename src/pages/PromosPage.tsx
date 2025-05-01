@@ -6,6 +6,7 @@ import FilterBar from '../components/shared/FilterBar';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AdminActions from '../components/admin/AdminActions';
+import { useAdmin } from '../hooks/useAdmin'; // Import the useAdmin hook
 
 interface PromoCode {
   id: string;
@@ -30,6 +31,7 @@ interface PromoCode {
 const PromosPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { role } = useAdmin(); // Use the useAdmin hook
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +89,7 @@ const PromosPage: React.FC = () => {
 
       if (searchQuery) {
         const searchTerms = searchQuery.toLowerCase().split(' ').filter(Boolean);
-        
+
         if (searchTerms.length > 0) {
           query = query.or(
             searchTerms.map(term => 
@@ -319,12 +321,32 @@ const PromosPage: React.FC = () => {
                           <ArrowDown className="h-4 w-4" />
                         </button>
                       </div>
-                      <AdminActions
-                        type="promo"
-                        id={promo.id}
-                        userId={promo.user.id}
-                        onAction={fetchPromoCodes}
-                      />
+
+                      <div className="ml-3 text-gray-400 flex items-center">
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        <span className="text-xs">{promo.comments}</span>
+                      </div>
+
+                      {(role === 'admin' || role === 'moderator') && ( // Added condition for admin/moderator
+                        <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
+                          <AdminActions
+                            type="promo"
+                            id={promo.id}
+                            userId={promo.user.id}
+                            onAction={fetchPromoCodes}
+                          />
+                        </div>
+                      )}
+                      {user && promo.user.id === user.id && (
+                        <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
+                          <AdminActions
+                            type="promo"
+                            id={promo.id}
+                            userId={promo.user.id}
+                            onAction={fetchPromoCodes}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
 

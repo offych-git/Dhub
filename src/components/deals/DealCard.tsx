@@ -5,19 +5,24 @@ import { ArrowUp, ArrowDown, MessageSquare, ExternalLink, Heart, Share2 } from '
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import AdminActions from '../admin/AdminActions';
+import { useAdmin } from '../../hooks/useAdmin'; // Added import for useAdmin hook
+
 
 interface DealCardProps {
   deal: Deal;
   onVoteChange?: () => void;
+  onDelete?: () => void; // Added onDelete prop
 }
 
-const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
+const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { role } = useAdmin(); // Added to get the user's role
   const [voteCount, setVoteCount] = useState(deal.popularity);
   const [userVote, setUserVote] = useState<boolean | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [commentCount, setCommentCount] = useState(deal.comments);
+  const isOwnDeal = user && deal.postedBy.id === user.id; // Added to determine if the user owns the deal
 
   useEffect(() => {
     if (user) {
@@ -175,13 +180,6 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
           <span title={deal.postedAt.exact}>{deal.postedAt.relative}</span>
         </div>
 
-        <AdminActions
-          type="deal"
-          id={deal.id}
-          userId={deal.postedBy.id}
-          onAction={onVoteChange}
-        />
-
         <div className="ml-auto flex items-center text-sm">
           <button
             onClick={(e) => handleVote(e, true)}
@@ -198,7 +196,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
           >
             <ArrowDown className="h-4 w-4" />
           </button>
-        </div>
+          </div>
       </div>
 
       <div className="flex mt-1.5">
@@ -291,6 +289,16 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onVoteChange }) => {
                 <span className="text-xs mr-1">View</span>
                 <ExternalLink className="h-3 w-3" />
               </button>
+              {user && (user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && ( // Modified condition for delete button
+                <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
+                  <AdminActions
+                    type="deal"
+                    id={deal.id}
+                    userId={deal.postedBy.id}
+                    onAction={onDelete || (() => {})}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>

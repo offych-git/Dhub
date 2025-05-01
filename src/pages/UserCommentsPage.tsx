@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DealCard from '../components/deals/DealCard';
 import { Deal } from '../types';
+import AdminActions from '../components/admin/AdminActions';
 
 type SortOption = 'newest' | 'oldest' | 'popular';
 
@@ -34,6 +35,7 @@ interface Comment {
     };
   };
 }
+
 
 const UserCommentsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -219,10 +221,12 @@ const UserCommentsPage: React.FC = () => {
           description: comment.deals!.description,
           url: comment.deals!.deal_url,
           userComment: {
+            id: comment.id, // Добавляем ID комментария
             content: comment.content,
             createdAt: new Date(comment.created_at).toLocaleString(),
             images: comment.images, // Added images
             replies: comment.replies.map(reply => ({
+              id: reply.id, // Добавляем ID ответа
               content: reply.content,
               createdAt: new Date(reply.created_at).toLocaleString(),
               images: reply.images // Added images to replies
@@ -277,6 +281,7 @@ const UserCommentsPage: React.FC = () => {
         .map(comment => ({
           ...comment.promo_codes,
           userComment: {
+            id: comment.id, // Добавляем ID комментария
             content: comment.content,
             createdAt: new Date(comment.created_at).toLocaleString(),
             images: comment.images // Added images
@@ -379,8 +384,25 @@ const UserCommentsPage: React.FC = () => {
                       {deal.userComment && (
                         <div className="space-y-2">
                       <div className="bg-gray-800 rounded-md p-3 ml-4 border-l-2 border-orange-500">
-                        <div className="text-gray-400 text-sm mb-1">
-                          Your comment on {deal.userComment.createdAt}:
+                        <div className="flex justify-between items-start">
+                          <div className="text-gray-400 text-sm mb-1 flex items-center">
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            {deal.userComment.createdAt}
+                          </div>
+                          {deal.userComment && (
+                            <>
+                            {console.log("Отладка сделки:", deal)}
+                            <AdminActions 
+                              type="deal_comments"
+                              id={deal.userComment.id}
+                              userId={user?.id || ''}
+                              onAction={loadUserComments}
+                            />
+                            </>
+                          )}
                         </div>
                         <div className="text-white">
                           {deal.userComment.content}
@@ -427,8 +449,22 @@ const UserCommentsPage: React.FC = () => {
                             <div className="ml-8 space-y-2">
                               {deal.userComment.replies.map((reply, index) => (
                                 <div key={index} className="bg-gray-700 rounded-md p-3 border-l-2 border-orange-400">
-                                  <div className="text-gray-400 text-sm mb-1">
-                                    Your reply on {reply.createdAt}:
+                                  <div className="flex justify-between items-start">
+                                    <div className="text-gray-400 text-sm mb-1 flex items-center">
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                      {reply.createdAt}
+                                    </div>
+                                    {reply.id && (
+                                      <AdminActions 
+                                        type="deal_comment"
+                                        id={reply.id}
+                                        userId={user?.id || ''}
+                                        onAction={loadUserComments}
+                                      />
+                                    )}
                                   </div>
                                   <div className="text-white">
                                     {reply.content}
@@ -498,8 +534,23 @@ const UserCommentsPage: React.FC = () => {
                         {promo.userComment && (
                           <div className="space-y-2">
                         <div className="mt-4 bg-gray-700 rounded-md p-3 border-l-2 border-orange-500">
-                          <div className="text-gray-400 text-sm mb-1">
-                            Your comment on {promo.userComment.createdAt}:
+                          <div className="flex justify-between items-start">
+                            <div className="text-gray-400 text-sm mb-1 flex items-center">
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              {promo.userComment.createdAt}
+                            </div>
+                            <>
+                            {console.log("Отладка промо:", promo)}
+                            <AdminActions 
+                              type="promo_comments"
+                              id={promo.userComment.id}
+                              userId={user?.id || ''}
+                              onAction={loadUserComments}
+                            />
+                            </>
                           </div>
                           <div className="text-white">
                             {promo.userComment.content}
@@ -546,11 +597,61 @@ const UserCommentsPage: React.FC = () => {
                               <div className="ml-8 space-y-2">
                                 {promo.userComment.replies.map((reply, index) => (
                                   <div key={index} className="bg-gray-600 rounded-md p-3 border-l-2 border-orange-400">
-                                    <div className="text-gray-400 text-sm mb-1">
-                                      Your reply on {reply.createdAt}:
+                                    <div className="flex justify-between items-start">
+                                      <div className="text-gray-400 text-sm mb-1 flex items-center">
+                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                          <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                          <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                        {reply.createdAt}
+                                      </div>
+                                      {reply.id && (
+                                        <AdminActions 
+                                          type="promo_comment"
+                                          id={reply.id}
+                                          userId={user?.id || ''}
+                                          onAction={loadUserComments}
+                                        />
+                                      )}
                                     </div>
                                     <div className="text-white">
                                       {reply.content}
+                                      {reply.images && reply.images.length > 0 && (
+                                        <div className="flex gap-2 mt-2">
+                                          {reply.images.map((image, i) => (
+                                            <div key={i} className="relative">
+                                              <img
+                                                src={image}
+                                                alt={`Reply image ${i + 1}`}
+                                                className="w-16 h-16 object-cover rounded cursor-pointer"
+                                                onClick={() => {
+                                                  const modal = document.createElement('div');
+                                                  modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                                                  modal.onclick = () => document.body.removeChild(modal);
+
+                                                  const content = document.createElement('div');
+                                                  content.className = 'relative max-w-4xl max-h-[90vh]';
+                                                  content.onclick = e => e.stopPropagation();
+
+                                                  const closeBtn = document.createElement('button');
+                                                  closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
+                                                  closeBtn.textContent = '×';
+                                                  closeBtn.onclick = () => document.body.removeChild(modal);
+
+                                                  const img = document.createElement('img');
+                                                  img.src = image;
+                                                  img.className = 'max-w-full max-h-[90vh] object-contain';
+
+                                                  content.appendChild(closeBtn);
+                                                  content.appendChild(img);
+                                                  modal.appendChild(content);
+                                                  document.body.appendChild(modal);
+                                                }}
+                                              />
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 ))}
