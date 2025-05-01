@@ -242,10 +242,7 @@ useEffect(() => {
       return false;
     }
 
-    if (!formData.subcategories.length) {
-      setError('Please select at least one subcategory');
-      return false;
-    }
+    // Подкатегории больше не обязательны
 
     if (!mainImage) {
       setError('Main image is required');
@@ -280,7 +277,6 @@ useEffect(() => {
       formData.description.trim() !== '' &&
       formData.currentPrice !== '' &&
       formData.category !== '' &&
-      formData.subcategories.length > 0 &&
       mainImage !== null &&
       formData.dealUrl !== '' &&
       (!formData.originalPrice || Number(formData.currentPrice) <= Number(formData.originalPrice)) &&
