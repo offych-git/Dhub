@@ -1,0 +1,37 @@
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Handle Supabase auth redirects with token and type parameters
+[[redirects]]
+  from = "/auth/v1/verify"
+  to = "/auth/reset-password"
+  status = 302
+  query = {token = ":token", type = "recovery"}
+  force = true
+
+# Handle all auth paths specifically
+[[redirects]]
+  from = "/auth/reset-password"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/auth/callback"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/auth/*"
+  to = "/index.html"
+  status = 200
+  force = true
+
+# Handle all other routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

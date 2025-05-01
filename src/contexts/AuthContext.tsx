@@ -194,11 +194,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
+      // Use fixed URLs to avoid any issues with protocol/origin detection
+      const productionUrl = 'https://incandescent-yeot-19ffea.netlify.app';
+      const siteUrl = window.location.hostname.includes('netlify.app') 
+        ? productionUrl 
+        : window.location.origin;
+      
+      // Make sure to redirect directly to the reset password page
+      const redirectUrl = `${siteUrl}/auth/reset-password`;
+      console.log('Requesting password reset with redirect to:', redirectUrl);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: redirectUrl,
       });
 
       if (error) throw error;
+      
+      console.log('Password reset email sent successfully');
     } catch (error: any) {
       console.error('Password reset error:', error);
       throw error;
