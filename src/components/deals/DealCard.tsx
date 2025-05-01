@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import AdminActions from '../admin/AdminActions';
 import { useAdmin } from '../../hooks/useAdmin'; // Added import for useAdmin hook
+import { handleImageError, getValidImageUrl } from '../../utils/imageUtils';
 
 
 interface DealCardProps {
@@ -202,9 +203,10 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
       <div className="flex mt-1.5">
         <div className="w-16 h-16 bg-gray-800 rounded-md overflow-hidden mr-3 flex-shrink-0">
           <img 
-            src={deal.image} 
+            src={getValidImageUrl(deal.image)} 
             alt={deal.title} 
             className="w-full h-full object-contain"
+            onError={handleImageError}
           />
         </div>
 

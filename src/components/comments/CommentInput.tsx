@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import imageCompression from 'browser-image-compression';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { createMentionNotification } from '../../utils/mentions';
+import { handleImageError } from '../../utils/imageUtils';
 
 interface CommentInputProps {
   sourceType: 'deal_comment' | 'promo_comment';
@@ -70,7 +70,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
     if (lastAtSymbol !== -1) {
       const spaceAfterAt = value.indexOf(' ', lastAtSymbol);
       const searchEndPos = spaceAfterAt === -1 ? value.length : spaceAfterAt;
-      
+
       if (position > lastAtSymbol && position <= searchEndPos) {
         const search = value.slice(lastAtSymbol + 1, searchEndPos);
         setMentionSearch(search);
@@ -89,7 +89,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
     const newComment = `${beforeMention}@${username}${afterMention}`;
     setComment(newComment);
     setShowMentions(false);
-    
+
     if (inputRef.current) {
       inputRef.current.focus();
     }
@@ -118,16 +118,16 @@ const CommentInput: React.FC<CommentInputProps> = ({
       alert('Maximum 2 images allowed');
       return;
     }
-    
+
     const newImages = files.slice(0, 2 - images.length);
-    
+
     // Compress images before preview
     const compressedImages = await Promise.all(
       newImages.map(file => compressImage(file))
     );
-    
+
     const newPreviews = compressedImages.map(file => URL.createObjectURL(file));
-    
+
     setImages(prev => [...prev, ...compressedImages]);
     setPreviews(prev => [...prev, ...newPreviews]);
   };
@@ -151,27 +151,27 @@ const CommentInput: React.FC<CommentInputProps> = ({
           const fileExt = image.name.split('.').pop();
           const fileName = `${Math.random()}.${fileExt}`;
           const filePath = `${user.id}/${fileName}`;
-          
+
           const { error: uploadError } = await supabase.storage
             .from('deal-images')
             .upload(filePath, image, {
               cacheControl: '3600',
               upsert: false
             });
-            
+
           if (uploadError) throw uploadError;
-          
+
           const { data: { publicUrl } } = supabase.storage
             .from('deal-images')
             .getPublicUrl(filePath);
-            
+
           imageUrls.push(publicUrl);
         }
       }
 
       const table = sourceType === 'deal_comment' ? 'deal_comments' : 'promo_comments';
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
+
       if (!currentUser) {
         throw new Error('User not authenticated');
       }
@@ -218,7 +218,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
           className="w-full bg-gray-700 text-white placeholder-gray-400 rounded-md px-4 py-2 resize-none"
           rows={3}
         />
-        
+
         {/* Image previews */}
         {previews.length > 0 && (
           <div className="flex gap-2 mt-2">
@@ -229,6 +229,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
                   alt={`Preview ${index + 1}`}
                   className="w-16 h-16 object-cover rounded cursor-pointer"
                   onClick={() => window.open(preview, '_blank')}
+                  onError={handleImageError}
                 />
                 <button
                   onClick={() => removeImage(index)}
@@ -240,7 +241,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
             ))}
           </div>
         )}
-        
+
         <div className="flex justify-between items-center">
           <button
             onClick={() => fileInputRef.current?.click()}

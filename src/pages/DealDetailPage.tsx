@@ -3,9 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2 } from 'lucide-react';
 import { mockDeals, generatePriceHistory } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
+import AdminActions from '../components/admin/AdminActions';
 import { supabase } from '../lib/supabase';
 import Comment from '../components/comments/Comment';
 import CommentInput from '../components/comments/CommentInput';
+import { handleImageError, getValidImageUrl } from '../utils/imageUtils';
 
 const DealDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +24,7 @@ const DealDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'popular'>('newest');
+  const isExpired = deal?.expires_at && new Date(deal.expires_at) < new Date();
 
   const priceHistory = useMemo(() => {
     if (!deal) return [];
@@ -361,18 +364,29 @@ const DealDetailPage: React.FC = () => {
 
   return (
     <div className="pb-16 pt-16 bg-gray-900 min-h-screen">
-      <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10 flex items-center">
-        <button onClick={() => navigate(-1)} className="text-white">
-          <ArrowLeft className="h-6 w-6" />
-        </button>
-        <h1 className="text-white font-medium ml-4 truncate">Deal Details</h1>
+      <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <button onClick={() => navigate(-1)} className="text-white">
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+            <h1 className="text-white font-medium ml-4 truncate">Deal Details</h1>
+          </div>
+          <AdminActions
+            type="deal"
+            id={deal.id}
+            userId={deal.postedBy.id}
+            onAction={() => navigate('/')}
+          />
+        </div>
       </div>
 
       <div className="h-64 bg-gray-800">
         <img 
-          src={deal.image} 
+          src={getValidImageUrl(deal.image)} 
           alt={deal.title} 
           className="w-full h-full object-contain"
+          onError={handleImageError}
         />
       </div>
 
