@@ -181,7 +181,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
         setUserVote(null);
         return;
       }
-      
+
       const { data: votes } = await supabase
         .from('promo_votes')
         .select('vote_type')
@@ -235,7 +235,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
           .delete()
           .eq('promo_id', id)
           .eq('user_id', user.id);
-        
+
         setUserVote(null);
       } else {
         await supabase
@@ -247,7 +247,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
           }, {
             onConflict: 'promo_id,user_id'
           });
-        
+
         setUserVote(voteType);
       }
 
@@ -322,7 +322,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
             type="promo"
             id={promo.id}
             userId={promo.user.id}
-            onAction={() => navigate(-1)}
+            onAction={() => navigate('/promos')}
           />
         </div>
       </div>
@@ -402,11 +402,11 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
             >
               <ArrowUp className="h-5 w-5 mr-1" />
             </button>
-            
+
             <span className={`font-medium ${voteCount > 0 ? 'text-red-500' : voteCount < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
               {voteCount > 0 ? '+' : ''}{voteCount}
             </span>
-            
+
             <button 
               className={`flex items-center ${userVote === false ? 'text-blue-500' : 'text-gray-400'}`}
               onClick={() => handleVote(false)}

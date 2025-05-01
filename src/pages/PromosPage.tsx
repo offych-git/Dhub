@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ChevronDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2 } from 'lucide-react';
+import { ChevronDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2, ExternalLink } from 'lucide-react';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/shared/FilterBar';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
@@ -43,13 +43,38 @@ const PromosPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setPage(1);
     setHasMore(true);
     setPromoCodes([]);
     fetchPromoCodes();
-  }, [searchQuery]);
+    if (user) {
+      loadFavorites();
+    }
+  }, [searchQuery, user]);
+
+  const loadFavorites = async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('promo_favorites')
+        .select('promo_id')
+        .eq('user_id', user.id);
+      
+      const favMap: Record<string, boolean> = {};
+      if (data) {
+        data.forEach(fav => {
+          favMap[fav.promo_id] = true;
+        });
+      }
+      setFavorites(favMap);
+    } catch (err) {
+      console.error('Error loading favorites:', err);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -219,6 +244,48 @@ const PromosPage: React.FC = () => {
     setTimeout(() => setCopiedCodeId(null), 2000);
   };
 
+  const toggleFavorite = async (e: React.MouseEvent, promoId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    try {
+      if (favorites[promoId]) {
+        // Remove from favorites
+        await supabase
+          .from('promo_favorites')
+          .delete()
+          .eq('promo_id', promoId)
+          .eq('user_id', user.id);
+        
+        setFavorites(prev => {
+          const newFavorites = { ...prev };
+          delete newFavorites[promoId];
+          return newFavorites;
+        });
+      } else {
+        // Add to favorites
+        await supabase
+          .from('promo_favorites')
+          .insert({
+            promo_id: promoId,
+            user_id: user.id
+          });
+        
+        setFavorites(prev => ({
+          ...prev,
+          [promoId]: true
+        }));
+      }
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+    }
+  };
+
   const formatTimeAgo = (dateString: string) => {
     const minutes = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000);
     if (minutes < 60) return `${minutes}m`;
@@ -321,32 +388,6 @@ const PromosPage: React.FC = () => {
                           <ArrowDown className="h-4 w-4" />
                         </button>
                       </div>
-
-                      <div className="ml-3 text-gray-400 flex items-center">
-                        <MessageSquare className="h-4 w-4 mr-1" />
-                        <span className="text-xs">{promo.comments}</span>
-                      </div>
-
-                      {(role === 'admin' || role === 'moderator') && ( // Added condition for admin/moderator
-                        <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
-                          <AdminActions
-                            type="promo"
-                            id={promo.id}
-                            userId={promo.user.id}
-                            onAction={fetchPromoCodes}
-                          />
-                        </div>
-                      )}
-                      {user && promo.user.id === user.id && (
-                        <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
-                          <AdminActions
-                            type="promo"
-                            id={promo.id}
-                            userId={promo.user.id}
-                            onAction={fetchPromoCodes}
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -410,10 +451,21 @@ const PromosPage: React.FC = () => {
                         {promo.user.displayName}
                       </span>
                     </div>
-                    <div className="flex items-center text-gray-400">
-                      <MessageSquare className="h-3 w-3 mr-1" />
-                      <span>{promo.comments}</span>
+                    <div className="flex items-center">
+                      <button
+                        onClick={(e) => toggleFavorite(e, promo.id)}
+                        className={`p-1 rounded-full ${favorites[promo.id] ? 'text-red-500' : 'text-gray-400'}`}
+                      >
+                        <Heart className="h-4 w-4" fill={favorites[promo.id] ? 'currentColor' : 'none'} />
+                      </button>
+
+                      <div className="ml-3 text-gray-400 flex items-center">
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        <span className="text-xs">{promo.comments}</span>
+                      </div>
+
                       <button 
+                        className="ml-3 text-orange-500 flex items-center"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -428,10 +480,24 @@ const PromosPage: React.FC = () => {
                             alert('Ссылка скопирована в буфер обмена!');
                           }
                         }}
-                        className="ml-2 text-gray-400 hover:text-orange-500"
                       >
-                        <Share2 className="h-3 w-3" />
+                        <Share2 className="h-4 w-4" />
                       </button>
+                      <button className="ml-3 text-orange-500 flex items-center">
+                        <span className="text-xs mr-1">View</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </button>
+                      {/* Показываем кнопку удаления только если пользователь является админом/модератором или владельцем */}
+                      {((role === 'admin' || role === 'moderator') || (user && promo.user.id === user.id)) && (
+                        <div className="ml-2 border-l border-gray-700 pl-2" onClick={(e) => e.stopPropagation()}>
+                          <AdminActions
+                            type="promo"
+                            id={promo.id}
+                            userId={promo.user.id}
+                            onAction={fetchPromoCodes}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
