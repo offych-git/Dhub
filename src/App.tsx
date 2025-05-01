@@ -29,6 +29,7 @@ function App() {
           <AuthProvider>
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/auth/reset-password" element={<AuthPage isResetPasswordPage={true} />} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<DealsPage />} />

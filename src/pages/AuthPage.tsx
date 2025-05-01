@@ -1,21 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug';
 
-const AuthPage: React.FC = () => {
+interface AuthPageProps {
+  isResetPasswordPage?: boolean;
+}
+
+const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const navigate = useNavigate();
   const { signIn, signUp, signInWithFacebook, resetPassword } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isResetPassword, setIsResetPassword] = useState(false);
+  const [isResetPassword, setIsResetPassword] = useState(isResetPasswordPage);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [configValid, setConfigValid] = useState(true);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const location = useLocation();
+  
+  // Проверяем URL на наличие токена сброса пароля
+  useEffect(() => {
+    // Если мы на странице сброса пароля, получаем токен из URL
+    if (isResetPasswordPage) {
+      const hash = location.hash;
+      if (hash && hash.includes('access_token=')) {
+        const tokenMatch = hash.match(/access_token=([^&]+)/);
+        if (tokenMatch && tokenMatch[1]) {
+          setAccessToken(tokenMatch[1]);
+          setIsResetPassword(true);
+        }
+      }
+    }
+  }, [isResetPasswordPage, location]);
   
   // Проверяем настройки Supabase при загрузке страницы
   useEffect(() => {
@@ -41,6 +63,21 @@ const AuthPage: React.FC = () => {
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     
+    // Если у нас есть токен доступа и мы сбрасываем пароль
+    if (accessToken) {
+      if (!trimmedPassword || trimmedPassword.length < 6) {
+        setError('Password must be at least 6 characters long');
+        return false;
+      }
+      
+      if (trimmedPassword !== confirmPassword.trim()) {
+        setError('Passwords do not match');
+        return false;
+      }
+      
+      return true;
+    }
+    
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError('Please enter a valid email address');
       return false;
@@ -60,10 +97,47 @@ const AuthPage: React.FC = () => {
     return true;
   };
 
+  const handleUpdatePassword = async () => {
+    setError(null);
+    setSuccessMessage(null);
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      if (accessToken) {
+        // Используем функцию для обновления пароля из AuthContext
+        await updatePassword(password);
+        setSuccessMessage('Your password has been successfully updated');
+        
+        // Перенаправляем на страницу входа после обновления пароля
+        setTimeout(() => {
+          setIsResetPassword(false);
+          setAccessToken(null);
+          navigate('/auth');
+        }, 2000);
+      }
+    } catch (err: any) {
+      console.error('Password update error:', err);
+      setError('Failed to update password. Please try again or request a new password reset link.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
+    
+    // Если у нас есть токен доступа и мы находимся на странице сброса пароля
+    if (accessToken) {
+      handleUpdatePassword();
+      return;
+    }
     
     if (!validateForm()) {
       return;
@@ -75,7 +149,7 @@ const AuthPage: React.FC = () => {
       // Add debug information
       console.log(`Attempting to ${isResetPassword ? 'reset password' : isSignUp ? 'sign up' : 'sign in'} with email: ${email}`);
       
-      if (isResetPassword) {
+      if (isResetPassword && !accessToken) {
         await resetPassword(email);
         setSuccessMessage('Password reset instructions have been sent to your email');
         setIsResetPassword(false);
@@ -172,7 +246,7 @@ const AuthPage: React.FC = () => {
         </button>
 
         <h1 className="text-3xl font-bold text-white text-center mb-8">
-          {isResetPassword ? 'Reset Password' : isSignUp ? 'Create Account' : 'Welcome Back'}
+          {accessToken ? 'Create New Password' : isResetPassword ? 'Reset Password' : isSignUp ? 'Create Account' : 'Welcome Back'}
         </h1>
 
         {error && (
@@ -209,28 +283,50 @@ const AuthPage: React.FC = () => {
         </div>
 
         <form onSubmit={handleEmailAuth} className="space-y-4">
-          <div>
-            <input
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                clearMessages();
-              }}
-              className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
-              required
-            />
-          </div>
+          {/* Показываем поле email только если нет токена доступа */}
+          {!accessToken && (
+            <div>
+              <input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearMessages();
+                }}
+                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                required
+              />
+            </div>
+          )}
 
-          {!isResetPassword && (
+          {/* Показываем поле пароля, если это не сброс пароля без токена */}
+          {(!isResetPassword || accessToken) && (
             <div>
               <input
                 type="password"
-                placeholder="Password"
+                placeholder="New Password"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
+                  clearMessages();
+                }}
+                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                required
+                minLength={6}
+              />
+            </div>
+          )}
+          
+          {/* Дополнительное поле для подтверждения пароля при сбросе с токеном */}
+          {accessToken && (
+            <div>
+              <input
+                type="password"
+                placeholder="Confirm New Password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
                   clearMessages();
                 }}
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
@@ -278,7 +374,7 @@ const AuthPage: React.FC = () => {
               <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               <>
-                {isResetPassword ? 'Send Reset Instructions' : isSignUp ? 'Sign Up' : 'Sign In'}
+                {accessToken ? 'Update Password' : isResetPassword ? 'Send Reset Instructions' : isSignUp ? 'Sign Up' : 'Sign In'}
                 <ArrowRight className="h-5 w-5 ml-2" />
               </>
             )}
