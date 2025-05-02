@@ -5,10 +5,13 @@ import { categories, categoryIcons } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomSheet';
+import { useLanguage } from '../contexts/LanguageContext'; // Assuming this context exists
+
 
 const AddPromoPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);
@@ -40,11 +43,9 @@ const AddPromoPage: React.FC = () => {
 
     if (!isValid) {
       setError('Please fill in all required fields');
-      console.log('Form validation failed:', formData);
       return;
     }
 
-    console.log('Submitting form data:', formData);
     setLoading(true);
 
     try {
@@ -64,14 +65,17 @@ const AddPromoPage: React.FC = () => {
 
       if (promoError) throw promoError;
 
-      console.log('Promo code successfully created:', promo);
       navigate('/promos');
     } catch (err: any) {
-      console.error('Error creating promo code:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCategorySelect = (selectedCategoryId: string) => {
+    setFormData({ ...formData, category: selectedCategoryId });
+    setIsCategorySheetOpen(false);
   };
 
   return (
@@ -145,7 +149,6 @@ const AddPromoPage: React.FC = () => {
             </div>
 
             <div>
-              <div ref={categoryRef} className="relative">
               <button
                 type="button"
                 className="w-full bg-gray-800 text-white rounded-md px-4 py-3 flex items-center justify-between"
@@ -153,30 +156,19 @@ const AddPromoPage: React.FC = () => {
               >
                 <span>
                   {formData.category
-                    ? categories.find(c => c.id === formData.category)?.name
-                    : 'Select Category *'}
+                    ? (language === 'ru' ? categories.find(c => c.id === formData.category)?.name : t(formData.category))
+                    : t('common.selectCategory')}
                 </span>
                 <ChevronDown className="h-5 w-5" />
               </button>
-            </div>
-            <CategorySimpleBottomSheet
-              isOpen={isCategorySheetOpen}
-              onClose={() => setIsCategorySheetOpen(false)}
-              categories={categories}
-              categoryIcons={categoryIcons}
-              selectedCategory={formData.category}
-              onCategorySelect={(categoryId) => {
-                console.log('Before category selection:', formData);
-                setFormData(prev => {
-                  const newData = { ...prev, category: categoryId };
-                  console.log('After category selection:', newData);
-                  return newData;
-                });
-                setIsCategorySheetOpen(false);
-                console.log('Selected category:', categoryId);
-                console.log('Current form state:', formData);
-              }}
-            />
+              <CategorySimpleBottomSheet
+                isOpen={isCategorySheetOpen}
+                onClose={() => setIsCategorySheetOpen(false)}
+                categories={categories}
+                categoryIcons={categoryIcons}
+                selectedCategory={formData.category}
+                onCategorySelect={handleCategorySelect}
+              />
             </div>
 
             <div>

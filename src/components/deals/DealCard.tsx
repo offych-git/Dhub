@@ -5,25 +5,25 @@ import { ArrowUp, ArrowDown, MessageSquare, ExternalLink, Heart, Share2 } from '
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import AdminActions from '../admin/AdminActions';
-import { useAdmin } from '../../hooks/useAdmin'; // Added import for useAdmin hook
+import { useAdmin } from '../../hooks/useAdmin';
 import { handleImageError, getValidImageUrl } from '../../utils/imageUtils';
 
 
 interface DealCardProps {
   deal: Deal;
   onVoteChange?: () => void;
-  onDelete?: () => void; // Added onDelete prop
+  onDelete?: () => void;
 }
 
 const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { role } = useAdmin(); // Added to get the user's role
+  const { role } = useAdmin();
   const [voteCount, setVoteCount] = useState(deal.popularity);
   const [userVote, setUserVote] = useState<boolean | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [commentCount, setCommentCount] = useState(deal.comments);
-  const isOwnDeal = user && deal.postedBy.id === user.id; // Added to determine if the user owns the deal
+  const isOwnDeal = user && deal.postedBy.id === user.id;
 
   useEffect(() => {
     if (user) {
@@ -50,7 +50,6 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
         .select('vote_type', { count: 'exact' })
         .eq('deal_id', deal.id);
 
-      // Calculate vote count manually
       const count = voteCount?.reduce((acc, vote) => {
         return acc + (vote.vote_type ? 1 : -1);
       }, 0) || 0;
@@ -86,7 +85,6 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
       setCommentCount(count || 0);
     } catch (error) {
       console.error('Error loading comment count:', error);
-      // Keep the existing comment count on error
     }
   };
 
@@ -101,7 +99,6 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
 
     try {
       if (userVote === voteType) {
-        // Remove vote
         await supabase
           .from('deal_votes')
           .delete()
@@ -110,7 +107,6 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
 
         setUserVote(null);
       } else {
-        // Upsert vote
         await supabase
           .from('deal_votes')
           .upsert({
@@ -240,12 +236,17 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
               style={{ pointerEvents: 'none' }}
             >
               {deal.description
-                // Заменяем HTML теги на пустую строку
+                // Сначала заменяем закрывающие теги абзацев пробелом перед удалением всех тегов
+                .replace(/<\/p>\s*<p[^>]*>/g, ' ')
+                // Удаляем все HTML-теги
                 .replace(/<[^>]*>/g, '')
-                // Заменяем переносы строк на пробелы и добавляем пробелы после знаков препинания
+                // Добавляем пробел между предложениями, которые могли склеиться
+                .replace(/([.!?])\s*([А-ЯЁA-Z])/g, '$1 $2')
+                // Заменяем переносы строк на пробелы
                 .replace(/\n/g, ' ')
-                .replace(/([.,!?;:])/g, '$1 ')
-                // Убираем двойные пробелы
+                // Добавляем пробелы после знаков препинания, если их нет
+                .replace(/([.,!?;:])([^\s])/g, '$1 $2')
+                // Убираем лишние пробелы
                 .replace(/\s{2,}/g, ' ')
               }
             </div>
@@ -307,7 +308,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
                 <span className="text-xs mr-1">View</span>
                 <ExternalLink className="h-3 w-3" />
               </button>
-              {user && (user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && ( // Modified condition for delete button
+              {user && (user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && (
                 <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
                   <AdminActions
                     type="deal"

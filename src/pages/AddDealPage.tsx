@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 import ImageUploader from '../components/deals/ImageUploader';
 import imageCompression from 'browser-image-compression';
 import { createPortal } from 'react-dom';
-import CategoryBottomSheet from '../components/deals/CategoryBottomSheet';
+import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomSheet';
 import StoreBottomSheet from '../components/deals/StoreBottomSheet';
 
 interface Subcategory {
@@ -43,6 +43,8 @@ const AddDealPage: React.FC = () => {
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const selectedStoreName = stores.find(store => store.id === selectedStoreId)?.name || '';
   const categoryRef = useRef<HTMLDivElement>(null);
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+  const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -61,8 +63,7 @@ const AddDealPage: React.FC = () => {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [selectedImagePosition, setSelectedImagePosition] = useState<{ top: number; left: number } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
-  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
-  const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
+
 
 useEffect(() => {
   console.log('AddDealPage - isStoreSheetOpen state changed:', isStoreSheetOpen);
@@ -110,16 +111,11 @@ useEffect(() => {
         const pos = editor.view.posAtDOM(imageNode, 0);
         editor.chain().focus().deleteRange({ from: pos, to: pos + 1 }).run();
 
-        // Remove the image from descriptionImages state using the ID
         setDescriptionImages(prev => {
-          console.log('Current images in state:', prev.length);
           const newImages = prev.filter(img => img.id !== imageId);
-          console.log('Images after filtering:', newImages.length);
           return newImages;
         });
 
-        // Полностью очищаем ссылку на удаленное изображение из DOM
-        // Это позволит загрузить то же самое изображение повторно
         const wrapperElement = editor.view.dom.querySelector(`[data-image-id="${imageId}"]`);
         if (wrapperElement) {
           wrapperElement.remove();
@@ -130,10 +126,8 @@ useEffect(() => {
     }
   };
 
-  // Функция проверки содержимого редактора на наличие изображений
   const checkImagesInEditor = () => {
     if (editor) {
-      // Получаем все существующие изображения в DOM
       const imgElements = editor.view.dom.querySelectorAll('img[alt^="img-"]');
       const currentImageIds = new Set<string>();
 
@@ -144,16 +138,9 @@ useEffect(() => {
         }
       });
 
-      // Проверяем, были ли удалены какие-либо изображения
-      // и обновляем состояние descriptionImages
       setDescriptionImages(prev => {
         const imagesInEditor = prev.filter(img => currentImageIds.has(img.id));
         if (imagesInEditor.length !== prev.length) {
-          console.log('Обнаружены удаленные изображения через стандартный функционал');
-          console.log('Было изображений:', prev.length);
-          console.log('Осталось изображений:', imagesInEditor.length);
-
-          // Очищаем данные в DOM о удаленных изображениях
           prev
             .filter(img => !currentImageIds.has(img.id))
             .forEach(deletedImg => {
@@ -170,15 +157,11 @@ useEffect(() => {
 
   const handleDescriptionImageUpload = async (files: FileList | null) => {
     if (!files || !files.length || !editor) {
-      console.log('Missing required data:', { files, editor });
       return;
     }
 
-    // Получаем текущие изображения из DOM
     const imgElements = editor.view.dom.querySelectorAll('img[alt^="img-"]');
     const currentImageCount = imgElements.length;
-
-    // Check if adding new images would exceed the limit
     const newImageCount = currentImageCount + files.length;
     if (newImageCount > 4) {
       alert('You can upload a maximum of 4 images');
@@ -187,23 +170,17 @@ useEffect(() => {
 
     setIsUploadingImage(true);
     try {
-      // Process all selected files
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        console.log('Processing file:', file.name, file.size, file.type);
 
-        // Validate file type
         if (!file.type.startsWith('image/')) {
           throw new Error('Please select only image files');
         }
 
         const compressedImage = await compressImage(file);
-        console.log('Compressed file:', compressedImage.name, compressedImage.size, compressedImage.type);
 
-        // Generate unique ID for the image
         const imageId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-        // Upload image to Supabase Storage first
         const fileExt = compressedImage.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${user?.id}/description/${fileName}`;
@@ -224,14 +201,12 @@ useEffect(() => {
           .from('deal-images')
           .getPublicUrl(filePath);
 
-        // Store the image in state with its ID and public URL
         setDescriptionImages(prev => [...prev, { 
           file: compressedImage, 
           id: imageId,
           publicUrl: publicUrl 
         }]);
 
-        // Insert image with wrapper for better styling
         editor.chain()
           .focus()
           .insertContent(`
@@ -241,10 +216,8 @@ useEffect(() => {
           `)
           .run();
 
-        // Add one paragraph after each image for spacing
         editor.chain().focus().insertContent('<p></p>').run();
-    }
-
+      }
     } catch (error) {
       console.error('Error in image upload process:', error);
       alert(`Failed to process images: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -291,7 +264,6 @@ useEffect(() => {
       return false;
     }
 
-    // Подкатегории больше не обязательны
 
     if (!mainImage) {
       setError('Main image is required');
@@ -303,14 +275,12 @@ useEffect(() => {
       return false;
     }
 
-    // URL validation
     const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
     if (!urlRegex.test(formData.dealUrl)) {
       setError('Please enter a valid URL starting with http:// or https://');
       return false;
     }
 
-    // Ensure URL has protocol
     if (!formData.dealUrl.startsWith('http://') && !formData.dealUrl.startsWith('https://')) {
       setFormData(prev => ({
         ...prev,
@@ -345,7 +315,6 @@ useEffect(() => {
     setLoading(true);
 
     try {
-      // Upload main image to Supabase Storage
       if (!mainImage) throw new Error('Main image is required');
 
       const fileExt = mainImage.name.split('.').pop();
@@ -378,12 +347,12 @@ useEffect(() => {
           original_price: formData.originalPrice ? Number(formData.originalPrice) : null,
           store_id: selectedStoreId,
           category_id: formData.category,
-          subcategories: formData.subcategories,
+          subcategories: [], // Subcategories are removed
           image_url: publicUrl,
           deal_url: formData.dealUrl,
           user_id: user?.id,
           expires_at: formData.expiryDate || null,
-          is_hot: formData.isHot // Added is_hot field
+          is_hot: formData.isHot 
         })
         .select()
         .single();
@@ -413,36 +382,9 @@ useEffect(() => {
     return null;
   }, [formData.currentPrice, formData.originalPrice]);
 
-  const handleMainCategorySelect = (categoryId: string) => {
-    console.log('Category selected in parent:', categoryId);
-    // Если пришла пустая строка, это значит переход на уровень выше
-    if (categoryId === '') {
-      console.log('Возврат на уровень выбора категорий');
-      setSelectedMainCategory(null);
-      setFormData(prev => ({
-        ...prev,
-        category: '',
-        subcategories: []
-      }));
-      return;
-    }
-
-    // Если нажата та же категория, но это не пустая строка
-    if (selectedMainCategory === categoryId) {
-      setSelectedMainCategory(null);
-      setFormData(prev => ({
-        ...prev,
-        category: '',
-        subcategories: []
-      }));
-    } else {
-      setSelectedMainCategory(categoryId);
-      setFormData(prev => ({
-        ...prev,
-        category: categoryId,
-        subcategories: []
-      }));
-    }
+  const handleCategorySelect = (categoryId: string) => {
+    setFormData(prev => ({...prev, category: categoryId}));
+    setIsCategorySheetOpen(false);
   };
 
   const handleSubcategoryChange = (subcategory: string) => {
@@ -456,7 +398,6 @@ useEffect(() => {
 
   const selectedCategory = categories.find(cat => cat.id === selectedMainCategory);
 
-  // Add global handlers
   useEffect(() => {
     (window as any).handleImageClick = handleImageClick;
     (window as any).handleDeleteImage = handleDeleteImage;
@@ -499,9 +440,7 @@ useEffect(() => {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-[200px]',
       },
       handleKeyDown: (view, event) => {
-        // Обработка клавиши Enter
         if (event.key === 'Enter') {
-          // Всегда вставляем <br> при нажатии Enter для сохранения форматирования
           view.dispatch(view.state.tr.replaceSelectionWith(
             view.state.schema.nodes.hardBreak.create()
           ).scrollIntoView());
@@ -513,25 +452,21 @@ useEffect(() => {
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
 
-      // Обновляем описание в форме
       setFormData(prev => ({
         ...prev,
         description: html
       }));
 
-      // Проверяем содержимое после каждого обновления
       checkImagesInEditor();
     },
   });
 
-  // Add effect to log editor state
   useEffect(() => {
     if (editor) {
       console.log('Editor initialized with extensions:', editor.extensionManager.extensions);
     }
   }, [editor]);
 
-  // Track image selection
   useEffect(() => {
     if (editor) {
       const handleClick = (e: MouseEvent) => {
@@ -554,29 +489,21 @@ useEffect(() => {
     }
   }, [editor]);
 
-  // Add effect to track descriptionImages changes
   useEffect(() => {
     console.log('descriptionImages updated:', descriptionImages.length);
   }, [descriptionImages]);
 
-  // Добавляем MutationObserver для отслеживания изменений DOM 
-  // и обновления счетчика при удалении изображений стандартными средствами мобильного
   useEffect(() => {
     if (editor && editor.view.dom) {
       const editorDom = editor.view.dom;
 
-      // Создаем MutationObserver для отслеживания изменений в DOM редактора
       const observer = new MutationObserver((mutations) => {
-        // Если произошли изменения в DOM, проверяем изображения
         let needsCheck = false;
 
         mutations.forEach(mutation => {
-          // Проверяем удаление узлов
           if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
-            // Проверяем, содержали ли удаленные узлы изображения
             Array.from(mutation.removedNodes).forEach(node => {
               if (node instanceof HTMLElement) {
-                // Если удален div.image-wrapper или изображение непосредственно
                 if (node.classList?.contains('image-wrapper') || 
                     node.tagName === 'IMG' ||
                     node.querySelector('img')) {
@@ -588,17 +515,15 @@ useEffect(() => {
         });
 
         if (needsCheck) {
-          // Используем setTimeout, чтобы дать DOM полностью обновиться
           setTimeout(checkImagesInEditor, 0);
         }
       });
 
-      // Настраиваем наблюдение за изменениями в DOM редактора
       observer.observe(editorDom, {
-        childList: true,     // наблюдаем за добавлением/удалением дочерних элементов
-        subtree: true,       // наблюдаем за всем деревом дочерних элементов
-        characterData: false, // не нужно следить за изменениями текста
-        attributes: false     // не нужно следить за изменениями атрибутов
+        childList: true,     
+        subtree: true,       
+        characterData: false, 
+        attributes: false     
       });
 
       return () => {
@@ -608,13 +533,10 @@ useEffect(() => {
   }, [editor]);
 
   const handleStoreSelect = (storeId: string | null) => {
-    console.log('AddDealPage - Выбран магазин с ID (обновляем отдельное состояние):', storeId);
-    console.log('AddDealPage - handleStoreSelect called with storeId:', storeId);
     setSelectedStoreId(storeId);
     setIsStoreSheetOpen(false);
   };
 
-  // Add debug logging for StoreBottomSheet props
   useEffect(() => {
     console.log('AddDealPage - StoreBottomSheet props:', {
       isOpen: isStoreSheetOpen,
@@ -625,7 +547,6 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      {/* Header */}
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -640,7 +561,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto pt-16 pb-24">
         <div className="px-4">
           {error && (
@@ -661,14 +581,13 @@ useEffect(() => {
               />
             </div>
 
-            {/* Category Selection */}
             <div>
               <button
                 type="button"
+                onClick={() => setIsCategorySheetOpen(true)}
                 className={`w-full bg-gray-800 text-white rounded-md px-4 py-3 flex items-center justify-between ${
                   formData.category ? 'text-white' : 'text-gray-500'
                 }`}
-                onClick={() => setIsCategorySheetOpen(true)}
               >
                 <span>
                   {formData.category 
@@ -681,27 +600,6 @@ useEffect(() => {
                 <ChevronDown className="h-5 w-5 text-gray-400" />
               </button>
             </div>
-
-            {/* Selected Subcategories */}
-            {formData.subcategories.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {formData.subcategories.map((sub: string) => {
-                  const subcategory = selectedCategory?.subcategories?.find((s: Subcategory) => s.id === sub);
-                  return subcategory ? (
-                    <span key={sub} className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium bg-gray-700 text-white">
-                      {sub}
-                      <button
-                        type="button"
-                        onClick={() => handleSubcategoryChange(sub)}
-                        className="ml-1 text-gray-400 hover:text-white"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </span>
-                  ) : null;
-                })}
-              </div>
-            )}
 
 
             <div className="flex space-x-4">
@@ -736,7 +634,6 @@ useEffect(() => {
               </div>
             )}
 
-            {/* Description Editor */}
             <div className="relative" ref={editorRef}>
               <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
                 <div className="flex flex-wrap items-center gap-1">
@@ -804,7 +701,6 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* Кнопка удаления в отдельном контейнере */}
                 <div className="ml-auto">
                   {selectedImageId && (
                     <button
@@ -831,7 +727,6 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Main Image Upload */}
             <div>
               <label className="block text-gray-400 mb-2">Main Image *</label>
               <input
@@ -919,29 +814,23 @@ useEffect(() => {
             )}
 
 
-            {/* Preview */}
             <div className="bg-gray-800 rounded-md p-4">
               <h3 className="text-white font-medium mb-2">Preview</h3>
               <pre 
                 className="bg-gray-900 rounded-md p-4 whitespace-pre-wrap font-sans text-sm description-preview"
                 dangerouslySetInnerHTML={{ 
                   __html: formData.description
-                    // Сначала обрабатываем URL в тексте с улучшенным регулярным выражением
                     .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
-                      // Проверяем, заканчивается ли URL специальным символом
                       const lastChar = match.charAt(match.length - 1);
-                      // Проверяем специальные символы на конце URL
                       if ([',', '.', ':', ';', '!', '?', ')', ']', '}'].includes(lastChar)) {
                         return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
                       }
                       return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
                     })
-                    // Обработка пустых строк - все последовательные переносы строк в HTML
                     .replace(/\n\n/g, '<br><br>')
-                    // Затем обрабатываем обычные переносы строк
                     .replace(/\n/g, '<br>')
-                    .replace(/class="[^"]+"/g, '') // Remove any class attributes that might be in the text
-                    .replace(/class='[^']+'/g, '') // Remove class with single quotes too
+                    .replace(/class="[^"]+"/g, '') 
+                    .replace(/class='[^']+'/g, '') 
                 }}
               />
               <button
@@ -963,7 +852,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Submit Button - Fixed at bottom */}
       <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 p-4">
         <div className="flex space-x-4">
           <button
@@ -1087,34 +975,17 @@ useEffect(() => {
         `}
       </style>
 
-      <CategoryBottomSheet
+      <CategorySimpleBottomSheet
         isOpen={isCategorySheetOpen}
         onClose={() => setIsCategorySheetOpen(false)}
-        selectedCategory={selectedMainCategory}
-        onCategorySelect={handleMainCategorySelect}
-        selectedSubcategories={formData.subcategories}
-        onSubcategorySelect={(subcategoryId) => {
-          const updatedSubcategories = formData.subcategories.includes(subcategoryId)
-            ? formData.subcategories.filter(id => id !== subcategoryId)
-            : [...formData.subcategories, subcategoryId];
-          setFormData(prev => ({
-            ...prev,
-            subcategories: updatedSubcategories
-          }));
-        }}
+        onCategorySelect={handleCategorySelect}
       />
 
       <StoreBottomSheet
         isOpen={isStoreSheetOpen}
         selectedStore={selectedStoreId}
-        onStoreSelect={(storeId) => {
-          console.log('AddDealPage - StoreBottomSheet onStoreSelect called with:', storeId);
-          handleStoreSelect(storeId);
-        }}
-        onClose={() => {
-          console.log('AddDealPage - StoreBottomSheet onClose called');
-          setIsStoreSheetOpen(false);
-        }}
+        onStoreSelect={handleStoreSelect}
+        onClose={() => setIsStoreSheetOpen(false)}
       />
     </div>
   );
