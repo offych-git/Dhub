@@ -157,7 +157,7 @@ const AddPromoPage: React.FC = () => {
                 <span>
                   {formData.category
                     ? (language === 'ru' ? categories.find(c => c.id === formData.category)?.name : t(formData.category))
-                    : t('common.selectCategory')}
+                    : language === 'ru' ? 'Выберите категорию' : 'Select Category'}
                 </span>
                 <ChevronDown className="h-5 w-5" />
               </button>
