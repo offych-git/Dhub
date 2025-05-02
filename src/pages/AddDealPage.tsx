@@ -6,7 +6,6 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
-import Link from '@tiptap/extension-link';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAdmin } from '../hooks/useAdmin';
@@ -121,6 +120,34 @@ useEffect(() => {
 
         setSelectedImageId(null);
       }
+    }
+  };
+
+  // Функция проверки содержимого редактора на наличие изображений
+  const checkImagesInEditor = () => {
+    if (editor) {
+      // Получаем все существующие изображения в DOM
+      const imgElements = editor.view.dom.querySelectorAll('img[alt^="img-"]');
+      const currentImageIds = new Set<string>();
+      
+      imgElements.forEach(img => {
+        const imgId = img.getAttribute('alt');
+        if (imgId) {
+          currentImageIds.add(imgId);
+        }
+      });
+      
+      // Проверяем, были ли удалены какие-либо изображения
+      // и обновляем состояние descriptionImages
+      setDescriptionImages(prev => {
+        const imagesInEditor = prev.filter(img => currentImageIds.has(img.id));
+        if (imagesInEditor.length !== prev.length) {
+          console.log('Обнаружены удаленные изображения через стандартный функционал');
+          console.log('Было изображений:', prev.length);
+          console.log('Осталось изображений:', imagesInEditor.length);
+        }
+        return imagesInEditor;
+      });
     }
   };
 
@@ -422,17 +449,8 @@ useEffect(() => {
             class: 'list-disc pl-4',
           },
         },
-        link: false, // Отключаем встроенную ссылку StarterKit
       }),
       Underline,
-      Link.configure({
-        HTMLAttributes: {
-          target: '_blank',
-          rel: 'noopener noreferrer',
-          class: 'text-orange-500 hover:underline',
-        },
-        openOnClick: false, // Не открывать при клике в редакторе
-      }),
       Image.configure({
         HTMLAttributes: {
           class: 'max-w-full h-auto rounded-lg my-4 relative delete-button-container',
@@ -443,7 +461,6 @@ useEffect(() => {
     content: '',
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      console.log('Editor content updated:', html);
       
       // Обновляем описание в форме
       setFormData(prev => ({
@@ -451,27 +468,8 @@ useEffect(() => {
         description: html
       }));
       
-      // Проверяем, были ли удалены изображения
-      if (editor && descriptionImages.length > 0) {
-        // Получаем все текущие изображения в редакторе по их идентификаторам (атрибут alt)
-        const currentImageIds = new Set();
-        const imgElements = editor.view.dom.querySelectorAll('img[alt^="img-"]');
-        imgElements.forEach(img => {
-          const imgId = img.getAttribute('alt');
-          if (imgId) {
-            currentImageIds.add(imgId);
-          }
-        });
-        
-        // Проверяем, есть ли изображения, которые были удалены из DOM
-        const removedImages = descriptionImages.filter(img => !currentImageIds.has(img.id));
-        
-        // Если такие изображения есть, удаляем их из состояния
-        if (removedImages.length > 0) {
-          console.log('Обнаружены удаленные изображения:', removedImages.length);
-          setDescriptionImages(prev => prev.filter(img => currentImageIds.has(img.id)));
-        }
-      }
+      // Проверяем содержимое после каждого обновления
+      checkImagesInEditor();
     },
     editorProps: {
       attributes: {
@@ -514,6 +512,54 @@ useEffect(() => {
   useEffect(() => {
     console.log('descriptionImages updated:', descriptionImages.length);
   }, [descriptionImages]);
+
+  // Добавляем MutationObserver для отслеживания изменений DOM 
+  // и обновления счетчика при удалении изображений стандартными средствами мобильного
+  useEffect(() => {
+    if (editor && editor.view.dom) {
+      const editorDom = editor.view.dom;
+      
+      // Создаем MutationObserver для отслеживания изменений в DOM редактора
+      const observer = new MutationObserver((mutations) => {
+        // Если произошли изменения в DOM, проверяем изображения
+        let needsCheck = false;
+        
+        mutations.forEach(mutation => {
+          // Проверяем удаление узлов
+          if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
+            // Проверяем, содержали ли удаленные узлы изображения
+            Array.from(mutation.removedNodes).forEach(node => {
+              if (node instanceof HTMLElement) {
+                // Если удален div.image-wrapper или изображение непосредственно
+                if (node.classList?.contains('image-wrapper') || 
+                    node.tagName === 'IMG' ||
+                    node.querySelector('img')) {
+                  needsCheck = true;
+                }
+              }
+            });
+          }
+        });
+        
+        if (needsCheck) {
+          // Используем setTimeout, чтобы дать DOM полностью обновиться
+          setTimeout(checkImagesInEditor, 0);
+        }
+      });
+      
+      // Настраиваем наблюдение за изменениями в DOM редактора
+      observer.observe(editorDom, {
+        childList: true,     // наблюдаем за добавлением/удалением дочерних элементов
+        subtree: true,       // наблюдаем за всем деревом дочерних элементов
+        characterData: false, // не нужно следить за изменениями текста
+        attributes: false     // не нужно следить за изменениями атрибутов
+      });
+      
+      return () => {
+        observer.disconnect();
+      };
+    }
+  }, [editor]);
 
   const handleStoreSelect = (storeId: string | null) => {
     console.log('AddDealPage - Выбран магазин с ID (обновляем отдельное состояние):', storeId);
