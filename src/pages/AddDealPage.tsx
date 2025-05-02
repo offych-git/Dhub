@@ -118,10 +118,14 @@ useEffect(() => {
           return newImages;
         });
 
+        // Полностью очищаем ссылку на удаленное изображение из DOM
+        // Это позволит загрузить то же самое изображение повторно
+        const wrapperElement = editor.view.dom.querySelector(`[data-image-id="${imageId}"]`);
+        if (wrapperElement) {
+          wrapperElement.remove();
+        }
+
         setSelectedImageId(null);
-        
-        // Сразу же после удаления проверяем изображения в редакторе
-        setTimeout(checkImagesInEditor, 50);
       }
     }
   };
@@ -132,14 +136,14 @@ useEffect(() => {
       // Получаем все существующие изображения в DOM
       const imgElements = editor.view.dom.querySelectorAll('img[alt^="img-"]');
       const currentImageIds = new Set<string>();
-
+      
       imgElements.forEach(img => {
         const imgId = img.getAttribute('alt');
         if (imgId) {
           currentImageIds.add(imgId);
         }
       });
-
+      
       // Проверяем, были ли удалены какие-либо изображения
       // и обновляем состояние descriptionImages
       setDescriptionImages(prev => {
@@ -148,6 +152,16 @@ useEffect(() => {
           console.log('Обнаружены удаленные изображения через стандартный функционал');
           console.log('Было изображений:', prev.length);
           console.log('Осталось изображений:', imagesInEditor.length);
+          
+          // Очищаем данные в DOM о удаленных изображениях
+          prev
+            .filter(img => !currentImageIds.has(img.id))
+            .forEach(deletedImg => {
+              const wrapperElement = editor.view.dom.querySelector(`[data-image-id="${deletedImg.id}"]`);
+              if (wrapperElement) {
+                wrapperElement.remove();
+              }
+            });
         }
         return imagesInEditor;
       });
@@ -160,8 +174,12 @@ useEffect(() => {
       return;
     }
 
+    // Получаем текущие изображения из DOM
+    const imgElements = editor.view.dom.querySelectorAll('img[alt^="img-"]');
+    const currentImageCount = imgElements.length;
+    
     // Check if adding new images would exceed the limit
-    const newImageCount = descriptionImages.length + files.length;
+    const newImageCount = currentImageCount + files.length;
     if (newImageCount > 4) {
       alert('You can upload a maximum of 4 images');
       return;
@@ -408,7 +426,7 @@ useEffect(() => {
       }));
       return;
     }
-
+    
     // Если нажата та же категория, но это не пустая строка
     if (selectedMainCategory === categoryId) {
       setSelectedMainCategory(null);
@@ -464,13 +482,13 @@ useEffect(() => {
     content: '',
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-
+      
       // Обновляем описание в форме
       setFormData(prev => ({
         ...prev,
         description: html
       }));
-
+      
       // Проверяем содержимое после каждого обновления
       checkImagesInEditor();
     },
@@ -516,79 +534,50 @@ useEffect(() => {
     console.log('descriptionImages updated:', descriptionImages.length);
   }, [descriptionImages]);
 
-  // Комбинированный подход для отслеживания изменений изображений в редакторе
+  // Добавляем MutationObserver для отслеживания изменений DOM 
+  // и обновления счетчика при удалении изображений стандартными средствами мобильного
   useEffect(() => {
     if (editor && editor.view.dom) {
       const editorDom = editor.view.dom;
       
-      // Функция для проверки изображений по интервалу (для мобильных устройств)
-      const intervalCheck = setInterval(checkImagesInEditor, 1000);
-      
-      // Обработчик события фокуса (часто происходит после редактирования на мобильных)
-      const handleFocus = () => {
-        setTimeout(checkImagesInEditor, 50);
-      };
-      
-      // Обработчик события blur (когда пользователь убирает фокус с редактора)
-      const handleBlur = () => {
-        setTimeout(checkImagesInEditor, 50);
-      };
-      
-      // Обработчик для отслеживания изменений выделения текста (часто происходит при удалении на мобильных)
-      const handleSelectionChange = () => {
-        setTimeout(checkImagesInEditor, 50);
-      };
-      
-      // Обработчик для отслеживания нажатий клавиш (если пользователь удаляет с клавиатуры)
-      const handleKeyUp = (e: KeyboardEvent) => {
-        if (e.key === 'Delete' || e.key === 'Backspace') {
-          setTimeout(checkImagesInEditor, 50);
-        }
-      };
-      
-      // Обработчик для отслеживания касаний (специфично для мобильных)
-      const handleTouchEnd = () => {
-        setTimeout(checkImagesInEditor, 100);
-      };
-      
       // Создаем MutationObserver для отслеживания изменений в DOM редактора
       const observer = new MutationObserver((mutations) => {
+        // Если произошли изменения в DOM, проверяем изображения
         let needsCheck = false;
         
         mutations.forEach(mutation => {
-          if (mutation.type === 'childList') {
-            // Проверяем добавление или удаление узлов
-            needsCheck = true;
+          // Проверяем удаление узлов
+          if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
+            // Проверяем, содержали ли удаленные узлы изображения
+            Array.from(mutation.removedNodes).forEach(node => {
+              if (node instanceof HTMLElement) {
+                // Если удален div.image-wrapper или изображение непосредственно
+                if (node.classList?.contains('image-wrapper') || 
+                    node.tagName === 'IMG' ||
+                    node.querySelector('img')) {
+                  needsCheck = true;
+                }
+              }
+            });
           }
         });
         
         if (needsCheck) {
-          setTimeout(checkImagesInEditor, 50);
+          // Используем setTimeout, чтобы дать DOM полностью обновиться
+          setTimeout(checkImagesInEditor, 0);
         }
       });
       
       // Настраиваем наблюдение за изменениями в DOM редактора
       observer.observe(editorDom, {
-        childList: true,
-        subtree: true,
-        characterData: true
+        childList: true,     // наблюдаем за добавлением/удалением дочерних элементов
+        subtree: true,       // наблюдаем за всем деревом дочерних элементов
+        characterData: false, // не нужно следить за изменениями текста
+        attributes: false     // не нужно следить за изменениями атрибутов
       });
-      
-      // Добавляем все обработчики событий
-      editorDom.addEventListener('focus', handleFocus);
-      editorDom.addEventListener('blur', handleBlur);
-      document.addEventListener('selectionchange', handleSelectionChange);
-      editorDom.addEventListener('keyup', handleKeyUp);
-      editorDom.addEventListener('touchend', handleTouchEnd);
       
       return () => {
         observer.disconnect();
-        clearInterval(intervalCheck);
-        editorDom.removeEventListener('focus', handleFocus);
-        editorDom.removeEventListener('blur', handleBlur);
-        document.removeEventListener('selectionchange', handleSelectionChange);
-        editorDom.removeEventListener('keyup', handleKeyUp);
-        editorDom.removeEventListener('touchend', handleTouchEnd);
       };
     }
   }, [editor]);
@@ -724,88 +713,94 @@ useEffect(() => {
 
             {/* Description Editor */}
             <div className="relative" ref={editorRef}>
-              <div className="flex flex-wrap items-center gap-1 mb-2">
+              <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                <div className="flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     onClick={() => editor?.chain().focus().toggleBold().run()}
-                  className={`formatting-button p-2 rounded ${editor?.isActive('bold') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                    className={`formatting-button p-2 rounded ${editor?.isActive('bold') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
                   >
                     <Bold className="h-5 w-5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => editor?.chain().focus().toggleItalic().run()}
-                  className={`formatting-button p-2 rounded ${editor?.isActive('italic') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                    className={`formatting-button p-2 rounded ${editor?.isActive('italic') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
                   >
                     <Italic className="h-5 w-5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => editor?.chain().focus().toggleUnderline().run()}
-                  className={`formatting-button p-2 rounded ${editor?.isActive('underline') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                    className={`formatting-button p-2 rounded ${editor?.isActive('underline') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
                   >
                     <UnderlineIcon className="h-5 w-5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => editor?.chain().focus().toggleBulletList().run()}
-                  className={`formatting-button p-2 rounded ${editor?.isActive('bulletList') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
-                >
-                  <List className="h-5 w-5" />
-                </button>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById('description-image-upload')?.click()}
-                    className={`formatting-button p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors duration-200 ${
-                      descriptionImages.length >= 4 ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                    disabled={descriptionImages.length >= 4}
-                    title={descriptionImages.length >= 4 ? 'Maximum 4 images allowed' : 'Add images'}
+                    className={`formatting-button p-2 rounded ${editor?.isActive('bulletList') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
                   >
-                    <div className="flex items-center">
-                      <ImageIcon className="h-5 w-5" />
-                      <span className="text-xs ml-1 text-gray-500">({descriptionImages.length}/4)</span>
-                    </div>
+                    <List className="h-5 w-5" />
                   </button>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    id="description-image-upload"
-                    className="hidden"
-                    multiple
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files) {
-                        const remainingSlots = 4 - descriptionImages.length;
-                        if (files.length > remainingSlots) {
-                          alert(`You can only add ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'}`);
-                          return;
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('description-image-upload')?.click()}
+                      className={`formatting-button p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors duration-200 ${
+                        descriptionImages.length >= 4 ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                      disabled={descriptionImages.length >= 4}
+                      title={descriptionImages.length >= 4 ? 'Maximum 4 images allowed' : 'Add images'}
+                    >
+                      <div className="flex items-center">
+                        <ImageIcon className="h-5 w-5" />
+                        <span className="text-xs ml-1 text-gray-500">({descriptionImages.length}/4)</span>
+                      </div>
+                    </button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id="description-image-upload"
+                      className="hidden"
+                      multiple
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (files) {
+                          const remainingSlots = 4 - descriptionImages.length;
+                          if (files.length > remainingSlots) {
+                            alert(`You can only add ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'}`);
+                            return;
+                          }
+                          handleDescriptionImageUpload(files);
                         }
-                        handleDescriptionImageUpload(files);
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  </div>
                 </div>
-                {selectedImageId && (
-                  <button
-                    type="button"
-                    className="delete-image-button flex items-center justify-center px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
-                    onClick={() => {
-                      if (selectedImageId) {
-                        handleDeleteImage(selectedImageId);
-                        setSelectedImageId(null);
-                      }
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 6h18"></path>
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                    </svg>
-                  </button>
-                )}
+                
+                {/* Кнопка удаления в отдельном контейнере */}
+                <div className="ml-auto">
+                  {selectedImageId && (
+                    <button
+                      type="button"
+                      className="delete-image-button flex items-center justify-center px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
+                      onClick={() => {
+                        if (selectedImageId) {
+                          handleDeleteImage(selectedImageId);
+                          setSelectedImageId(null);
+                        }
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                      </svg>
+                    </button>
+                  )}
                 </div>
+              </div>
               <div className="bg-gray-800 rounded-lg p-4 min-h-[200px]">
                 <EditorContent editor={editor} />
               </div>
@@ -921,10 +916,11 @@ useEffect(() => {
                     )}
                   </div>
                 )}
-                {formData.description && editor && (
-                  <div className="text-gray-300 mt-2 description-preview prose prose-invert max-w-none">
-                    <div className="ProseMirror" dangerouslySetInnerHTML={{ __html: formData.description }} />
-                  </div>
+                {formData.description && (
+                  <div 
+                    className="text-gray-300 mt-2"
+                    dangerouslySetInnerHTML={{ __html: formData.description }}
+                  />
                 )}
                 {formData.subcategories.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -1050,117 +1046,21 @@ useEffect(() => {
             }
 
             .delete-image-button {
-              padding: 6px !important;
-              margin-top: 4px !important;
-              height: 36px !important;
+              padding: 4px !important;
+              margin: 4px 0 !important;
+              height: 32px !important;
               width: auto !important;
+              max-width: 32px !important;
               display: flex !important;
               align-items: center !important;
               justify-content: center !important;
+              overflow: hidden !important;
             }
 
             .delete-image-button svg {
-              width: 18px !important;
-              height: 18px !important;
+              width: 16px !important;
+              height: 16px !important;
             }
-          }
-
-          /* Стили для превью отформатированного текста */
-          .description-preview {
-            font-family: inherit;
-            white-space: normal;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            line-height: 1.5;
-          }
-
-          /* Используем стили prose из Tailwind для форматирования */
-          .description-preview.prose p {
-            margin-top: 1em;
-            margin-bottom: 1em;
-            display: block;
-          }
-
-          .description-preview strong, 
-          .description-preview b {
-            font-weight: bold;
-          }
-
-          .description-preview em, 
-          .description-preview i {
-            font-style: italic;
-          }
-
-          .description-preview u {
-            text-decoration: underline;
-          }
-
-          .description-preview ul {
-            list-style-type: disc;
-            padding-left: 1.5rem;
-            margin: 0.75rem 0;
-            display: block;
-          }
-
-          .description-preview li {
-            display: list-item;
-            margin-bottom: 0.5rem;
-          }
-
-          .description-preview img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 0.5rem;
-            margin: 1rem 0;
-            display: block;
-          }
-          
-          /* Наследование стилей от редактора */
-          .description-preview .ProseMirror-trailingBreak {
-            display: none;
-          }
-
-          .description-preview br {
-            content: "";
-            margin: 0;
-            display: block;
-            height: 1em;
-          }
-
-          .description-preview a {
-            color: #f97316; /* orange-500 */
-            text-decoration: none;
-          }
-
-          .description-preview a:hover {
-            text-decoration: underline;
-          }
-
-          .description-preview div.image-wrapper {
-            margin: 1rem 0;
-            display: block;
-          }
-          
-          /* Копирование стилей редактора для превью */
-          .description-preview .ProseMirror {
-            font-family: inherit;
-            color: inherit;
-            background: transparent;
-            border: none;
-            white-space: pre-wrap;
-          }
-          
-          .description-preview .ProseMirror p {
-            margin-top: 1em;
-            margin-bottom: 1em;
-          }
-          
-          .description-preview .ProseMirror:first-child p:first-child {
-            margin-top: 0;
-          }
-          
-          .description-preview .ProseMirror:last-child p:last-child {
-            margin-bottom: 0;
           }
         `}
       </style>
