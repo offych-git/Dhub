@@ -211,7 +211,11 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
 
           <div className="mt-1 flex items-center">
             <span className="text-orange-500 font-bold text-base">
-              ${deal.currentPrice.toFixed(2)}
+              {deal.currentPrice === 0 ? (
+                <span className="px-2.5 py-1 bg-orange-500/20 text-orange-500 rounded-md text-sm font-semibold">FREE</span>
+              ) : (
+                `$${deal.currentPrice.toFixed(2)}`
+              )}
             </span>
 
             {deal.originalPrice && (

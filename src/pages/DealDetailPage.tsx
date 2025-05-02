@@ -430,7 +430,11 @@ const DealDetailPage: React.FC = () => {
 
         <div className="mt-3 flex items-center">
           <span className="text-orange-500 font-bold text-2xl">
-            ${deal.currentPrice.toFixed(2)}
+            {deal.currentPrice === 0 ? (
+              <span className="px-4 py-1.5 bg-orange-500/20 text-orange-500 rounded-md text-xl font-semibold">FREE</span>
+            ) : (
+              `$${deal.currentPrice.toFixed(2)}`
+            )}
           </span>
 
           {deal.originalPrice && (
