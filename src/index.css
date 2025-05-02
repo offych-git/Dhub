@@ -21,7 +21,7 @@
   font-family: sans-serif !important;
   font-size: 14px !important;
   line-height: 1.5 !important;
-  color: #D1D5DB !important;
+  color: var(--description-text) !important;
 }
 
 /* Сохраняем оригинальное форматирование текста */
@@ -142,8 +142,8 @@
   --search-placeholder: #6B7280;
   --category-bg: #F3F4F6;
   --category-text: #111827;
-  --description-text: #4B5563;
-  --author-text: #4B5563;
+  --description-text: #000000;
+  --author-text: #000000;
   --dropdown-bg: #FFFFFF;
   --dropdown-hover: #F3F4F6;
   --dropdown-border: #E5E7EB;
