@@ -234,6 +234,22 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
           <div className="mt-0.5 text-gray-400 text-xs">
             {deal.store.name}
           </div>
+          {deal.description && (
+            <div 
+              className="mt-1 text-gray-400 text-xs description-preview line-clamp-2 overflow-hidden"
+              style={{ pointerEvents: 'none' }}
+            >
+              {deal.description
+                // Заменяем HTML теги на пустую строку
+                .replace(/<[^>]*>/g, '')
+                // Заменяем переносы строк на пробелы и добавляем пробелы после знаков препинания
+                .replace(/\n/g, ' ')
+                .replace(/([.,!?;:])/g, '$1 ')
+                // Убираем двойные пробелы
+                .replace(/\s{2,}/g, ' ')
+              }
+            </div>
+          )}
           {isExpired && (
             <div className="flex items-center bg-red-500/10 px-2 py-1 rounded-md text-red-500 font-medium mt-1">
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

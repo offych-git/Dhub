@@ -13,7 +13,6 @@ const DealDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [showFullDescription, setShowFullDescription] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<any[]>([]);
   const [commentCount, setCommentCount] = useState(0);
@@ -495,30 +494,37 @@ const DealDetailPage: React.FC = () => {
 
         <div className="mt-6">
           <h3 className="text-white font-medium mb-2">Description</h3>
-          <div 
-            className={`description-text ${!showFullDescription ? 'line-clamp-3' : ''}`}
-            dangerouslySetInnerHTML={{ __html: deal.description }}
+          <pre 
+            className="description-text font-sans text-sm bg-transparent overflow-visible whitespace-pre-wrap border-0 p-0 m-0"
+            dangerouslySetInnerHTML={{ 
+              __html: deal.description
+                // Сначала обрабатываем URL в тексте с улучшенным регулярным выражением
+                .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
+                  // Проверяем, заканчивается ли URL специальным символом
+                  const lastChar = match.charAt(match.length - 1);
+                  // Проверяем специальные символы на конце URL
+                  if ([',', '.', ':', ';', '!', '?', ')', ']', '}'].includes(lastChar)) {
+                    // Исключаем последний символ из ссылки (href и текста) и добавляем его после тега </a>
+                    return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
+                  }
+                  // Если URL не заканчивается специальным символом из списка, создаем ссылку как обычно
+                  return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
+                })
+                // Обрабатываем двойные переносы строк (пустые строки)
+                .replace(/\n\n/g, '<br><br>')
+                // Затем обрабатываем обычные переносы строк
+                .replace(/\n/g, '<br>')
+            }}
             ref={(element) => {
               if (element) {
                 const links = element.querySelectorAll('a');
                 links.forEach(link => {
                   link.setAttribute('target', '_blank');
                   link.setAttribute('rel', 'noopener noreferrer');
-                  if (!link.classList.contains('text-orange-500')) {
-                    link.classList.add('text-orange-500', 'hover:underline');
-                  }
                 });
               }
             }}
           />
-          {deal.description && deal.description.length > 150 && (
-            <button 
-              className="text-orange-500 mt-1"
-              onClick={() => setShowFullDescription(!showFullDescription)}
-            >
-              {showFullDescription ? 'Show less' : 'Show more'}
-            </button>
-          )}
         </div>
 
         <div className="mt-6">

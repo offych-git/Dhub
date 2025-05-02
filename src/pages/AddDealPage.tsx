@@ -136,14 +136,14 @@ useEffect(() => {
       // Получаем все существующие изображения в DOM
       const imgElements = editor.view.dom.querySelectorAll('img[alt^="img-"]');
       const currentImageIds = new Set<string>();
-      
+
       imgElements.forEach(img => {
         const imgId = img.getAttribute('alt');
         if (imgId) {
           currentImageIds.add(imgId);
         }
       });
-      
+
       // Проверяем, были ли удалены какие-либо изображения
       // и обновляем состояние descriptionImages
       setDescriptionImages(prev => {
@@ -152,7 +152,7 @@ useEffect(() => {
           console.log('Обнаружены удаленные изображения через стандартный функционал');
           console.log('Было изображений:', prev.length);
           console.log('Осталось изображений:', imagesInEditor.length);
-          
+
           // Очищаем данные в DOM о удаленных изображениях
           prev
             .filter(img => !currentImageIds.has(img.id))
@@ -177,7 +177,7 @@ useEffect(() => {
     // Получаем текущие изображения из DOM
     const imgElements = editor.view.dom.querySelectorAll('img[alt^="img-"]');
     const currentImageCount = imgElements.length;
-    
+
     // Check if adding new images would exceed the limit
     const newImageCount = currentImageCount + files.length;
     if (newImageCount > 4) {
@@ -426,7 +426,7 @@ useEffect(() => {
       }));
       return;
     }
-    
+
     // Если нажата та же категория, но это не пустая строка
     if (selectedMainCategory === categoryId) {
       setSelectedMainCategory(null);
@@ -470,6 +470,17 @@ useEffect(() => {
             class: 'list-disc pl-4',
           },
         },
+        paragraph: {
+          HTMLAttributes: {
+            class: 'mb-3',
+          },
+        },
+        hardBreak: {
+          keepMarks: true,
+          HTMLAttributes: {
+            class: 'inline-block',
+          },
+        },
       }),
       Underline,
       Image.configure({
@@ -480,22 +491,36 @@ useEffect(() => {
       }),
     ],
     content: '',
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      
-      // Обновляем описание в форме
-      setFormData(prev => ({
-        ...prev,
-        description: html
-      }));
-      
-      // Проверяем содержимое после каждого обновления
-      checkImagesInEditor();
+    parseOptions: {
+      preserveWhitespace: 'full',
     },
     editorProps: {
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-[200px]',
       },
+      handleKeyDown: (view, event) => {
+        // Обработка клавиши Enter
+        if (event.key === 'Enter') {
+          // Всегда вставляем <br> при нажатии Enter для сохранения форматирования
+          view.dispatch(view.state.tr.replaceSelectionWith(
+            view.state.schema.nodes.hardBreak.create()
+          ).scrollIntoView());
+          return true;
+        }
+        return false;
+      },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+
+      // Обновляем описание в форме
+      setFormData(prev => ({
+        ...prev,
+        description: html
+      }));
+
+      // Проверяем содержимое после каждого обновления
+      checkImagesInEditor();
     },
   });
 
@@ -539,12 +564,12 @@ useEffect(() => {
   useEffect(() => {
     if (editor && editor.view.dom) {
       const editorDom = editor.view.dom;
-      
+
       // Создаем MutationObserver для отслеживания изменений в DOM редактора
       const observer = new MutationObserver((mutations) => {
         // Если произошли изменения в DOM, проверяем изображения
         let needsCheck = false;
-        
+
         mutations.forEach(mutation => {
           // Проверяем удаление узлов
           if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
@@ -561,13 +586,13 @@ useEffect(() => {
             });
           }
         });
-        
+
         if (needsCheck) {
           // Используем setTimeout, чтобы дать DOM полностью обновиться
           setTimeout(checkImagesInEditor, 0);
         }
       });
-      
+
       // Настраиваем наблюдение за изменениями в DOM редактора
       observer.observe(editorDom, {
         childList: true,     // наблюдаем за добавлением/удалением дочерних элементов
@@ -575,7 +600,7 @@ useEffect(() => {
         characterData: false, // не нужно следить за изменениями текста
         attributes: false     // не нужно следить за изменениями атрибутов
       });
-      
+
       return () => {
         observer.disconnect();
       };
@@ -778,7 +803,7 @@ useEffect(() => {
                     />
                   </div>
                 </div>
-                
+
                 {/* Кнопка удаления в отдельном контейнере */}
                 <div className="ml-auto">
                   {selectedImageId && (
@@ -852,9 +877,9 @@ useEffect(() => {
                   className="w-full bg-gray-800 text-white rounded-md px-4 py-3"
                   value={formData.expiryDate}
                   min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => {
+                  onChange={(e) =>{
                     const selectedDate = new Date(e.target.value);
-                    const today = new Date();
+                                        const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
                     if (selectedDate < today) {
@@ -897,44 +922,28 @@ useEffect(() => {
             {/* Preview */}
             <div className="bg-gray-800 rounded-md p-4">
               <h3 className="text-white font-medium mb-2">Preview</h3>
-              <div className="bg-gray-900 rounded-md p-4">
-                {formData.title && (
-                  <h4 className="text-white font-medium">{formData.title}</h4>
-                )}
-                {formData.currentPrice && (
-                  <div className="text-orange-500 font-bold mt-2">
-                    ${Number(formData.currentPrice).toFixed(2)}
-                    {formData.originalPrice && (
-                      <span className="text-gray-400 line-through ml-2">
-                        ${Number(formData.originalPrice).toFixed(2)}
-                      </span>
-                    )}
-                    {calculateDiscount() !== null && (
-                      <span className="text-green-500 ml-2">
-                        (-{calculateDiscount()}%)
-                      </span>
-                    )}
-                  </div>
-                )}
-                {formData.description && (
-                  <div 
-                    className="text-gray-300 mt-2"
-                    dangerouslySetInnerHTML={{ __html: formData.description }}
-                  />
-                )}
-                {formData.subcategories.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.subcategories.map((sub: string) => {
-                      const subcategory = selectedCategory?.subcategories?.find((s: Subcategory) => s.id === sub);
-                      return subcategory ? (
-                        <span key={sub} className="bg-gray-800 text-gray-300 px-2 py-1 rounded-md text-sm">
-                          {language === 'ru' ? subcategory.name : t(subcategory.id)}
-                        </span>
-                      ) : null;
-                    })}
-                  </div>
-                )}
-              </div>
+              <pre 
+                className="bg-gray-900 rounded-md p-4 whitespace-pre-wrap font-sans text-sm description-preview"
+                dangerouslySetInnerHTML={{ 
+                  __html: formData.description
+                    // Сначала обрабатываем URL в тексте с улучшенным регулярным выражением
+                    .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
+                      // Проверяем, заканчивается ли URL специальным символом
+                      const lastChar = match.charAt(match.length - 1);
+                      // Проверяем специальные символы на конце URL
+                      if ([',', '.', ':', ';', '!', '?', ')', ']', '}'].includes(lastChar)) {
+                        return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
+                      }
+                      return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
+                    })
+                    // Обработка пустых строк - все последовательные переносы строк в HTML
+                    .replace(/\n\n/g, '<br><br>')
+                    // Затем обрабатываем обычные переносы строк
+                    .replace(/\n/g, '<br>')
+                    .replace(/class="[^"]+"/g, '') // Remove any class attributes that might be in the text
+                    .replace(/class='[^']+'/g, '') // Remove class with single quotes too
+                }}
+              />
               <button
                 type="submit"
                 disabled={loading || !isValid}
@@ -1021,6 +1030,19 @@ useEffect(() => {
             width: 20px;
             height: 20px;
             color: white;
+          }
+
+          .description-preview {
+            white-space: pre-wrap;
+          }
+
+          .description-preview p {
+            margin-bottom: 0.75rem;
+          }
+
+          .description-preview a {
+            color: #f97316;
+            text-decoration: underline;
           }
 
           /* Mobile-friendly formatting buttons */

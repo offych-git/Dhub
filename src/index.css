@@ -2,6 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ensure text displays properly in preview */
+.description-preview {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  color: #fff;
+}
+
+.description-text {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  color: #fff;
+}
+
+/* Унифицированные стили для описаний сделок */
+.description-text, .description-preview {
+  white-space: pre-line !important;
+  font-family: sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  color: #D1D5DB !important;
+}
+
+/* Сохраняем оригинальное форматирование текста */
+.description-text pre, .description-preview pre {
+  font-family: sans-serif !important;
+  white-space: pre !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Стили для переносов строк */
+.description-text br, .description-preview br {
+  display: block !important;
+  content: '' !important;
+  margin-top: 0.75em !important; 
+}
+
+/* Пустые строки между блоками текста */
+.description-text br + br, .description-preview br + br {
+  display: block !important;
+  content: '' !important;
+  margin-top: 1.5em !important;
+}
+
+/* Дополнительная поддержка для пустых строк */
+.description-text p:empty, .description-preview p:empty {
+  height: 1em !important;
+  display: block !important;
+  margin: 0.75em 0 !important;
+}
+
+/* Стиль для новых блоков текста - без символа '>' */
+.description-text > br + br::after, 
+.description-preview > br + br::after {
+  content: '' !important;
+  display: inline-block !important;
+  margin-right: 0 !important;
+}
+
+.description-text p, .description-preview p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Стили для URL в тексте */
+.description-text a, .description-preview a {
+  display: inline-block !important;
+  color: #f97316 !important; /* Оранжевый цвет для ссылок */
+  text-decoration: underline !important;
+  margin-bottom: 0 !important;
+  word-break: break-all !important;
+}
+
+/* Правильное форматирование текста */
+.description-text, .description-preview {
+  white-space: pre-line !important;
+  line-height: 1.5 !important;
+}
+
+/* Улучшенные отступы между параграфами */
+.description-text br + br, .description-preview br + br {
+  display: block !important;
+  content: '' !important;
+  margin-top: 0.75em !important;
+}
+
+/* Убираем лишние отступы после ссылок */
+.description-text a:last-child, .description-preview a:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Стили для превью описания в карточках сделок */
+.description-preview {
+  white-space: pre-wrap;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  overflow: hidden !important;
+}
+
 :root {
   --bg-primary: #111827;
   --bg-secondary: #1F2937;
