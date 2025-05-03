@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Deal } from '../../types';
-import { ArrowUp, ArrowDown, MessageSquare, ExternalLink, Heart, Share2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, MessageSquare, ExternalLink, Heart, Share2, Edit2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import AdminActions from '../admin/AdminActions';
@@ -311,15 +311,33 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
                 <span className="text-xs mr-1">View</span>
                 <ExternalLink className="h-3 w-3" />
               </button>
-              {user && (user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && (
-                <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
-                  <AdminActions
-                    type="deal"
-                    id={deal.id}
-                    userId={deal.postedBy.id}
-                    onAction={onDelete || (() => {})}
-                  />
-                </div>
+              {user && (
+                <>
+                  {user.id === deal.postedBy.id && 
+                    new Date().getTime() - new Date(deal.createdAt).getTime() < 24 * 60 * 60 * 1000 && (
+                      <div
+                        className="ml-3 text-orange-500 flex items-center cursor-pointer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.location.href = `/deals/${deal.id}/edit`;
+                        }}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </div>
+                    )
+                  }
+                  {(user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && (
+                    <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
+                      <AdminActions
+                        type="deal"
+                        id={deal.id}
+                        userId={deal.postedBy.id}
+                        onAction={onDelete || (() => {})}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

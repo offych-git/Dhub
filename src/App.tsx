@@ -22,6 +22,9 @@ import NotificationSettingsPage from './pages/NotificationSettingsPage';
 import PrivateRoute from './components/PrivateRoute';
 import AddDealPageNew from './pages/AddDealPageNew'; // Import the new component
 
+import EditDealPage from './pages/EditDealPage';
+import EditPromoPage from './pages/EditPromoPage';
+
 function App() {
   return (
     <Router>
@@ -39,9 +42,11 @@ function App() {
                 <Route path="/deals/:id" element={<DealDetailPage />} />
                 <Route path="/deals/new" element={<PrivateRoute><AddDealPage /></PrivateRoute>} />
                 <Route path="/deals/new-carousel" element={<PrivateRoute><AddDealPageNew /></PrivateRoute>} /> {/* Added new route */}
+                <Route path="/deals/:id/edit" element={<PrivateRoute><EditDealPage /></PrivateRoute>} />
                 <Route path="/promos/new" element={<PrivateRoute><AddPromoPage /></PrivateRoute>} />
                 <Route path="/promos" element={<PromosPage />} />
                 <Route path="/promos/:id" element={<PrivateRoute><PromoDetailPage /></PrivateRoute>} />
+                <Route path="/promos/:id/edit" element={<PrivateRoute><EditPromoPage /></PrivateRoute>} />
                 <Route path="/discussions" element={<PrivateRoute><DiscussionsPage /></PrivateRoute>} />
                 <Route path="/categories" element={<PrivateRoute><CategoriesPage /></PrivateRoute>} />
                 <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />

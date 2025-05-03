@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ChevronDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2, ExternalLink } from 'lucide-react';
+import { ChevronDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2, ExternalLink, Edit2 } from 'lucide-react'; // Added Edit2 import
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/shared/FilterBar';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
@@ -57,13 +57,13 @@ const PromosPage: React.FC = () => {
 
   const loadFavorites = async () => {
     if (!user) return;
-    
+
     try {
       const { data } = await supabase
         .from('promo_favorites')
         .select('promo_id')
         .eq('user_id', user.id);
-      
+
       const favMap: Record<string, boolean> = {};
       if (data) {
         data.forEach(fav => {
@@ -261,7 +261,7 @@ const PromosPage: React.FC = () => {
           .delete()
           .eq('promo_id', promoId)
           .eq('user_id', user.id);
-        
+
         setFavorites(prev => {
           const newFavorites = { ...prev };
           delete newFavorites[promoId];
@@ -275,7 +275,7 @@ const PromosPage: React.FC = () => {
             promo_id: promoId,
             user_id: user.id
           });
-        
+
         setFavorites(prev => ({
           ...prev,
           [promoId]: true
@@ -483,6 +483,17 @@ const PromosPage: React.FC = () => {
                       >
                         <Share2 className="h-4 w-4" />
                       </button>
+                      {user && user.id === promo.user.id && 
+                        new Date().getTime() - new Date(promo.created_at).getTime() < 24 * 60 * 60 * 1000 && (
+                          <Link
+                            to={`/promos/${promo.id}/edit`}
+                            className="ml-3 text-orange-500 flex items-center"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Link>
+                        )
+                      }
                       <button className="ml-3 text-orange-500 flex items-center">
                         <span className="text-xs mr-1">View</span>
                         <ExternalLink className="h-3 w-3" />

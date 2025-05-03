@@ -184,11 +184,18 @@ const DealsPage: React.FC = () => {
       deal.is_hot || deal.positiveVotes >= DEAL_SETTINGS.hotThreshold
     );
 
-    // Сортируем по времени попадания в HOT
-    displayDeals = [
-      ...mockDeals,
-      ...allHotDeals
-    ].sort((a, b) => {
+    // Сортируем по времени попадания в HOT и убираем дубликаты по ID
+    let combinedDeals = [...mockDeals, ...allHotDeals];
+    
+    // Удаляем дубликаты по ID
+    const uniqueIds = new Set();
+    displayDeals = combinedDeals.filter(deal => {
+      if (uniqueIds.has(deal.id)) {
+        return false;
+      }
+      uniqueIds.add(deal.id);
+      return true;
+    }).sort((a, b) => {
       // Для сделок с голосами используем текущее время как hot_at
       const getHotTime = (deal: Deal) => {
         if (deal.hot_at) return new Date(deal.hot_at);
@@ -211,7 +218,7 @@ const DealsPage: React.FC = () => {
       const dateB = b.createdAt || new Date(0);
       return dateB.getTime() - dateA.getTime();
     });
-  } else if (activeTab === 'new') {
+  } else if (activeTab === 'all') {
     // Combine and sort all deals by date (newest first)
     displayDeals = [
       ...mockDeals,
@@ -245,6 +252,18 @@ const DealsPage: React.FC = () => {
   // Apply store filter
   if (selectedStores.length > 0) {
     displayDeals = displayDeals.filter(deal => selectedStores.includes(deal.store.id));
+  }
+
+  // Удаляем дубликаты по ID только если это не было сделано ранее в коде
+  if (activeTab !== 'hot') {
+    const uniqueIds = new Set();
+    displayDeals = displayDeals.filter(deal => {
+      if (uniqueIds.has(deal.id)) {
+        return false;
+      }
+      uniqueIds.add(deal.id);
+      return true;
+    });
   }
 
   return (
