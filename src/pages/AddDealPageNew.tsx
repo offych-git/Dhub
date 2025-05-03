@@ -111,7 +111,8 @@ const AddDealPageNew: React.FC = () => {
       return false;
     }
 
-    const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+    // Более гибкая проверка URL, которая принимает query-параметры и фрагменты
+    const urlRegex = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?\.)+[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\/[^\s]*)?$/;
     if (!urlRegex.test(formData.dealUrl)) {
       setError('Please enter a valid URL starting with http:// or https://');
       return false;
@@ -274,14 +275,23 @@ const AddDealPageNew: React.FC = () => {
       // В новой системе, первое изображение в массиве всегда главное
       const mainImageUrl = dealImages[0].publicUrl;
 
-      // В новой версии мы будем использовать только одно изображение (mainImageUrl)
-      // и не будем использовать additional_images, так как это поле отсутствует в схеме
+      // Добавим все URL изображений в описание в специальном JSON-формате
+      // Это позволит нам хранить дополнительные изображения без изменения структуры БД
+      let enhancedDescription = formData.description;
+      
+      // Если есть дополнительные изображения, добавим их в описание в формате JSON
+      if (dealImages.length > 1) {
+        const allImagesJson = JSON.stringify(dealImages.map(img => img.publicUrl));
+        // Добавляем JSON с изображениями в конец описания в специальном формате
+        // который можно будет распознать в DealDetailPage
+        enhancedDescription += `\n\n<!-- DEAL_IMAGES: ${allImagesJson} -->`;
+      }
 
       const { data: deal, error: dealError } = await supabase
         .from('deals')
         .insert({
           title: formData.title,
-          description: formData.description,
+          description: enhancedDescription,
           current_price: Number(formData.currentPrice),
           original_price: formData.originalPrice ? Number(formData.originalPrice) : null,
           store_id: selectedStoreId,
@@ -459,7 +469,9 @@ const AddDealPageNew: React.FC = () => {
                             e.dataTransfer.setData('text/plain', index.toString());
                             // Визуальный эффект при перетаскивании
                             setTimeout(() => {
-                              e.currentTarget.style.opacity = '0.5';
+                              if (e.currentTarget) {
+                                e.currentTarget.style.opacity = '0.5';
+                              }
                             }, 0);
                           }}
                           onDragOver={(e) => {
@@ -493,7 +505,9 @@ const AddDealPageNew: React.FC = () => {
                           }}
                           onDragEnd={(e) => {
                             // Восстанавливаем прозрачность
-                            e.currentTarget.style.opacity = '1';
+                            if (e.currentTarget) {
+                              e.currentTarget.style.opacity = '1';
+                            }
                           }}
                         >
                           <img
@@ -586,7 +600,9 @@ const AddDealPageNew: React.FC = () => {
                 </button>
               </div>
               <div className="bg-gray-800 rounded-lg p-4 min-h-[200px]">
-                <label className="block text-gray-400 mb-2">Description *</label>
+                {!editor?.getText() && (
+                  <div className="absolute text-gray-500 pointer-events-none p-1">Description *</div>
+                )}
                 <EditorContent editor={editor} />
               </div>
             </div>

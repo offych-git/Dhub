@@ -33,11 +33,29 @@ const DealDetailPage: React.FC = () => {
   // Получение списка изображений для карусели
   const dealImages = useMemo(() => {
     if (!deal) return [];
+    
     // Основное изображение всегда первое
     const images = [deal.image];
-    // Добавляем дополнительные изображения, если они есть
-    if (deal.additional_images && Array.isArray(deal.additional_images)) {
-      images.push(...deal.additional_images);
+    
+    // Проверяем, есть ли в описании JSON с дополнительными изображениями
+    if (deal.description) {
+      const match = deal.description.match(/<!-- DEAL_IMAGES: (.*?) -->/);
+      if (match && match[1]) {
+        try {
+          // Пытаемся распарсить JSON с изображениями
+          const allImages = JSON.parse(match[1]);
+          
+          // Если первое изображение в JSON совпадает с основным, не дублируем его
+          if (allImages[0] === deal.image) {
+            images.push(...allImages.slice(1));
+          } else {
+            // Если не совпадает (это может быть из-за старых данных), добавляем все кроме первого
+            images.push(...allImages.slice(1));
+          }
+        } catch (e) {
+          console.error('Ошибка при разборе JSON с изображениями:', e);
+        }
+      }
     }
     
     // Отладочная информация
@@ -63,14 +81,21 @@ const DealDetailPage: React.FC = () => {
     );
   };
   
-  // Обработчики свайпов
+  // Обработчики свайпов с улучшенной реактивностью
   const handleTouchStart = (e: React.TouchEvent) => {
+    // Сохраняем начальную позицию касания
     setTouchStart(e.targetTouches[0].clientX);
     setTouchEnd(null); // Сбрасываем конечную позицию при новом касании
   };
   
   const handleTouchMove = (e: React.TouchEvent) => {
+    // Обновляем позицию при движении пальца
     setTouchEnd(e.targetTouches[0].clientX);
+    
+    // Предотвращаем скролл страницы при горизонтальном свайпе
+    if (Math.abs((touchStart || 0) - e.targetTouches[0].clientX) > 10) {
+      e.preventDefault();
+    }
   };
   
   const handleTouchEnd = () => {
@@ -467,9 +492,86 @@ const DealDetailPage: React.FC = () => {
         <img 
           src={getValidImageUrl(dealImages[currentImageIndex] || deal.image)} 
           alt={deal.title} 
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain cursor-pointer"
           onError={handleImageError}
           draggable="false"
+          onClick={(e) => {
+            // Находим текущий элемент img
+            const img = e.target as HTMLImageElement;
+            
+            // Проверяем, есть ли уже модальное окно для этого изображения
+            const existingModal = document.querySelector('.fullscreen-image-modal');
+            if (existingModal) {
+              // Если модальное окно уже открыто, закрываем его
+              document.body.removeChild(existingModal);
+              return;
+            }
+            
+            // Создаем модальное окно для просмотра изображения в полном размере
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 fullscreen-image-modal';
+            
+            // При клике на фон закрываем модальное окно
+            modal.addEventListener('click', (e) => {
+              if (e.target === modal) {
+                document.body.removeChild(modal);
+              }
+            });
+
+            const content = document.createElement('div');
+            content.className = 'relative max-w-4xl max-h-[90vh]';
+            
+            const fullImg = document.createElement('img');
+            fullImg.src = getValidImageUrl(dealImages[currentImageIndex] || deal.image);
+            fullImg.className = 'max-w-full max-h-[90vh] object-contain cursor-pointer';
+            fullImg.onError = handleImageError;
+            
+            // При клике на изображение закрываем модальное окно
+            fullImg.addEventListener('click', () => {
+              document.body.removeChild(modal);
+            });
+
+            // Добавляем кнопки навигации при наличии нескольких изображений
+            if (dealImages.length > 1) {
+              // Создаем контейнер для навигационных точек
+              const navContainer = document.createElement('div');
+              navContainer.className = 'absolute bottom-4 left-0 right-0 flex justify-center space-x-2';
+              
+              // Создаем точки для каждого изображения
+              dealImages.forEach((_, index) => {
+                const dot = document.createElement('button');
+                dot.className = `h-2 w-2 rounded-full ${
+                  index === currentImageIndex ? 'bg-orange-500' : 'bg-gray-400'
+                }`;
+                
+                // При клике на точку меняем изображение
+                dot.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex(index);
+                  fullImg.src = getValidImageUrl(dealImages[index]);
+                  
+                  // Обновляем активную точку
+                  const dots = navContainer.querySelectorAll('button');
+                  dots.forEach((d, i) => {
+                    d.className = `h-2 w-2 rounded-full ${
+                      i === index ? 'bg-orange-500' : 'bg-gray-400'
+                    }`;
+                  });
+                });
+                
+                navContainer.appendChild(dot);
+              });
+              
+              content.appendChild(navContainer);
+              
+              // Стрелки навигации не добавляем в режиме увеличенного изображения
+              // Навигация происходит свайпом или нажатием на точки
+            }
+
+            content.appendChild(fullImg);
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+          }}
         />
         
         {dealImages.length > 1 && (
@@ -622,7 +724,9 @@ const DealDetailPage: React.FC = () => {
             className="description-text font-sans text-sm bg-transparent overflow-visible whitespace-pre-wrap border-0 p-0 m-0"
             dangerouslySetInnerHTML={{ 
               __html: deal.description
-                // Сначала обрабатываем URL в тексте с улучшенным регулярным выражением
+                // Сначала удаляем технический блок с JSON изображений
+                .replace(/<!-- DEAL_IMAGES: .*? -->/g, '')
+                // Обрабатываем URL в тексте с улучшенным регулярным выражением
                 .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
                   // Проверяем, заканчивается ли URL специальным символом
                   const lastChar = match.charAt(match.length - 1);
@@ -651,53 +755,56 @@ const DealDetailPage: React.FC = () => {
           />
         </div>
 
-        <div className="mt-6">
-          <h3 className="text-white font-medium mb-2">Price History</h3>
-          {priceHistory.length > 0 ? (
-            <div className="bg-gray-800 rounded-md p-3 h-32">
-              <svg width="100%" height="100%" viewBox="0 0 300 100" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="rgba(249, 115, 22, 0.5)" />
-                    <stop offset="100%" stopColor="rgba(249, 115, 22, 0)" />
-                  </linearGradient>
-                </defs>
+        {/* Не показываем блок Price History если товар бесплатный */}
+        {deal.currentPrice > 0 && (
+          <div className="mt-6">
+            <h3 className="text-white font-medium mb-2">Price History</h3>
+            {priceHistory.length > 0 ? (
+              <div className="bg-gray-800 rounded-md p-3 h-32">
+                <svg width="100%" height="100%" viewBox="0 0 300 100" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="rgba(249, 115, 22, 0.5)" />
+                      <stop offset="100%" stopColor="rgba(249, 115, 22, 0)" />
+                    </linearGradient>
+                  </defs>
 
-                <path
-                  d={`
-                    M0,${100 - (priceHistory[0].price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80)}
-                    ${priceHistory.map((point, i) => {
-                      const x = (i / (priceHistory.length - 1)) * 300;
-                      const y = 100 - (point.price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80);
-                      return `L${x},${y}`;
-                    }).join(' ')}
-                    L300,100 L0,100 Z
-                  `}
-                  fill="url(#chartGradient)"
-                  stroke="none"
-                />
+                  <path
+                    d={`
+                      M0,${100 - (priceHistory[0].price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80)}
+                      ${priceHistory.map((point, i) => {
+                        const x = (i / (priceHistory.length - 1)) * 300;
+                        const y = 100 - (point.price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80);
+                        return `L${x},${y}`;
+                      }).join(' ')}
+                      L300,100 L0,100 Z
+                    `}
+                    fill="url(#chartGradient)"
+                    stroke="none"
+                  />
 
-                <path
-                  d={`
-                    M0,${100 - (priceHistory[0].price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80)}
-                    ${priceHistory.map((point, i) => {
-                      const x = (i / (priceHistory.length - 1)) * 300;
-                      const y = 100 - (point.price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80);
-                      return `L${x},${y}`;
-                    }).join(' ')}
-                  `}
-                  stroke="#F97316"
-                  strokeWidth="2"
-                  fill="none"
-                />
-              </svg>
-            </div>
-          ) : (
-            <div className="bg-gray-800 rounded-md p-4 text-gray-400 text-center">
-              No price history available
-            </div>
-          )}
-        </div>
+                  <path
+                    d={`
+                      M0,${100 - (priceHistory[0].price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80)}
+                      ${priceHistory.map((point, i) => {
+                        const x = (i / (priceHistory.length - 1)) * 300;
+                        const y = 100 - (point.price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80);
+                        return `L${x},${y}`;
+                      }).join(' ')}
+                    `}
+                    stroke="#F97316"
+                    strokeWidth="2"
+                    fill="none"
+                  />
+                </svg>
+              </div>
+            ) : (
+              <div className="bg-gray-800 rounded-md p-4 text-gray-400 text-center">
+                No price history available
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-6">
           <div className="flex items-center justify-between mb-4">
