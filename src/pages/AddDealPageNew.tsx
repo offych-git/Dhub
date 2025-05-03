@@ -278,7 +278,7 @@ const AddDealPageNew: React.FC = () => {
       // Добавим все URL изображений в описание в специальном JSON-формате
       // Это позволит нам хранить дополнительные изображения без изменения структуры БД
       let enhancedDescription = formData.description;
-      
+
       // Если есть дополнительные изображения, добавим их в описание в формате JSON
       if (dealImages.length > 1) {
         const allImagesJson = JSON.stringify(dealImages.map(img => img.publicUrl));
@@ -441,100 +441,124 @@ const AddDealPageNew: React.FC = () => {
               {dealImages.length > 0 && (
                 <div className="mb-4">
                   {/* Отображение главного изображения */}
-                  <div className="relative h-48 bg-gray-800 rounded-lg overflow-hidden">
+                  <div className="relative h-48 bg-gray-800 rounded-lg overflow-hidden main-image-container">
                     <img 
+                      key={dealImages[0]?.id} 
                       src={dealImages[0]?.publicUrl} 
                       alt="Main deal image"
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain main-image"
                     />
 
                     {dealImages.length > 1 && (
-                      <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                      <div className="absolute bottom-2 left-2 bg-green-500/80 text-white font-semibold text-xs px-2 py-1 rounded-md">
                         Главное изображение
                       </div>
                     )}
+                    
+                    <div className="absolute top-2 right-2 bg-gray-900/70 text-white font-medium text-xs px-2 py-1 rounded-md">
+                      {`${dealImages.length}/4 изображений`}
+                    </div>
                   </div>
 
-                  {/* Миниатюры с возможностью перетаскивания */}
+                  {/* Миниатюры с улучшенным интерфейсом управления порядком */}
                   {dealImages.length > 1 && (
-                    <div className="flex overflow-x-auto space-x-2 py-2 mt-2">
-                      {dealImages.map((image, index) => (
-                        <div
-                          key={image.id}
-                          className={`relative flex-shrink-0 w-16 h-16 cursor-move ${
-                            index === 0 ? 'ring-2 ring-green-500' : ''
-                          }`}
-                          draggable={true}
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('text/plain', index.toString());
-                            // Визуальный эффект при перетаскивании
-                            setTimeout(() => {
-                              if (e.currentTarget) {
-                                e.currentTarget.style.opacity = '0.5';
-                              }
-                            }, 0);
-                          }}
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = 'move';
-                          }}
-                          onDragEnter={(e) => {
-                            e.preventDefault();
-                            e.currentTarget.classList.add('bg-gray-700');
-                          }}
-                          onDragLeave={(e) => {
-                            e.preventDefault();
-                            e.currentTarget.classList.remove('bg-gray-700');
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            e.currentTarget.classList.remove('bg-gray-700');
-
-                            const dragIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                            const dropIndex = index;
-
-                            if (dragIndex === dropIndex) return;
-
-                            // Переставляем изображения
-                            const newImages = [...dealImages];
-                            const [removed] = newImages.splice(dragIndex, 1);
-                            newImages.splice(dropIndex, 0, removed);
-
-                            setDealImages(newImages);
-                            setMainImageIndex(0); // Первое изображение всегда главное
-                          }}
-                          onDragEnd={(e) => {
-                            // Восстанавливаем прозрачность
-                            if (e.currentTarget) {
-                              e.currentTarget.style.opacity = '1';
-                            }
-                          }}
-                        >
-                          <img
-                            src={image.publicUrl}
-                            alt={`Thumbnail ${index + 1}`}
-                            className="w-full h-full object-cover rounded-md"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(image.id)}
-                            className="absolute top-0 right-0 p-1 bg-red-500 rounded-full scale-75"
+                    <div className="mt-4">
+                      <div className="text-gray-400 text-sm mb-2">Измените порядок изображений (первое — главное):</div>
+                      <div className="grid grid-cols-4 gap-3">
+                        {dealImages.map((image, index) => (
+                          <div
+                            key={image.id}
+                            className={`relative rounded-lg overflow-hidden border-2 ${
+                              index === 0 ? 'border-green-500 ring-2 ring-green-500' : 'border-gray-700'
+                            }`}
                           >
-                            <X className="h-3 w-3 text-white" />
-                          </button>
-                          {index === 0 && (
-                            <div className="absolute top-0 left-0 bg-green-500 text-white text-xs px-1 py-0.5 rounded-sm">
-                              1
+                            {/* Кнопка удаления в правом верхнем углу */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveImage(image.id);
+                              }}
+                              className="absolute top-0 right-0 z-20 bg-red-500 hover:bg-red-600 text-white rounded-bl-md p-1"
+                              aria-label="Remove image"
+                              style={{ fontSize: 0 }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                              </svg>
+                            </button>
+                            <img
+                              src={image.publicUrl}
+                              alt={`Изображение ${index + 1}`}
+                              className="w-full h-16 object-cover"
+                            />
+                            
+                            {/* Метка позиции */}
+                            <div className="absolute top-0 left-0 bg-black bg-opacity-70 text-white text-xs font-bold px-1.5 py-0.5 rounded-br-md">
+                              {index + 1}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            
+                            {/* Кнопки перемещения */}
+                            <div className="absolute bottom-0 left-0 right-0 flex justify-between bg-black bg-opacity-80 p-1">
+                              {/* Кнопка влево */}
+                              <button 
+                                type="button"
+                                disabled={index === 0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (index > 0) {
+                                    const newImages = [...dealImages];
+                                    [newImages[index-1], newImages[index]] = [newImages[index], newImages[index-1]];
+                                    setDealImages(newImages);
+                                  }
+                                }}
+                                className={`text-white rounded-full p-1 ${
+                                  index === 0 ? 'opacity-30' : 'bg-gray-700 hover:bg-gray-600'
+                                }`}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M15 18l-6-6 6-6" />
+                                </svg>
+                              </button>
+                              
+                              {/* Кнопка вправо */}
+                              <button 
+                                type="button"
+                                disabled={index === dealImages.length - 1}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (index < dealImages.length - 1) {
+                                    const newImages = [...dealImages];
+                                    [newImages[index], newImages[index+1]] = [newImages[index+1], newImages[index]];
+                                    setDealImages(newImages);
+                                  }
+                                }}
+                                className={`text-white rounded-full p-1 ${
+                                  index === dealImages.length - 1 ? 'opacity-30' : 'bg-gray-700 hover:bg-gray-600'
+                                }`}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M9 18l6-6-6-6" />
+                                </svg>
+                              </button>
+                            </div>
+                            
+                            {/* Индикатор главного изображения */}
+                            {index === 0 && (
+                              <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-bl-md font-bold">
+                                Главное
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Кнопки для быстрой установки главного изображения удалены */}
                     </div>
                   )}
 
-                  <div className="mt-2 text-xs text-gray-400">
-                    {dealImages.length > 1 && 'Перетаскивайте изображения для изменения порядка. Первое изображение слева будет главным.'}
-                  </div>
+                  {/* Подсказка удалена */}
                 </div>
               )}
 
@@ -757,6 +781,39 @@ const AddDealPageNew: React.FC = () => {
           .description-preview a {
             color: #f97316;
             text-decoration: underline;
+          }
+          
+          /* Анимация смены главного изображения */
+          .main-image-container {
+            position: relative;
+            overflow: hidden;
+          }
+          
+          .main-image {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+          }
+          
+          .main-image-container img {
+            animation: fadeIn 0.4s ease-out;
+          }
+          
+          @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+          }
+
+          /* Стили для мобильных устройств */
+          @media (max-width: 640px) {
+            .image-controls button {
+              padding: 8px;
+              min-width: 30px;
+              height: 30px;
+            }
+            
+            .image-controls button svg {
+              width: 16px;
+              height: 16px;
+            }
           }
         `}
       </style>
