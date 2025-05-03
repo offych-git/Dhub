@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, createSearchParams } from 'react-router-dom';
 import { useDebounce } from '../../hooks/useDebounce';
 import { supabase } from '../../lib/supabase';
 
@@ -16,7 +15,7 @@ const SearchBar: React.FC = () => {
     if (debouncedSearch) {
       const searchAllContent = async () => {
         const searchQuery = debouncedSearch.split(' ').join(' & ');
-        
+
         const { data: searchResults, error } = await supabase.rpc('search_all_content', {
           search_query: searchQuery
         });
@@ -37,14 +36,21 @@ const SearchBar: React.FC = () => {
           }
         });
 
-        setSearchParams({ 
+        const params = {
           q: debouncedSearch,
           deals: Array.from(deals).join(','),
-          promos: Array.from(promos).join(',')
-        });
+          promos: Array.from(promos).join(','),
+          timestamp: Date.now().toString() // Добавляем временную метку чтобы избежать кеширования
+        };
+        setSearchParams(params);
       };
 
-      searchAllContent();
+      // Добавляем обработку ошибок при вызове функции поиска
+      try {
+        searchAllContent();
+      } catch (err) {
+        console.error('Ошибка при выполнении поиска:', err);
+      }
     } else {
       searchParams.delete('q');
       searchParams.delete('deals');

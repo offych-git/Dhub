@@ -7,6 +7,8 @@ import { supabase } from '../../lib/supabase';
 import AdminActions from '../admin/AdminActions';
 import { useAdmin } from '../../hooks/useAdmin';
 import { handleImageError, getValidImageUrl } from '../../utils/imageUtils';
+import { useSearchParams } from 'react-router-dom'; // Added import
+import { highlightText } from '../../utils/highlightText'; // Added import
 
 
 interface DealCardProps {
@@ -24,6 +26,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
   const [isFavorite, setIsFavorite] = useState(false);
   const [commentCount, setCommentCount] = useState(deal.comments);
   const isOwnDeal = user && deal.postedBy.id === user.id;
+  const [searchParams] = useSearchParams(); // Added useSearchParams hook
 
   useEffect(() => {
     if (user) {
@@ -165,7 +168,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
   const isExpired = deal.expires_at && new Date(deal.expires_at) < new Date();
 
   return (
-    <Link to={`/deals/${deal.id}`} className="block border-b border-gray-800 px-4 py-2.5">
+    <div className="block border-b border-gray-800 px-4 py-2.5">
       <div className="flex items-start justify-between">
         <div className="flex items-center text-gray-500 text-sm mr-3">
           <span className="inline-block h-5 w-5 mr-1">
@@ -206,8 +209,10 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
           />
         </div>
 
-        <div className="flex-1 min-w-0">
-          <h3 className="text-white font-medium text-sm line-clamp-2">{deal.title}</h3>
+        <div className="flex-1 min-w-0" onClick={() => navigate(`/deals/${deal.id}`)}>
+          <h3 onClick={() => navigate(`/deals/${deal.id}`)} className="text-white font-medium text-sm line-clamp-2 cursor-pointer">
+            {searchParams.get('q') ? highlightText(deal.title, searchParams.get('q') || '') : deal.title}
+          </h3>
 
           <div className="mt-1 flex items-center">
             <span className="text-orange-500 font-bold text-base">
@@ -239,19 +244,26 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
               className="mt-1 text-gray-400 text-xs description-preview line-clamp-2 overflow-hidden"
               style={{ pointerEvents: 'none' }}
             >
-              {deal.description
-                // Заменяем <br> тег на ' '
-                .replace(/<br[^>]*>/gi, ' ')
-                // Заменяем закрывающие теги на пробел
-                .replace(/<\/[^>]*>/g, ' ')
-                // Заменяем оставшиеся HTML теги на пробел
-                .replace(/<[^>]*>/g, ' ')
-                // Декодируем HTML-сущности
-                .replace(/&nbsp;/g, ' ')
-                // Заменяем множественные пробелы на один
-                .replace(/\s+/g, ' ')
-                .trim()
-              }
+              {(() => {
+                // Сначала очищаем текст от HTML-тегов
+                const cleanDescription = deal.description
+                  // Заменяем <br> тег на ' '
+                  .replace(/<br[^>]*>/gi, ' ')
+                  // Заменяем закрывающие теги на пробел
+                  .replace(/<\/[^>]*>/g, ' ')
+                  // Заменяем оставшиеся HTML теги на пробел
+                  .replace(/<[^>]*>/g, ' ')
+                  // Декодируем HTML-сущности
+                  .replace(/&nbsp;/g, ' ')
+                  // Заменяем множественные пробелы на один
+                  .replace(/\s+/g, ' ')
+                  .trim();
+                
+                // Затем применяем подсветку, если есть поисковый запрос
+                return searchParams.get('q') 
+                  ? highlightText(cleanDescription, searchParams.get('q') || '') 
+                  : cleanDescription;
+              })()}
             </div>
           )}
           {isExpired && (
@@ -343,7 +355,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
           )}
         </div>
       </div>
-    </Link>
+    </div>
   );
 };
 

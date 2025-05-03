@@ -5,12 +5,15 @@ import CommentInput from './CommentInput';
 import { createMentionNotification } from '../../utils/mentions';
 import { supabase } from '../../lib/supabase';
 import AdminActions from '../admin/AdminActions';
+import { highlightText } from '../../utils/highlightText';
+import { useSearchParams } from 'react-router-dom';
+
 
 interface CommentProps {
   id: string;
   content: string;
   createdAt: string;
-  images: string[]; // Remove optional flag since we provide default value
+  images: string[];
   user: {
     id: string;
     name: string;
@@ -32,7 +35,7 @@ const Comment: React.FC<CommentProps> = ({
   id,
   content,
   createdAt,
-  images = [], // Add default empty array
+  images = [],
   user,
   replyCount,
   likeCount: initialLikeCount = 0,
@@ -50,6 +53,9 @@ const Comment: React.FC<CommentProps> = ({
   const [isLiked, setIsLiked] = useState(false);
   const [showAllReplies, setShowAllReplies] = useState(false);
   const maxDepth = 3;
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q');
+
 
   useEffect(() => {
     if (currentUser) {
@@ -78,7 +84,6 @@ const Comment: React.FC<CommentProps> = ({
 
     try {
       if (isLiked) {
-        // Unlike
         await supabase
           .from('comment_likes')
           .delete()
@@ -89,7 +94,6 @@ const Comment: React.FC<CommentProps> = ({
         setLikeCount(prev => Math.max(0, prev - 1));
         setIsLiked(false);
       } else {
-        // Like
         await supabase
           .from('comment_likes')
           .insert({
@@ -101,7 +105,6 @@ const Comment: React.FC<CommentProps> = ({
         setLikeCount(prev => prev + 1);
         setIsLiked(true);
 
-        // Create notification for the comment author
         if (user.id !== currentUser.id) {
           await supabase
             .from('notifications')
@@ -125,15 +128,17 @@ const Comment: React.FC<CommentProps> = ({
     return date.toLocaleString();
   };
 
-  // Early return if user object is not properly defined
   if (!user?.id || !user?.name) {
     return null;
   }
 
+  const cleanContent = content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+  const highlightedContent = searchQuery ? highlightText(cleanContent, searchQuery) : cleanContent;
+
+
   return (
     <div className={`${depth > 0 ? `ml-${Math.min(depth * 4, 12)} mt-3` : 'mt-4'}`}>
       <div className={`bg-gray-800 rounded-lg p-4 ${depth > 0 ? 'border-l-2 border-gray-700' : ''}`}>
-        {/* Comment header */}
         <div className="flex items-center mb-2">
           <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
             <img
@@ -153,9 +158,8 @@ const Comment: React.FC<CommentProps> = ({
           <AdminActions type={sourceType} id={id} userId={user.id} onAction={onReply} />
         </div>
 
-        {/* Comment content */}
         <div className="text-white mb-3">
-          <div>{content}</div>
+          <div>{highlightedContent}</div>
           {Array.isArray(images) && images.length > 0 && (
             <div className="flex gap-2 mt-2">
               {images.map((image, index) => (
@@ -194,7 +198,6 @@ const Comment: React.FC<CommentProps> = ({
           )}
         </div>
 
-        {/* Comment actions */}
         <div className="flex items-center space-x-4 text-sm">
           {depth < maxDepth && (
             <button
@@ -216,7 +219,6 @@ const Comment: React.FC<CommentProps> = ({
           </button>
         </div>
 
-        {/* Reply input */}
         {showReplyInput && depth < maxDepth && (
           <div className="mt-3">
             <CommentInput
@@ -233,7 +235,6 @@ const Comment: React.FC<CommentProps> = ({
         )}
       </div>
 
-      {/* Show replies */}
       {replyCount > 0 && !showReplies && depth < maxDepth && (
         <button
           onClick={() => setShowReplies(true)}
@@ -243,7 +244,6 @@ const Comment: React.FC<CommentProps> = ({
         </button>
       )}
 
-      {/* Replies */}
       {showReplies && replies && depth < maxDepth && (
         <>
           {(showAllReplies ? replies : replies.slice(0, 3)).map(reply => (
