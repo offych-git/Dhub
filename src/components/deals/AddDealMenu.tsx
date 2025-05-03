@@ -9,7 +9,7 @@ interface AddDealMenuProps {
 
 const AddDealMenu: React.FC<AddDealMenuProps> = ({ isOpen, onClose }) => {
   const { t } = useLanguage();
-  
+
   if (!isOpen) return null;
 
   return (
@@ -24,6 +24,12 @@ const AddDealMenu: React.FC<AddDealMenuProps> = ({ isOpen, onClose }) => {
             className="block px-4 py-3 text-white hover:bg-gray-700"
           >
             {t('common.deal')}
+          </Link>
+          <Link 
+            to="/deals/new-carousel" 
+            className="block px-4 py-3 text-white hover:bg-gray-700"
+          >
+            {t('common.deal')} (Carousel)
           </Link>
           <Link 
             to="/promos/new" 

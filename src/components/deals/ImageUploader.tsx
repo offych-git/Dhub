@@ -1,15 +1,18 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { Image as ImageIcon, X, Upload } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 
 interface ImageUploaderProps {
   onImagesChange: (images: File[]) => void;
   maxImages?: number;
+  onMainImageChange?: (index: number) => void;
 }
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesChange, maxImages = 4 }) => {
+const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesChange, maxImages = 4, onMainImageChange }) => {
   const [images, setImages] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const thumbnailsRef = useRef<HTMLDivElement>(null);
 
   const compressImage = async (file: File): Promise<File> => {
     const options = {
@@ -45,8 +48,13 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesChange, maxImages
       const updatedImages = [...images, ...compressedImages].slice(0, maxImages);
       setImages(updatedImages);
       onImagesChange(updatedImages);
+      
+      // Если это первое добавленное изображение и есть обработчик для главного изображения
+      if (images.length === 0 && updatedImages.length > 0 && onMainImageChange) {
+        onMainImageChange(0);
+      }
     }
-  }, [images, maxImages, onImagesChange]);
+  }, [images, maxImages, onImagesChange, onMainImageChange]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -68,7 +76,57 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesChange, maxImages
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
     onImagesChange(newImages);
-  }, [images, onImagesChange]);
+    
+    // Если удаляем изображение и есть обработчик для главного изображения
+    if (onMainImageChange && newImages.length > 0) {
+      onMainImageChange(0); // После удаления первое изображение становится главным
+    }
+  }, [images, onImagesChange, onMainImageChange]);
+
+  // Обработчики для перетаскивания миниатюр
+  const handleThumbnailDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedItem(index);
+    if (e.dataTransfer.setDragImage) {
+      const img = new Image();
+      img.src = URL.createObjectURL(images[index]);
+      e.dataTransfer.setDragImage(img, 0, 0);
+    }
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleThumbnailDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleThumbnailDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    
+    if (draggedItem === null || draggedItem === dropIndex) return;
+    
+    // Создаем новый порядок изображений
+    const newImages = [...images];
+    const draggedImage = newImages[draggedItem];
+    
+    // Удаляем изображение с исходной позиции
+    newImages.splice(draggedItem, 1);
+    
+    // Вставляем его на новую позицию
+    newImages.splice(dropIndex, 0, draggedImage);
+    
+    setImages(newImages);
+    onImagesChange(newImages);
+    setDraggedItem(null);
+    
+    // Если первое изображение изменилось и есть обработчик
+    if (onMainImageChange) {
+      onMainImageChange(0); // Первое изображение всегда главное
+    }
+  };
+
+  const handleThumbnailDragEnd = () => {
+    setDraggedItem(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -98,25 +156,99 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesChange, maxImages
       </div>
 
       {images.length > 0 && (
-        <div className="grid grid-cols-2 gap-4">
-          {images.map((image, index) => (
-            <div key={index} className="relative group">
-              <img
-                src={URL.createObjectURL(image)}
-                alt={`Uploaded image ${index + 1}`}
-                className="w-full h-32 object-cover rounded-lg"
-              />
-              <button
-                type="button"
-                onClick={() => removeImage(index)}
-                className="absolute top-2 right-2 p-1 bg-gray-900/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="h-4 w-4 text-white" />
-              </button>
+        <>
+          {/* Большое изображение */}
+          <div className="relative">
+            <img
+              src={URL.createObjectURL(images[0])}
+              alt="Main image"
+              className="w-full h-48 object-contain rounded-lg"
+            />
+            {images.length > 1 && (
+              <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                Главное изображение
+              </div>
+            )}
+          </div>
+
+          {/* Миниатюры с возможностью перетаскивания */}
+          {images.length > 1 && (
+            <div 
+              ref={thumbnailsRef}
+              className="flex overflow-x-auto space-x-2 py-2"
+            >
+              {images.map((image, index) => (
+                <div
+                  key={index}
+                  draggable
+                  onDragStart={(e) => handleThumbnailDragStart(e, index)}
+                  onDragOver={(e) => handleThumbnailDragOver(e, index)}
+                  onDrop={(e) => handleThumbnailDrop(e, index)}
+                  onDragEnd={handleThumbnailDragEnd}
+                  className={`relative flex-shrink-0 w-16 h-16 cursor-move ${
+                    index === 0 ? 'ring-2 ring-green-500' : ''
+                  } ${
+                    draggedItem === index ? 'opacity-50' : 'opacity-100'
+                  }`}
+                >
+                  <img
+                    src={URL.createObjectURL(image)}
+                    alt={`Thumbnail ${index + 1}`}
+                    className="w-full h-full object-cover rounded-md"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-0 right-0 p-1 bg-red-500 rounded-full scale-75"
+                  >
+                    <X className="h-3 w-3 text-white" />
+                  </button>
+                  {index === 0 && (
+                    <div className="absolute top-0 left-0 bg-green-500 text-white text-xs px-1 py-0.5 rounded-sm">
+                      1
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* Для мобильного отображения показываем сетку, если нет thumbnail view */}
+          {images.length === 1 && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative group">
+                <img
+                  src={URL.createObjectURL(images[0])}
+                  alt="Uploaded image 1"
+                  className="w-full h-32 object-cover rounded-lg"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage(0)}
+                  className="absolute top-2 right-2 p-1 bg-gray-900/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-4 w-4 text-white" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
+
+      <style jsx>{`
+        /* Стили для полосы прокрутки в миниатюрах */
+        div[ref="thumbnailsRef"]::-webkit-scrollbar {
+          height: 4px;
+        }
+        div[ref="thumbnailsRef"]::-webkit-scrollbar-track {
+          background: #1f2937;
+          border-radius: 10px;
+        }
+        div[ref="thumbnailsRef"]::-webkit-scrollbar-thumb {
+          background: #4b5563;
+          border-radius: 10px;
+        }
+      `}</style>
     </div>
   );
 };

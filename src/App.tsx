@@ -20,6 +20,7 @@ import UserPostedItemsPage from './pages/UserPostedItemsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
 import PrivateRoute from './components/PrivateRoute';
+import AddDealPageNew from './pages/AddDealPageNew'; // Import the new component
 
 function App() {
   return (
@@ -29,14 +30,15 @@ function App() {
           <AuthProvider>
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
-        <Route path="/auth/reset-password" element={<AuthPage isResetPasswordPage={true} />} />
-        <Route path="/auth/callback" element={<AuthPage />} />
+              <Route path="/auth/reset-password" element={<AuthPage isResetPasswordPage={true} />} />
+              <Route path="/auth/callback" element={<AuthPage />} />
               <Route path="/auth/reset-password" element={<AuthPage isResetPasswordPage={true} />} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<DealsPage />} />
                 <Route path="/deals/:id" element={<DealDetailPage />} />
                 <Route path="/deals/new" element={<PrivateRoute><AddDealPage /></PrivateRoute>} />
+                <Route path="/deals/new-carousel" element={<PrivateRoute><AddDealPageNew /></PrivateRoute>} /> {/* Added new route */}
                 <Route path="/promos/new" element={<PrivateRoute><AddPromoPage /></PrivateRoute>} />
                 <Route path="/promos" element={<PromosPage />} />
                 <Route path="/promos/:id" element={<PrivateRoute><PromoDetailPage /></PrivateRoute>} />
@@ -45,7 +47,7 @@ function App() {
                 <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
                 <Route path="/saved" element={<PrivateRoute><SavedItemsPage /></PrivateRoute>} />
                 <Route path="/comments" element={<PrivateRoute><UserCommentsPage /></PrivateRoute>} />
-            <Route path="/posted" element={<PrivateRoute><UserPostedItemsPage /></PrivateRoute>} />
+                <Route path="/posted" element={<PrivateRoute><UserPostedItemsPage /></PrivateRoute>} />
                 <Route path="/settings/notifications" element={<PrivateRoute><NotificationSettingsPage /></PrivateRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>

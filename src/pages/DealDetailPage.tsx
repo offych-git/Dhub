@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
 import { mockDeals, generatePriceHistory } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import AdminActions from '../components/admin/AdminActions';
@@ -23,7 +23,80 @@ const DealDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'popular'>('newest');
+  const [dealVote, setDealVote] = useState<'up' | 'down' | null>(null);
+  const [votesCount, setVotesCount] = useState<number>(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const isExpired = deal?.expires_at && new Date(deal.expires_at) < new Date();
+  
+  // Получение списка изображений для карусели
+  const dealImages = useMemo(() => {
+    if (!deal) return [];
+    // Основное изображение всегда первое
+    const images = [deal.image];
+    // Добавляем дополнительные изображения, если они есть
+    if (deal.additional_images && Array.isArray(deal.additional_images)) {
+      images.push(...deal.additional_images);
+    }
+    
+    // Отладочная информация
+    if (id === '73b11531-278d-46e1-9c4a-f674110b6ec5') {
+      console.log('Deal ID:', id);
+      console.log('Количество изображений:', images.length);
+      console.log('Изображения:', images);
+    }
+    
+    return images;
+  }, [deal, id]);
+
+  // Функции для навигации по карусели
+  const goToPreviousImage = () => {
+    setCurrentImageIndex((prev) => 
+      prev === 0 ? dealImages.length - 1 : prev - 1
+    );
+  };
+
+  const goToNextImage = () => {
+    setCurrentImageIndex((prev) => 
+      prev === dealImages.length - 1 ? 0 : prev + 1
+    );
+  };
+  
+  // Обработчики свайпов
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+    setTouchEnd(null); // Сбрасываем конечную позицию при новом касании
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+  
+  const handleTouchEnd = () => {
+    if (touchStart === null) return;
+    
+    // Если touchEnd не был установлен (пользователь просто тапнул), выходим
+    if (touchEnd === null) {
+      setTouchStart(null);
+      return;
+    }
+    
+    const distance = touchStart - touchEnd;
+    const minSwipeDistance = 50; // Минимальное расстояние свайпа для срабатывания
+    
+    if (distance > minSwipeDistance) {
+      // Свайп влево - следующее изображение
+      goToNextImage();
+    } else if (distance < -minSwipeDistance) {
+      // Свайп вправо - предыдущее изображение
+      goToPreviousImage();
+    }
+    
+    // Сбрасываем состояния касания
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
 
   const priceHistory = useMemo(() => {
     if (!deal) return [];
@@ -87,6 +160,10 @@ const DealDetailPage: React.FC = () => {
       const profileEmail = data.profiles?.email || 'Anonymous';
       const profileName = profileEmail === 'Anonymous' ? 'Anonymous' : profileEmail.split('@')[0];
 
+      // Log для отладки структуры данных сделки
+      console.log('Загружены данные сделки:', data);
+      console.log('Дополнительные изображения:', data.additional_images);
+
       setDeal({
         id: data.id,
         title: data.title,
@@ -95,6 +172,7 @@ const DealDetailPage: React.FC = () => {
         store: { id: data.store_id, name: data.store_id },
         category: { id: data.category_id, name: data.category_id },
         image: data.image_url,
+        additional_images: data.additional_images || [], // Явно передаем дополнительные изображения
         description: data.description,
         url: data.deal_url,
         postedAt: new Date(data.created_at).toLocaleDateString(),
@@ -380,13 +458,55 @@ const DealDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="h-64 bg-gray-800">
+      <div 
+        className="h-64 bg-gray-800 relative overflow-hidden touch-pan-y"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <img 
-          src={getValidImageUrl(deal.image)} 
+          src={getValidImageUrl(dealImages[currentImageIndex] || deal.image)} 
           alt={deal.title} 
           className="w-full h-full object-contain"
           onError={handleImageError}
+          draggable="false"
         />
+        
+        {dealImages.length > 1 && (
+          <>
+            {/* Кнопка предыдущего изображения */}
+            <button 
+              onClick={goToPreviousImage}
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white rounded-full p-2 hover:bg-black/70"
+              aria-label="Previous image"
+            >
+              <ArrowLeftCircle className="h-6 w-6" />
+            </button>
+            
+            {/* Кнопка следующего изображения */}
+            <button 
+              onClick={goToNextImage}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white rounded-full p-2 hover:bg-black/70"
+              aria-label="Next image"
+            >
+              <ArrowRightCircle className="h-6 w-6" />
+            </button>
+            
+            {/* Индикатор текущего изображения */}
+            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+              {dealImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentImageIndex(index)}
+                  className={`h-2 w-2 rounded-full ${
+                    index === currentImageIndex ? 'bg-orange-500' : 'bg-gray-400'
+                  }`}
+                  aria-label={`Go to image ${index + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="p-4">
