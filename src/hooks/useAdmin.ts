@@ -1,91 +1,19 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { useGlobalState } from '../contexts/GlobalStateContext';
 
 type Role = 'user' | 'moderator' | 'admin' | 'super_admin';
 
-interface AdminPermissions {
-  canDeleteContent: boolean;
-  canManageUsers: boolean;
-  canManageRoles: boolean;
-  canManageComments: boolean;
-  canManageDeals: boolean;
-  canManagePromos: boolean;
-}
-
 export const useAdmin = () => {
   const { user } = useAuth();
-  const [role, setRole] = useState<Role>('user');
-  const [loading, setLoading] = useState(true);
-
-  const permissions: Record<Role, AdminPermissions> = {
-    user: {
-      canDeleteContent: false,
-      canManageUsers: false,
-      canManageRoles: false,
-      canManageComments: false,
-      canManageDeals: false,
-      canManagePromos: false
-    },
-    moderator: {
-      canDeleteContent: true,
-      canManageUsers: false,
-      canManageRoles: false,
-      canManageComments: true,
-      canManageDeals: false,
-      canManagePromos: false
-    },
-    admin: {
-      canDeleteContent: true,
-      canManageUsers: true,
-      canManageRoles: false,
-      canManageComments: true,
-      canManageDeals: true,
-      canManagePromos: true
-    },
-    super_admin: {
-      canDeleteContent: true,
-      canManageUsers: true,
-      canManageRoles: true,
-      canManageComments: true,
-      canManageDeals: true,
-      canManagePromos: true
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      checkRole();
-    } else {
-      setRole('user');
-      setLoading(false);
-    }
-  }, [user]);
-
-  const checkRole = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user!.id)
-        .single();
-
-      if (error) throw error;
-      setRole(data?.role || 'user');
-    } catch (error) {
-      console.error('Error checking role:', error);
-      setRole('user');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { state, refreshAdminStatus } = useGlobalState();
 
   const deleteContent = async (
     type: 'deal' | 'promo' | 'deal_comment' | 'promo_comment',
     id: string
   ) => {
-    if (!permissions[role].canDeleteContent) return false;
+    if (!state.admin.permissions.canDeleteContent) return false;
 
     try {
       const table = {
@@ -109,7 +37,7 @@ export const useAdmin = () => {
   };
 
   const manageUserRole = async (userId: string, newRole: Role) => {
-    if (!permissions[role].canManageRoles) return false;
+    if (!state.admin.permissions.canManageRoles) return false;
 
     try {
       const { error } = await supabase
@@ -126,7 +54,7 @@ export const useAdmin = () => {
   };
 
   const banUser = async (userId: string) => {
-    if (!permissions[role].canManageUsers) return false;
+    if (!state.admin.permissions.canManageUsers) return false;
 
     try {
       const { error } = await supabase
@@ -143,11 +71,12 @@ export const useAdmin = () => {
   };
 
   return {
-    role,
-    loading,
-    permissions: permissions[role],
+    role: state.admin.role,
+    loading: state.admin.isLoading,
+    permissions: state.admin.permissions,
     deleteContent,
     manageUserRole,
-    banUser
+    banUser,
+    refreshAdminStatus
   };
 };

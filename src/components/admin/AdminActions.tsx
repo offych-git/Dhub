@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, Loader2 } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
 import { supabase } from '../../lib/supabase';
+import { useGlobalState } from '../../contexts/GlobalStateContext';
 
 interface AdminActionsProps {
   type: 'deal' | 'promo' | 'deal_comment' | 'promo_comment' | 'deal_comments' | 'promo_comments';
@@ -13,6 +14,7 @@ interface AdminActionsProps {
 const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction }) => {
   const { permissions, role } = useAdmin();
   const [isDeleting, setIsDeleting] = useState(false);
+  const { dispatch } = useGlobalState();
 
   // Добавляем логирование при монтировании компонента
   useEffect(() => {
@@ -118,6 +120,14 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction 
         }
 
         console.log(`Successfully deleted ${type} with ID: ${id}`);
+        
+        // Помечаем соответствующие данные как устаревшие
+        if (type === 'deal' || type === 'deal_comment' || type === 'deal_comments') {
+          dispatch({ type: 'MARK_DEALS_STALE' });
+        } else if (type === 'promo' || type === 'promo_comment' || type === 'promo_comments') {
+          dispatch({ type: 'MARK_PROMOS_STALE' });
+        }
+        
         if (onAction) {
           onAction();
         }

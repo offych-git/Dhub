@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import StoreBottomSheet from './StoreBottomSheet';
@@ -9,6 +9,7 @@ import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
 import { Bold, Italic, Underline as UnderlineIcon, List } from 'lucide-react';
 import CategorySimpleBottomSheet from './CategorySimpleBottomSheet';
+import { useGlobalState } from '../../contexts/GlobalStateContext'; // Added import
 
 interface AddDealPageProps {
   isEditing?: boolean;
@@ -18,6 +19,8 @@ interface AddDealPageProps {
 
 const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, initialData }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { dispatch } = useGlobalState(); // Added dispatch
   const [availableStores, setAvailableStores] = useState<{id: string, name: string, url: string}[]>([]);
   const [isStoreBottomSheetOpen, setIsStoreBottomSheetOpen] = useState(false);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
@@ -325,7 +328,7 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
         <div className="bg-gray-800 rounded-b-md p-4 min-h-[200px]">
           <EditorContent editor={editor} />
         </div>
-        
+
         {/* Preview */}
         {formData.description && (
           <div className="mt-4">
@@ -423,7 +426,7 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
             // Отобразить сообщение о загрузке
             setIsLoading(true);
             setError(null);
-            
+
             try {
               // Подготовка данных для отправки
               const dealData = {
@@ -439,69 +442,66 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
               };
 
               console.log('Отправляем данные сделки:', dealData);
-              
+
               let imageUrl = null;
-              
+
               // Загрузка изображения, если оно выбрано
               if (mainImage) {
                 const fileExt = mainImage.name.split('.').pop();
                 const fileName = `${Math.random()}.${fileExt}`;
                 const filePath = user ? `${user.id}/${fileName}` : `anonymous/${fileName}`;
-                
+
                 console.log('Загружаем изображение:', filePath);
-                
+
                 const { data: uploadData, error: uploadError } = await supabase.storage
                   .from('deal-images')
                   .upload(filePath, mainImage);
-                  
+
                 if (uploadError) {
                   throw new Error(`Ошибка загрузки изображения: ${uploadError.message}`);
                 }
-                
+
                 const { data: urlData } = supabase.storage
                   .from('deal-images')
                   .getPublicUrl(filePath);
-                  
+
                 imageUrl = urlData.publicUrl;
                 dealData.image_url = imageUrl;
               }
-              
+
               let result;
-              
+
               // Если редактируем существующую сделку
               if (isEditing && dealId) {
                 console.log('Обновляем существующую сделку ID:', dealId);
+                // Mark deals as stale before updating
+                if (dispatch) {
+                  dispatch({ type: 'MARK_DEALS_STALE' });
+                }
                 result = await supabase
                   .from('deals')
                   .update(dealData)
                   .eq('id', dealId);
+                if (result.error) throw result.error;
+
+                // Помечаем состояние сделок как устаревшее, чтобы обновить список
+
+                navigate(`/deals/${dealId}`);
               } else {
                 // Создаем новую сделку
                 console.log('Создаем новую сделку');
                 result = await supabase
                   .from('deals')
                   .insert(dealData);
+                if (result.error) throw result.error;
+                navigate('/deals');
               }
-              
-              if (result.error) {
-                throw new Error(`Ошибка сохранения сделки: ${result.error.message}`);
-              }
-              
+
               console.log('Сделка успешно сохранена!', result);
-              
+
               console.log('Сделка успешно сохранена, перенаправление...');
-              
-              // Перенаправление на страницу со сделками или деталей сделки
-              // Используем небольшую задержку перед перенаправлением
-              setTimeout(() => {
-                if (isEditing && dealId) {
-                  console.log('Перенаправление на страницу деталей сделки:', dealId);
-                  window.location.href = `/deals/${dealId}`;
-                } else {
-                  console.log('Перенаправление на страницу со всеми сделками');
-                  window.location.href = '/deals';
-                }
-              }, 500);
+
+
             } catch (err) {
               console.error('Ошибка при сохранении:', err);
               setError(err.message || 'Произошла ошибка при сохранении сделки');
@@ -514,12 +514,12 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
           {isLoading ? (
             <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
           ) : (
-            isEditing ? 'Сохранить изменения' : 'Post Deal'
+            isEditing ? 'Save Changes' : 'Post Deal'
           )}
         </button>
         {error && <p className="mt-2 text-red-500 text-sm">{error}</p>}
       </div>
-      
+
       {/* CSS стили для превью */}
       <style>{`
         .description-preview {

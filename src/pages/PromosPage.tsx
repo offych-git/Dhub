@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ChevronDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2, ExternalLink, Edit2 } from 'lucide-react'; // Added Edit2 import
+import { ChevronDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2, ExternalLink, Edit2 } from 'lucide-react';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/shared/FilterBar';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AdminActions from '../components/admin/AdminActions';
-import { useAdmin } from '../hooks/useAdmin'; // Import the useAdmin hook
+import { useAdmin } from '../hooks/useAdmin';
+import { useGlobalState } from '../contexts/GlobalStateContext';
 
 interface PromoCode {
   id: string;
@@ -31,7 +32,7 @@ interface PromoCode {
 const PromosPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { role } = useAdmin(); // Use the useAdmin hook
+  const { role } = useAdmin();
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +45,7 @@ const PromosPage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
+  const location = useLocation();
 
   useEffect(() => {
     setPage(1);
@@ -53,7 +55,7 @@ const PromosPage: React.FC = () => {
     if (user) {
       loadFavorites();
     }
-  }, [searchQuery, user]);
+  }, [searchQuery, user, location.key]); // Added location.key
 
   const loadFavorites = async () => {
     if (!user) return;
@@ -498,7 +500,6 @@ const PromosPage: React.FC = () => {
                         <span className="text-xs mr-1">View</span>
                         <ExternalLink className="h-3 w-3" />
                       </button>
-                      {/* Показываем кнопку удаления только если пользователь является админом/модератором или владельцем */}
                       {((role === 'admin' || role === 'moderator') || (user && promo.user.id === user.id)) && (
                         <div className="ml-2 border-l border-gray-700 pl-2" onClick={(e) => e.stopPropagation()}>
                           <AdminActions

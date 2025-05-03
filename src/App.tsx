@@ -2,7 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { GlobalStateProvider } from './contexts/GlobalStateContext';
+import './index.css';
 import AppLayout from './components/layout/AppLayout';
 import AuthPage from './pages/AuthPage';
 import DealsPage from './pages/DealsPage';
@@ -20,7 +21,7 @@ import UserPostedItemsPage from './pages/UserPostedItemsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
 import PrivateRoute from './components/PrivateRoute';
-import AddDealPageNew from './pages/AddDealPageNew'; // Import the new component
+import AddDealPageNew from './pages/AddDealPageNew'; 
 
 import EditDealPage from './pages/EditDealPage';
 import EditPromoPage from './pages/EditPromoPage';
@@ -28,9 +29,9 @@ import EditPromoPage from './pages/EditPromoPage';
 function App() {
   return (
     <Router>
-      <LanguageProvider>
-        <ThemeProvider>
-          <AuthProvider>
+      <AuthProvider>
+        <GlobalStateProvider>
+          <LanguageProvider>
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/auth/reset-password" element={<AuthPage isResetPasswordPage={true} />} />
@@ -41,7 +42,7 @@ function App() {
                 <Route path="/" element={<DealsPage />} />
                 <Route path="/deals/:id" element={<DealDetailPage />} />
                 <Route path="/deals/new" element={<PrivateRoute><AddDealPage /></PrivateRoute>} />
-                <Route path="/deals/new-carousel" element={<PrivateRoute><AddDealPageNew /></PrivateRoute>} /> {/* Added new route */}
+                <Route path="/deals/new-carousel" element={<PrivateRoute><AddDealPageNew /></PrivateRoute>} /> 
                 <Route path="/deals/:id/edit" element={<PrivateRoute><EditDealPage /></PrivateRoute>} />
                 <Route path="/promos/new" element={<PrivateRoute><AddPromoPage /></PrivateRoute>} />
                 <Route path="/promos" element={<PromosPage />} />
@@ -57,9 +58,9 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
-          </AuthProvider>
-        </ThemeProvider>
-      </LanguageProvider>
+          </LanguageProvider>
+        </GlobalStateProvider>
+      </AuthProvider>
     </Router>
   );
 }

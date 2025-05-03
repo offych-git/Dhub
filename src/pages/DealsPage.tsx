@@ -5,11 +5,12 @@ import FilterBar from '../components/shared/FilterBar';
 import DealCard from '../components/deals/DealCard';
 import { Deal } from '../types';
 import { supabase } from '../lib/supabase';
+import { useGlobalState } from '../contexts/GlobalStateContext';
 
 const formatRelativeTime = (date: Date) => {
   const now = new Date();
   const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-  
+
   if (diffInMinutes < 1) return 'just now';
   if (diffInMinutes < 5) return '1m';
   if (diffInMinutes < 15) return '5m';
@@ -21,13 +22,12 @@ const formatRelativeTime = (date: Date) => {
 };
 import { mockDeals } from '../data/mockData';
 import { DEAL_SETTINGS } from '../config/settings';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 
 const DealsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('hot');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
-  const [dbDeals, setDbDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
@@ -35,10 +35,42 @@ const DealsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
-  
+  const location = useLocation();
+
+  const { state, dispatch, refreshDeals } = useGlobalState();
+  const dbDeals = state.deals.items;
+
+  // Force refresh on navigation
   useEffect(() => {
+    // When the user navigates back to this page, always fetch fresh data
+    console.log("Navigation detected, принудительное обновление сделок...");
+    
+    // Очищаем текущие данные перед загрузкой новых
+    dispatch({ type: 'SET_DEALS', payload: [] });
+    
+    // Устанавливаем флаг загрузки
+    setLoading(true);
+    
+    // Сбрасываем пагинацию
     setPage(1);
     setHasMore(true);
+    
+    // Запускаем загрузку свежих данных
+    fetchDeals();
+  }, [location.key]);
+
+  useEffect(() => {
+    // При изменении активной вкладки или поискового запроса
+    setPage(1);
+    setHasMore(true);
+
+    // Для всех случаев загружаем данные заново
+    console.log(`Загрузка данных для вкладки ${activeTab} (всегда свежие данные)`);
+    
+    // Очищаем текущие данные перед загрузкой новых
+    dispatch({ type: 'SET_DEALS', payload: [] });
+    
+    // Запускаем загрузку
     fetchDeals();
   }, [activeTab, searchQuery]);
 
@@ -47,7 +79,7 @@ const DealsPage: React.FC = () => {
         !hasMore || isFetchingMore) {
       return;
     }
-    
+
     setIsFetchingMore(true);
     setPage(prev => prev + 1);
     fetchDeals();
@@ -59,10 +91,14 @@ const DealsPage: React.FC = () => {
   }, [hasMore, isFetchingMore]);
 
   const fetchDeals = async () => {
-    setLoading(true);
+    console.log("Запуск fetchDeals - загрузка свежих данных");
     setError(null);
+    dispatch({ type: 'SET_DEALS_LOADING', payload: true });
 
     try {
+      // Добавляем случайный параметр для предотвращения кеширования
+      const cacheInvalidator = new Date().getTime();
+      
       let query = supabase
         .from('deals')
         .select(`
@@ -72,12 +108,16 @@ const DealsPage: React.FC = () => {
             email,
             display_name
           )
-        `);
+        `)
+        .order('updated_at', { ascending: false })  // Сначала недавно обновленные
+        .limit(100);  // Увеличиваем лимит для получения большего объема данных
+
+      console.log(`Загрузка данных с параметром cache_invalidator=${cacheInvalidator}`);
 
       // Apply search filter if query exists
       if (searchQuery) {
         const searchTerms = searchQuery.toLowerCase().split(' ').filter(Boolean);
-        
+
         if (searchTerms.length > 0) {
           query = query.or(
             searchTerms.map(term => 
@@ -87,14 +127,9 @@ const DealsPage: React.FC = () => {
         }
       }
 
-      // For NEW tab, fetch all deals sorted by date
-      if (activeTab === 'new') {
-        query = query.order('created_at', { ascending: false });
-      }
-
-      // Add pagination
-      query = query.range((page - 1) * 20, page * 20 - 1);
-
+      // Не применяем пагинацию для первоначальной загрузки, чтобы получить все HOT скидки
+      // Это предотвратит пропажу отредактированных скидок
+      
       const { data: deals, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
@@ -146,10 +181,13 @@ const DealsPage: React.FC = () => {
       }));
 
       if (page === 1) {
-        setDbDeals(dealsWithStats);
+        dispatch({ type: 'SET_DEALS', payload: dealsWithStats });
       } else {
-        setDbDeals(prev => [...prev, ...dealsWithStats]);
+        // Для подгрузки новых данных при скролле
+        const updatedDeals = [...state.deals.items, ...dealsWithStats];
+        dispatch({ type: 'SET_DEALS', payload: updatedDeals });
       }
+
       setHasMore(dealsWithStats.length === 20);
       setIsFetchingMore(false);
     } catch (err: any) {
@@ -157,9 +195,10 @@ const DealsPage: React.FC = () => {
       setError('Failed to load deals');
     } finally {
       setLoading(false);
+      dispatch({ type: 'SET_DEALS_LOADING', payload: false });
     }
   };
-  
+
   const handleFilterChange = (type: 'categories' | 'stores', ids: string[]) => {
     if (type === 'categories') {
       setSelectedCategories(ids);
@@ -172,22 +211,50 @@ const DealsPage: React.FC = () => {
   let displayDeals: Deal[] = [];
 
   if (activeTab === 'hot') {
-    // Show mock deals and real deals that have 10+ positive votes or is_hot flag
-    const hotDeals = dbDeals.filter(deal => 
-      deal.positiveVotes >= DEAL_SETTINGS.hotThreshold || 
-      deal.is_hot
-    );
-
-    // Разделяем сделки на те, что стали HOT через голоса и изначально HOT
-    // Все HOT сделки (отмеченные или набравшие голоса)
-    const allHotDeals = hotDeals.filter(deal => 
-      deal.is_hot || deal.positiveVotes >= DEAL_SETTINGS.hotThreshold
-    );
-
-    // Сортируем по времени попадания в HOT и убираем дубликаты по ID
-    let combinedDeals = [...mockDeals, ...allHotDeals];
+    console.log("Обработка HOT скидок, всего скидок:", dbDeals.length);
     
-    // Удаляем дубликаты по ID
+    // Преобразуем все скидки в Map для быстрого поиска и обновления
+    const dealsMap = new Map();
+    
+    // Сначала добавляем все скидки
+    dbDeals.forEach(deal => {
+      // Используем новую и более детальную логику для HOT скидок
+      const isHot = deal.is_hot || deal.positiveVotes >= DEAL_SETTINGS.hotThreshold;
+      
+      // Определяем приоритет скидки (отредактированные имеют высший приоритет)
+      const priority = deal.updated_at ? new Date(deal.updated_at).getTime() : 0;
+      
+      if (isHot) {
+        // Если скидка уже есть в Map, обновляем только если приоритет выше
+        if (!dealsMap.has(deal.id) || priority > dealsMap.get(deal.id).priority) {
+          dealsMap.set(deal.id, { deal, priority });
+        }
+      }
+    });
+    
+    // Извлекаем скидки из Map, отсортированные по приоритету
+    const hotDeals = Array.from(dealsMap.values())
+      .sort((a, b) => b.priority - a.priority)
+      .map(item => item.deal);
+    
+    console.log("Найдено HOT скидок:", hotDeals.length);
+    
+    // Объединяем с мок-данными
+    let combinedDeals = [...mockDeals, ...hotDeals];
+    
+    // После обработки сортируем по обновлению/созданию (самые свежие вверху)
+    combinedDeals.sort((a, b) => {
+      // Используем самую позднюю дату из updated_at или createdAt
+      const getLatestDate = (deal) => {
+        const createdTime = deal.createdAt ? deal.createdAt.getTime() : 0;
+        const updatedTime = deal.updated_at ? new Date(deal.updated_at).getTime() : 0;
+        return Math.max(createdTime, updatedTime);
+      };
+      
+      return getLatestDate(b) - getLatestDate(a);
+    });
+    
+    // Окончательное удаление дубликатов (сохраняем самые свежие версии)
     const uniqueIds = new Set();
     displayDeals = combinedDeals.filter(deal => {
       if (uniqueIds.has(deal.id)) {
@@ -195,19 +262,10 @@ const DealsPage: React.FC = () => {
       }
       uniqueIds.add(deal.id);
       return true;
-    }).sort((a, b) => {
-      // Для сделок с голосами используем текущее время как hot_at
-      const getHotTime = (deal: Deal) => {
-        if (deal.hot_at) return new Date(deal.hot_at);
-        if (deal.is_hot) return deal.createdAt || new Date(0);
-        if (deal.positiveVotes >= DEAL_SETTINGS.hotThreshold) return new Date();
-        return new Date(0);
-      };
-
-      const timeA = getHotTime(a);
-      const timeB = getHotTime(b);
-      return timeB.getTime() - timeA.getTime();
     });
+    
+    // Логируем информацию для отладки
+    console.log("Итоговое количество HOT скидок:", displayDeals.length);
   } else if (activeTab === 'new') {
     // Показываем только не HOT deals в NEW
     displayDeals = [
@@ -236,19 +294,19 @@ const DealsPage: React.FC = () => {
       // Primary sort by comment count (descending)
       const commentDiff = b.comments - a.comments;
       if (commentDiff !== 0) return commentDiff;
-      
+
       // Secondary sort by date (newer first) if comment counts are equal
       const dateA = a.createdAt || new Date(0);
       const dateB = b.createdAt || new Date(0);
       return dateB.getTime() - dateA.getTime();
     });
   }
-  
+
   // Apply category filter
   if (selectedCategories.length > 0) {
     displayDeals = displayDeals.filter(deal => selectedCategories.includes(deal.category.id));
   }
-  
+
   // Apply store filter
   if (selectedStores.length > 0) {
     displayDeals = displayDeals.filter(deal => selectedStores.includes(deal.store.id));
@@ -269,15 +327,15 @@ const DealsPage: React.FC = () => {
   return (
     <div className="pb-16 pt-16 bg-gray-900 min-h-screen">
       <SearchBar />
-      
+
       <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
-      
+
       <FilterBar
         selectedCategories={selectedCategories}
         selectedStores={selectedStores}
         onFilterChange={handleFilterChange}
       />
-      
+
       {loading ? (
         <div className="flex justify-center items-center py-8">
           <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>

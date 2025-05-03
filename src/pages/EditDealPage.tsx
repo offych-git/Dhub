@@ -3,14 +3,23 @@ import { useParams, useNavigate } from 'react-router-dom';
 import AddDealPage from '../components/deals/AddDealPage';
 import { supabase } from '../lib/supabase';
 import { ArrowLeft } from 'lucide-react';
+import { useGlobalState } from '../contexts/GlobalStateContext'; // Assuming this context exists
 
 const EditDealPage: React.FC = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [dealData, setDealData] = useState(null);
+  const [dealData, setDealData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { dispatch } = useGlobalState();
 
   useEffect(() => {
+    // Полностью очищаем кеш сделок при монтировании компонента редактирования
+    // Это гарантирует, что после редактирования мы загрузим свежие данные
+    dispatch({ type: 'SET_DEALS', payload: [] });
+    dispatch({ type: 'MARK_DEALS_STALE' });
+    console.log("EditDealPage: полная очистка кеша сделок для обеспечения актуальности");
+    
     const fetchDeal = async () => {
       if (!id) {
         navigate('/');
