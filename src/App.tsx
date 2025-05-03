@@ -24,6 +24,7 @@ import PrivateRoute from './components/PrivateRoute';
 import AddDealPageNew from './pages/AddDealPageNew'; 
 
 import EditDealPage from './pages/EditDealPage';
+import EditDealCarouselPage from './pages/EditDealCarouselPage';
 import EditPromoPage from './pages/EditPromoPage';
 
 function App() {
@@ -44,6 +45,7 @@ function App() {
                 <Route path="/deals/new" element={<PrivateRoute><AddDealPage /></PrivateRoute>} />
                 <Route path="/deals/new-carousel" element={<PrivateRoute><AddDealPageNew /></PrivateRoute>} /> 
                 <Route path="/deals/:id/edit" element={<PrivateRoute><EditDealPage /></PrivateRoute>} />
+                <Route path="/edit-carousel/:id" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} />
                 <Route path="/promos/new" element={<PrivateRoute><AddPromoPage /></PrivateRoute>} />
                 <Route path="/promos" element={<PromosPage />} />
                 <Route path="/promos/:id" element={<PrivateRoute><PromoDetailPage /></PrivateRoute>} />

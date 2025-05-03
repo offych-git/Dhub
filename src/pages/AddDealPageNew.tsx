@@ -15,6 +15,7 @@ import imageCompression from 'browser-image-compression';
 import { createPortal } from 'react-dom';
 import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomSheet';
 import StoreBottomSheet from '../components/deals/StoreBottomSheet';
+import { useGlobalState } from '../contexts/GlobalStateContext'; // Import useGlobalState
 
 interface ImageWithId {
   file: File;
@@ -22,9 +23,16 @@ interface ImageWithId {
   publicUrl: string;
 }
 
-const AddDealPageNew: React.FC = () => {
-  const navigate = useNavigate();
+interface AddDealPageNewProps {
+  isEditing?: boolean;
+  dealId?: string;
+  initialData?: any;
+}
+
+const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, dealId, initialData }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { dispatch } = useGlobalState(); // Added dispatch
   const { role } = useAdmin();
   const { t, language } = useLanguage();
   const canMarkHot = role === 'admin' || role === 'moderator';
@@ -42,15 +50,28 @@ const AddDealPageNew: React.FC = () => {
   // В новой системе нам не нужен активный индекс, так как первое изображение всегда главное
   const [mainImageIndex, setMainImageIndex] = useState(0); // Оставляем для совместимости с существующим кодом
 
+  // Загрузка существующих изображений при редактировании
+  useEffect(() => {
+    if (isEditing && initialData?.imageUrls && initialData.imageUrls.length > 0) {
+      const existingImages: ImageWithId[] = initialData.imageUrls.map((url: string, index: number) => ({
+        publicUrl: url,
+        id: `existing-${index}`,
+        file: new File([], `image-${index}.jpg`)
+      }));
+      setDealImages(existingImages);
+      console.log('Initialized carousel with images:', existingImages.length);
+    }
+  }, [isEditing, initialData]);
+
   const [formData, setFormData] = useState({
-    title: '',
-    currentPrice: '',
-    originalPrice: '',
-    description: '',
-    category: '',
-    dealUrl: '',
-    expiryDate: '',
-    isHot: false
+    title: initialData?.title || '',
+    currentPrice: initialData?.current_price || '',
+    originalPrice: initialData?.original_price || '',
+    description: initialData?.description || '',
+    category: initialData?.category || '',
+    dealUrl: initialData?.deal_url || '',
+    expiryDate: initialData?.expiry_date || '',
+    isHot: initialData?.is_hot || false
   });
 
   const compressImage = async (file: File): Promise<File> => {
@@ -127,6 +148,66 @@ const AddDealPageNew: React.FC = () => {
 
     return true;
   };
+
+  // Создаем редактор
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        bulletList: {
+          HTMLAttributes: {
+            class: 'list-disc pl-4',
+          },
+        },
+        paragraph: {
+          HTMLAttributes: {
+            class: 'mb-3',
+          },
+        },
+        hardBreak: {
+          keepMarks: true,
+          HTMLAttributes: {
+            class: 'inline-block',
+          },
+        },
+      }),
+      Underline,
+      Image,
+    ],
+    content: '',
+    parseOptions: {
+      preserveWhitespace: 'full',
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[200px]',
+      },
+      handleKeyDown: (view, event) => {
+        if (event.key === 'Enter') {
+          view.dispatch(view.state.tr.replaceSelectionWith(
+            view.state.schema.nodes.hardBreak.create()
+          ).scrollIntoView());
+          return true;
+        }
+        return false;
+      },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+
+      setFormData(prev => ({
+        ...prev,
+        description: html
+      }));
+    },
+  });
+
+  // Устанавливаем содержимое редактора при загрузке существующих данных
+  useEffect(() => {
+    if (isEditing && initialData?.description && editor) {
+      editor.commands.setContent(initialData.description);
+      console.log('Set editor content from initial data');
+    }
+  }, [isEditing, initialData, editor]);
 
   useEffect(() => {
     // Проверяем все обязательные поля
@@ -209,56 +290,6 @@ const AddDealPageNew: React.FC = () => {
     });
   };
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        bulletList: {
-          HTMLAttributes: {
-            class: 'list-disc pl-4',
-          },
-        },
-        paragraph: {
-          HTMLAttributes: {
-            class: 'mb-3',
-          },
-        },
-        hardBreak: {
-          keepMarks: true,
-          HTMLAttributes: {
-            class: 'inline-block',
-          },
-        },
-      }),
-      Underline,
-    ],
-    content: '',
-    parseOptions: {
-      preserveWhitespace: 'full',
-    },
-    editorProps: {
-      attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[200px]',
-      },
-      handleKeyDown: (view, event) => {
-        if (event.key === 'Enter') {
-          view.dispatch(view.state.tr.replaceSelectionWith(
-            view.state.schema.nodes.hardBreak.create()
-          ).scrollIntoView());
-          return true;
-        }
-        return false;
-      },
-    },
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-
-      setFormData(prev => ({
-        ...prev,
-        description: html
-      }));
-    },
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -272,12 +303,15 @@ const AddDealPageNew: React.FC = () => {
     try {
       if (dealImages.length === 0) throw new Error('At least one image is required');
 
+      // Убедимся, что у нас есть актуальное содержимое из редактора
+      const currentDescription = editor ? editor.getHTML() : formData.description;
+
       // В новой системе, первое изображение в массиве всегда главное
       const mainImageUrl = dealImages[0].publicUrl;
 
       // Добавим все URL изображений в описание в специальном JSON-формате
       // Это позволит нам хранить дополнительные изображения без изменения структуры БД
-      let enhancedDescription = formData.description;
+      let enhancedDescription = currentDescription;
 
       // Если есть дополнительные изображения, добавим их в описание в формате JSON
       if (dealImages.length > 1) {
@@ -287,33 +321,82 @@ const AddDealPageNew: React.FC = () => {
         enhancedDescription += `\n\n<!-- DEAL_IMAGES: ${allImagesJson} -->`;
       }
 
-      const { data: deal, error: dealError } = await supabase
-        .from('deals')
-        .insert({
-          title: formData.title,
-          description: enhancedDescription,
-          current_price: Number(formData.currentPrice),
-          original_price: formData.originalPrice ? Number(formData.originalPrice) : null,
-          store_id: selectedStoreId,
-          category_id: formData.category,
-          image_url: mainImageUrl,
-          deal_url: formData.dealUrl,
-          user_id: user?.id,
-          expires_at: formData.expiryDate || null,
-          is_hot: formData.isHot
-        })
-        .select()
-        .single();
+      console.log('Saving description:', enhancedDescription);
 
-      if (dealError) {
-        console.error('Error creating deal:', dealError);
-        throw new Error('Failed to create deal');
+      const dealData = {
+        title: formData.title,
+        description: enhancedDescription,
+        current_price: Number(formData.currentPrice),
+        original_price: formData.originalPrice ? Number(formData.originalPrice) : null,
+        store_id: selectedStoreId,
+        category_id: formData.category,
+        image_url: mainImageUrl,
+        deal_url: formData.dealUrl,
+        expires_at: formData.expiryDate || null,
+        is_hot: formData.isHot
+      };
+
+      // Проверяем режим - создание или редактирование
+      if (isEditing && dealId) {
+        // Обновление существующей скидки
+        console.log('Updating existing deal:', dealId);
+
+        // Отмечаем все сделки как устаревшие для последующей перезагрузки
+        try {
+          if (dispatch) {
+            dispatch({ type: 'MARK_DEALS_STALE' });
+          } else {
+            console.warn('dispatch is undefined, cannot mark deals as stale');
+          }
+        } catch (dispatchError) {
+          console.error('Error dispatching MARK_DEALS_STALE:', dispatchError);
+        }
+
+        const { error: updateError } = await supabase
+          .from('deals')
+          .update(dealData)
+          .eq('id', dealId);
+
+        if (updateError) {
+          console.error('Error updating deal:', updateError);
+          throw new Error('Failed to update deal');
+        }
+
+        // Перенаправляем на страницу деталей
+        navigate(`/deals/${dealId}`);
+      } else {
+        // Создание новой скидки
+        // Добавляем ID пользователя только при создании
+        const { data: deal, error: dealError } = await supabase
+          .from('deals')
+          .insert({
+            ...dealData,
+            user_id: user?.id
+          })
+          .select()
+          .single();
+
+        if (dealError) {
+          console.error('Error creating deal:', dealError);
+          throw new Error('Failed to create deal');
+        }
+
+        // Отмечаем все сделки как устаревшие, если есть dispatch
+        try {
+          if (dispatch) {
+            dispatch({ type: 'MARK_DEALS_STALE' });
+          } else {
+            console.warn('dispatch is undefined in create flow, cannot mark deals as stale');
+          }
+        } catch (dispatchError) {
+          console.error('Error dispatching MARK_DEALS_STALE in create flow:', dispatchError);
+        }
+
+        navigate(`/deals/${deal.id}`);
       }
-
-      navigate(`/deals/${deal.id}`);
     } catch (error) {
       console.error('Error in handleSubmit:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create deal');
+      setError(error instanceof Error ? error.message : `Failed to ${isEditing ? 'update' : 'create'} deal`);
     } finally {
       setLoading(false);
     }
@@ -454,7 +537,7 @@ const AddDealPageNew: React.FC = () => {
                         Главное изображение
                       </div>
                     )}
-                    
+
                     <div className="absolute top-2 right-2 bg-gray-900/70 text-white font-medium text-xs px-2 py-1 rounded-md">
                       {`${dealImages.length}/4 изображений`}
                     </div>
@@ -493,12 +576,12 @@ const AddDealPageNew: React.FC = () => {
                               alt={`Изображение ${index + 1}`}
                               className="w-full h-16 object-cover"
                             />
-                            
+
                             {/* Метка позиции */}
                             <div className="absolute top-0 left-0 bg-black bg-opacity-70 text-white text-xs font-bold px-1.5 py-0.5 rounded-br-md">
                               {index + 1}
                             </div>
-                            
+
                             {/* Кнопки перемещения */}
                             <div className="absolute bottom-0 left-0 right-0 flex justify-between bg-black bg-opacity-80 p-1">
                               {/* Кнопка влево */}
@@ -521,7 +604,7 @@ const AddDealPageNew: React.FC = () => {
                                   <path d="M15 18l-6-6 6-6" />
                                 </svg>
                               </button>
-                              
+
                               {/* Кнопка вправо */}
                               <button 
                                 type="button"
@@ -543,7 +626,7 @@ const AddDealPageNew: React.FC = () => {
                                 </svg>
                               </button>
                             </div>
-                            
+
                             {/* Индикатор главного изображения */}
                             {index === 0 && (
                               <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-bl-md font-bold">
@@ -553,7 +636,7 @@ const AddDealPageNew: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      
+
                       {/* Кнопки для быстрой установки главного изображения удалены */}
                     </div>
                   )}
@@ -782,21 +865,21 @@ const AddDealPageNew: React.FC = () => {
             color: #f97316;
             text-decoration: underline;
           }
-          
+
           /* Анимация смены главного изображения */
           .main-image-container {
             position: relative;
             overflow: hidden;
           }
-          
+
           .main-image {
             transition: opacity 0.3s ease, transform 0.3s ease;
           }
-          
+
           .main-image-container img {
             animation: fadeIn 0.4s ease-out;
           }
-          
+
           @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
@@ -809,7 +892,7 @@ const AddDealPageNew: React.FC = () => {
               min-width: 30px;
               height: 30px;
             }
-            
+
             .image-controls button svg {
               width: 16px;
               height: 16px;
