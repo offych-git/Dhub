@@ -375,5 +375,46 @@ export const users: User[] = [
   { id: '4', name: 'ShopSmart', avatar: 'https://i.pravatar.cc/150?img=4' },
 ];
 
+
+// Function to generate mock price history for visualization
+export const generatePriceHistory = (originalPrice: number, currentPrice: number): { date: string; price: number }[] => {
+  const today = new Date();
+  const history = [];
+  
+  // Generate data for the last 30 days
+  for (let i = 30; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    
+    let price: number;
+    
+    if (i === 0) {
+      // Today's price is the current price
+      price = currentPrice;
+    } else if (i === 30) {
+      // Starting price is the original price
+      price = originalPrice;
+    } else {
+      // Random variations between original and current price
+      const progress = (30 - i) / 30;
+      const targetPrice = originalPrice - (originalPrice - currentPrice) * progress;
+      // Add some random fluctuation (±5%)
+      const fluctuation = Math.random() * 0.1 - 0.05; 
+      price = targetPrice * (1 + fluctuation);
+      // Ensure price doesn't go below current price if it's a discount
+      if (currentPrice < originalPrice && price < currentPrice) {
+        price = currentPrice + Math.random() * (originalPrice - currentPrice) * 0.1;
+      }
+    }
+    
+    history.push({
+      date: date.toISOString().split('T')[0],
+      price: parseFloat(price.toFixed(2))
+    });
+  }
+  
+  return history;
+};
+
 // Пустой массив mockDeals вместо реальных данных
 export const mockDeals: Deal[] = [];
