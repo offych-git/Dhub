@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Edit2, Share2, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DealCard from '../components/deals/DealCard';
@@ -109,7 +109,10 @@ const SavedItemsPage: React.FC = () => {
             store: { id: deal.store_id, name: deal.store_id },
             category: { id: deal.category_id, name: deal.category_id },
             image: deal.image_url,
-            postedAt: new Date(deal.created_at).toLocaleDateString(),
+            postedAt: {
+              relative: formatTimeAgo(deal.created_at),
+              exact: new Date(deal.created_at).toLocaleString()
+            },
             popularity: deal.vote_count || 0,
             comments: deal.deal_comments?.length || 0,
             postedBy: {
@@ -138,11 +141,8 @@ const SavedItemsPage: React.FC = () => {
       }
 
       if (promoFavorites) {
-        console.log("Структура данных promoFavorites:", JSON.stringify(promoFavorites));
-
         // Получаем ID сохраненных промокодов
         const promoIds = promoFavorites.map(fav => fav.promo_id);
-        console.log("ID избранных промокодов:", promoIds);
 
         // Если есть избранные промокоды, загружаем их полные данные отдельным запросом
         let promos = [];
@@ -158,24 +158,45 @@ const SavedItemsPage: React.FC = () => {
                 email,
                 display_name
               ),
-              promo_comments!promo_comments_promo_id_fkey (
+              promo_comments:promo_comments!promo_comments_promo_id_fkey (
                 id
               )
             `)
             .in('id', promoIds);
 
+          // Отдельно получаем количество голосов для каждого промокода
+          if (promosData && promosData.length > 0) {
+            const promoIdsForVotes = promosData.map(promo => promo.id);
+            const { data: votesData } = await supabase
+              .from('promo_votes')
+              .select('promo_id, vote_type')
+              .in('promo_id', promoIdsForVotes);
+
+            // Рассчитываем количество голосов для каждого промокода
+            if (votesData) {
+              const votesByPromo = {};
+
+              votesData.forEach(vote => {
+                if (!votesByPromo[vote.promo_id]) {
+                  votesByPromo[vote.promo_id] = 0;
+                }
+                votesByPromo[vote.promo_id] += vote.vote_type ? 1 : -1;
+              });
+
+              // Добавляем информацию о голосах к промокодам
+              promosData.forEach(promo => {
+                promo.vote_count = votesByPromo[promo.id] || 0;
+              });
+            }
+          }
+
           if (promosError) {
             console.error("Ошибка при загрузке промокодов:", promosError);
           } else if (promosData) {
             promos = promosData;
-            console.log("Загружены данные промокодов:", JSON.stringify(promosData));
-            console.log("Количество полученных промокодов:", promosData.length);
           }
         }
 
-        // Отладочный вывод
-        console.log("Загружено избранных промо-кодов:", promoFavorites.length);
-        console.log("После обработки промо-кодов:", promos.length);
 
         // Apply sorting to promo comments
         if (promos && promos.length > 0) {
@@ -184,18 +205,18 @@ const SavedItemsPage: React.FC = () => {
               promos.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
               break;
             case 'popular':
-              promos.sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+              // Используем безопасный доступ к свойству vote_count
+              promos.sort((a, b) => ((b.vote_count || 0) - (a.vote_count || 0)));
               break;
             case 'newest':
             default:
               promos.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
               break;
           }
-
-          console.log("Отсортированные промокоды:", promos.length);
-        } else {
-          console.log("Нет промокодов для сортировки");
         }
+
+        // Отладочная информация
+        console.log("Загружено сохраненных промокодов:", promos.length);
 
         setSavedPromos(promos || []);
       }
@@ -207,7 +228,7 @@ const SavedItemsPage: React.FC = () => {
   };
 
   return (
-    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
+    <div className="pb-24 pt-0 bg-gray-900 min-h-screen">
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -220,7 +241,7 @@ const SavedItemsPage: React.FC = () => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="appearance-none bg-gray-800 text-white text-sm rounded-md pl-3 pr-8 py-1 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none flex-shrink-0"
             >
               <option value="newest">Newest</option>
               <option value="oldest">Oldest</option>
@@ -289,15 +310,45 @@ const SavedItemsPage: React.FC = () => {
                         </div>
                         <div className="flex items-center space-x-2">
                           <div className="flex items-center space-x-1">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                // Здесь можно добавить функцию handleVote, если нужно
+                              }}
+                              className="text-gray-400"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </button>
                             <span className={`text-sm font-medium ${(promo.vote_count || 0) > 0 ? 'text-red-500' : (promo.vote_count || 0) < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
                               {(promo.vote_count || 0) > 0 ? '+' : ''}{promo.vote_count || 0}°
                             </span>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                // Здесь можно добавить функцию handleVote, если нужно
+                              }}
+                              className="text-gray-400"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </button>
                           </div>
                         </div>
                       </div>
 
                       <div className="mb-2">
-                        <h3 className="text-white font-medium text-sm">{promo.title}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-white font-medium text-sm">{promo.title}</h3>
+                          {promo.expires_at && new Date(promo.expires_at) < new Date() && (
+                            <div className="flex items-center bg-red-500/10 px-2 py-0.5 rounded text-red-500 text-xs font-medium">
+                              <svg className="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Expired
+                            </div>
+                          )}
+                        </div>
                         <div className="text-orange-500 text-xs mt-0.5">
                           {getStoreName(promo.discount_url)}
                         </div>
@@ -323,7 +374,8 @@ const SavedItemsPage: React.FC = () => {
                           {copiedCodeId === promo.id ? 'Copied!' : 'Copy'}
                         </button>
                         {promo.expires_at && (
-                          <div className="flex items-center text-gray-400 text-xs ml-auto">
+                          <div className="flex items-center text-gray-400 text-xs ml-auto" title="Expiration Date">
+                            <Calendar className="h-3 w-3 mr-1" />
                             <span>Expires {new Date(promo.expires_at).toLocaleDateString()}</span>
                           </div>
                         )}
@@ -341,6 +393,63 @@ const SavedItemsPage: React.FC = () => {
                           <span className="text-gray-400 ml-1">
                             {promo.profiles?.display_name || promo.profiles?.email?.split('@')[0] || 'Anonymous'}
                           </span>
+                        </div>
+
+                        <div className="flex items-center">
+                          <button 
+                            className="p-1 rounded-full text-red-500"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                          >
+                            <Heart className="h-4 w-4" fill="currentColor" />
+                          </button>
+
+                          <div className="ml-3 text-gray-400 flex items-center">
+                            <MessageSquare className="h-4 w-4 mr-1" />
+                            <span className="text-xs">{promo.promo_comments && Array.isArray(promo.promo_comments) ? promo.promo_comments.length : 0}</span>
+                          </div>
+
+                          <button 
+                            className="ml-3 text-orange-500 flex items-center"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (navigator.share) {
+                                navigator.share({
+                                  title: promo.title,
+                                  text: `Промокод: ${promo.code}`,
+                                  url: window.location.href
+                                }).catch(console.error);
+                              } else {
+                                navigator.clipboard.writeText(window.location.href);
+                                alert('Ссылка скопирована в буфер обмена!');
+                              }
+                            }}
+                          >
+                            <Share2 className="h-4 w-4" />
+                          </button>
+
+                          {user && user.id === promo.user_id && 
+                            new Date().getTime() - new Date(promo.created_at).getTime() < 24 * 60 * 60 * 1000 && (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  navigate(`/promos/${promo.id}/edit`);
+                                }}
+                                className="ml-3 text-orange-500 flex items-center"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                            )
+                          }
+
+                          <button className="ml-3 text-orange-500 flex items-center">
+                            <span className="text-xs mr-1">View</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </button>
                         </div>
                       </div>
                     </div>

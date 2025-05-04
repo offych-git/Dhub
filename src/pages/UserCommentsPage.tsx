@@ -312,7 +312,7 @@ const UserCommentsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 pb-16 pt-0">
+    <div className="min-h-screen bg-gray-900 pb-24 pt-0">
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center">

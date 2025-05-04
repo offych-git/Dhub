@@ -18,7 +18,7 @@ const EditDealCarouselPage: React.FC = () => {
     dispatch({ type: 'SET_DEALS', payload: [] });
     dispatch({ type: 'MARK_DEALS_STALE' });
     console.log("EditDealCarouselPage: очистка кеша сделок для обеспечения актуальности");
-    
+
     const fetchDeal = async () => {
       if (!id) {
         navigate('/');
@@ -46,7 +46,7 @@ const EditDealCarouselPage: React.FC = () => {
 
       if (data) {
         console.log('Raw carousel deal data from DB:', data);
-        
+
         // Переданные данные в AddDealPageNew должны быть правильно трансформированы
         // Учитываем формат карусели в комментарии DEAL_IMAGES
         const transformedData = {
@@ -62,7 +62,7 @@ const EditDealCarouselPage: React.FC = () => {
           store_id: data.store_id || null,
           dealImages: [] // Будет заполнено ниже
         };
-        
+
         // Извлекаем карусель изображений из описания
         let imageUrls: string[] = [];
         if (data.description) {
@@ -71,7 +71,7 @@ const EditDealCarouselPage: React.FC = () => {
             try {
               imageUrls = JSON.parse(match[1]);
               console.log('Found carousel images:', imageUrls.length);
-              
+
               // Очищаем описание от JSON с изображениями
               transformedData.description = data.description.replace(/<!-- DEAL_IMAGES: .*? -->/, '').trim();
             } catch (e) {
@@ -79,9 +79,9 @@ const EditDealCarouselPage: React.FC = () => {
             }
           }
         }
-        
+
         console.log('Transformed carousel data:', transformedData);
-        
+
         // Сохраняем данные для передачи в компонент AddDealPageNew
         setDealData({
           ...transformedData,
@@ -105,9 +105,19 @@ const EditDealCarouselPage: React.FC = () => {
   }
 
   return (
-    <div>
-      <AddDealPageNew isEditing={true} dealId={id} initialData={dealData} />
-    </div>
+    <AddDealPageNew 
+      isEditing={true} 
+      dealId={id} 
+      initialData={dealData} 
+      customHeaderComponent={
+        <div className="flex items-center">
+          <button onClick={() => navigate('/deals')} className="text-white">
+            <ArrowLeft className="h-6 w-6" />
+          </button>
+          <h1 className="text-white text-lg font-medium ml-4">Edit Carousel Deal</h1>
+        </div>
+      }
+    />
   );
 };
 

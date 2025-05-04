@@ -484,13 +484,16 @@ const PromosPage: React.FC = () => {
                       </button>
                       {user && user.id === promo.user.id && 
                         new Date().getTime() - new Date(promo.created_at).getTime() < 24 * 60 * 60 * 1000 && (
-                          <Link
-                            to={`/promos/${promo.id}/edit`}
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              navigate(`/promos/${promo.id}/edit`);
+                            }}
                             className="ml-3 text-orange-500 flex items-center"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             <Edit2 className="h-4 w-4" />
-                          </Link>
+                          </button>
                         )
                       }
                       <button className="ml-3 text-orange-500 flex items-center">

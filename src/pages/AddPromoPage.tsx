@@ -1,17 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Info, ChevronDown } from 'lucide-react';
 import { categories, categoryIcons } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomSheet';
-import { useLanguage } from '../contexts/LanguageContext'; // Assuming this context exists
+import { useLanguage } from '../contexts/LanguageContext'; 
+import { useGlobalState } from '../contexts/GlobalStateContext';
 
+interface PromoData {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  category_id: string;
+  discount_url: string;
+  expires_at: string | null;
+}
 
-const AddPromoPage: React.FC = () => {
+interface AddPromoPageProps {
+  isEditing?: boolean;
+  promoData?: PromoData;
+}
+
+const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoData }) => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t, language } = useLanguage();
+  const { dispatch } = useGlobalState();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);
@@ -24,6 +41,19 @@ const AddPromoPage: React.FC = () => {
     expiryDate: ''
   });
 
+  useEffect(() => {
+    if (isEditing && promoData) {
+      setFormData({
+        promoCode: promoData.code || '',
+        title: promoData.title || '',
+        description: promoData.description || '',
+        category: promoData.category_id || '',
+        discountUrl: promoData.discount_url || '',
+        expiryDate: promoData.expires_at ? promoData.expires_at.split('T')[0] : ''
+      });
+    }
+  }, [isEditing, promoData]);
+
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const categoryRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +62,8 @@ const AddPromoPage: React.FC = () => {
       formData.title.trim() !== '' &&
       formData.description.trim() !== '' &&
       formData.category !== '' &&
-      formData.discountUrl.trim() !== '';
+      formData.discountUrl.trim() !== '' &&
+      (!formData.expiryDate || new Date(formData.expiryDate) > new Date());
 
     setIsValid(isFormValid);
   }, [formData]);
@@ -42,31 +73,64 @@ const AddPromoPage: React.FC = () => {
     setError(null);
 
     if (!isValid) {
-      setError('Please fill in all required fields');
+      if (formData.expiryDate && new Date(formData.expiryDate) <= new Date()) {
+        setError('Expiry date must be in the future');
+      } else {
+        setError('Please fill in all required fields');
+      }
       return;
     }
 
     setLoading(true);
 
     try {
-      const { data: promo, error: promoError } = await supabase
-        .from('promo_codes')
-        .insert({
-          code: formData.promoCode,
-          title: formData.title,
-          description: formData.description,
-          category_id: formData.category,
-          discount_url: formData.discountUrl,
-          expires_at: formData.expiryDate || null,
-          user_id: user?.id
-        })
-        .select()
-        .single();
+      if (isEditing && promoData) {
+        // Update existing promo
+        const { data: updatedPromo, error: updateError } = await supabase
+          .from('promo_codes')
+          .update({
+            code: formData.promoCode,
+            title: formData.title,
+            description: formData.description,
+            category_id: formData.category,
+            discount_url: formData.discountUrl,
+            expires_at: formData.expiryDate || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', promoData.id)
+          .select()
+          .single();
 
-      if (promoError) throw promoError;
+        if (updateError) throw updateError;
+        
+        // Dispatch update to global state
+        dispatch({ 
+          type: 'UPDATE_PROMO', 
+          payload: updatedPromo 
+        });
+        
+        navigate('/promos');
+      } else {
+        // Insert new promo
+        const { data: promo, error: promoError } = await supabase
+          .from('promo_codes')
+          .insert({
+            code: formData.promoCode,
+            title: formData.title,
+            description: formData.description,
+            category_id: formData.category,
+            discount_url: formData.discountUrl,
+            expires_at: formData.expiryDate || null,
+            user_id: user?.id
+          })
+          .select()
+          .single();
 
-      navigate('/promos');
+        if (promoError) throw promoError;
+        navigate('/promos');
+      }
     } catch (err: any) {
+      console.error('Error saving promo:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -87,7 +151,9 @@ const AddPromoPage: React.FC = () => {
             <button onClick={() => navigate(-1)} className="text-white">
               <ArrowLeft className="h-6 w-6" />
             </button>
-            <h1 className="text-white text-lg font-medium ml-4">Add New Promo Code</h1>
+            <h1 className="text-white text-lg font-medium ml-4">
+              {isEditing ? 'Edit Promo Code' : 'Add New Promo Code'}
+            </h1>
           </div>
           <button className="text-white">
             <Info className="h-6 w-6" />
@@ -96,7 +162,7 @@ const AddPromoPage: React.FC = () => {
       </div>
 
       {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto pt-16 pb-24">
+      <div className="flex-1 overflow-y-auto pt-4 pb-24">
         <div className="px-4">
           {error && (
             <div className="bg-red-500 text-white px-4 py-3 rounded-md mb-4">
@@ -179,7 +245,7 @@ const AddPromoPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
               />
               <p className="text-gray-500 text-sm mt-1">
-                Expiry date (optional)
+                Expiry date (optional) - must be in the future
               </p>
             </div>
 
@@ -209,7 +275,7 @@ const AddPromoPage: React.FC = () => {
                 {loading ? (
                   <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 ) : (
-                  'Post Promo Code'
+                  isEditing ? 'Update Promo Code' : 'Post Promo Code'
                 )}
               </button>
             </div>
@@ -222,7 +288,7 @@ const AddPromoPage: React.FC = () => {
         <div className="flex space-x-4">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(isEditing ? '/promos' : -1)}
             className="flex-1 bg-gray-800 text-white py-3 rounded-md font-medium"
           >
             Cancel
@@ -237,7 +303,7 @@ const AddPromoPage: React.FC = () => {
             {loading ? (
               <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              'Publish'
+              isEditing ? 'Save Changes' : 'Publish'
             )}
           </button>
         </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2, ArrowLeftCircle, ArrowRightCircle, Edit2 } from 'lucide-react';
 import { mockDeals, generatePriceHistory } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import AdminActions from '../components/admin/AdminActions';
@@ -638,6 +638,16 @@ const DealDetailPage: React.FC = () => {
             >
               <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'} />
             </button>
+            {user && user.id === deal.postedBy.id && 
+              new Date().getTime() - new Date(deal.postedAt).getTime() < 24 * 60 * 60 * 1000 && (
+                <button
+                  onClick={() => navigate(`/deals/${deal.id}/edit`)}
+                  className="ml-3 text-orange-500 flex items-center"
+                >
+                  <Edit2 className="h-5 w-5" />
+                </button>
+              )
+            }
           </div>
         </div>
 

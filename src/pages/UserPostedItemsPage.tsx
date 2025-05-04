@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2, Edit2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DealCard from '../components/deals/DealCard';
@@ -114,7 +114,9 @@ const UserPostedItemsPage: React.FC = () => {
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(deal.profiles?.display_name || deal.profiles?.email || 'Anonymous')}&background=random`
         },
         description: deal.description,
-        url: deal.deal_url
+        url: deal.deal_url,
+        createdAt: deal.created_at, 
+        expires_at: deal.expires_at 
       }));
 
       if (page === 1) {
@@ -200,7 +202,7 @@ const UserPostedItemsPage: React.FC = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="appearance-none bg-gray-800 text-white text-sm rounded-md pl-3 pr-8 py-1 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none flex-shrink-0"
               >
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
@@ -247,7 +249,7 @@ const UserPostedItemsPage: React.FC = () => {
                 {deals.map(deal => (
                   <DealCard
                     key={deal.id}
-                    deal={deal}
+                    deal={{...deal, postedAt: {relative: deal.postedAt, exact: new Date(deal.createdAt).toLocaleString()}}}
                     onVoteChange={loadUserItems}
                   />
                 ))}
@@ -265,7 +267,7 @@ const UserPostedItemsPage: React.FC = () => {
                   >
                     <div className="p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-gray-400 text-xs">
+                        <div className="text-gray-400 text-xs" title={new Date(promo.created_at).toLocaleString()}>
                           {formatTimeAgo(promo.created_at)}
                         </div>
                         <div className="flex items-center space-x-2">
@@ -341,9 +343,19 @@ const UserPostedItemsPage: React.FC = () => {
                                 alert('Link copied to clipboard!');
                               }
                             }}
-                            className="ml-2 text-gray-400 hover:text-orange-500"
+                            className="ml-2 text-orange-500"
                           >
                             <Share2 className="h-3 w-3" />
+                          </button>
+                          <button 
+                            onClick={(e)=>{
+                              e.stopPropagation();
+                              e.preventDefault();
+                              navigate(`/promos/${promo.id}/edit`);
+                            }} 
+                            className="ml-2 text-orange-500"
+                          >
+                            <Edit2 className="h-4 w-4"/>
                           </button>
                         </div>
                       </div>

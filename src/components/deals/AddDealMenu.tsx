@@ -20,16 +20,10 @@ const AddDealMenu: React.FC<AddDealMenuProps> = ({ isOpen, onClose }) => {
         </div>
         <div className="divide-y divide-gray-700">
           <Link 
-            to="/deals/new" 
-            className="block px-4 py-3 text-white hover:bg-gray-700"
-          >
-            {t('common.deal')}
-          </Link>
-          <Link 
             to="/deals/new-carousel" 
             className="block px-4 py-3 text-white hover:bg-gray-700"
           >
-            {t('common.deal')} (Carousel)
+            {t('common.deal')}
           </Link>
           <Link 
             to="/promos/new" 

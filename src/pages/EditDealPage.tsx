@@ -148,7 +148,12 @@ const EditDealPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-2xl font-bold text-white mb-6">Edit Deal</h1>
+      <div className="flex items-center mb-6">
+        <button onClick={() => navigate('/deals')} className="text-white mr-4">
+          <ArrowLeft className="h-6 w-6" />
+        </button>
+        <h1 className="text-2xl font-bold text-white">Edit Deal</h1>
+      </div>
       <AddDealPage isEditing={true} dealId={id} initialData={dealData} />
     </div>
   );

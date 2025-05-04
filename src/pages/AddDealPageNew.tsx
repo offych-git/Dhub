@@ -27,9 +27,10 @@ interface AddDealPageNewProps {
   isEditing?: boolean;
   dealId?: string;
   initialData?: any;
+  customHeaderComponent?: React.ReactNode; // Added custom header prop
 }
 
-const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, dealId, initialData }) => {
+const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, dealId, initialData, customHeaderComponent }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { dispatch } = useGlobalState(); // Added dispatch
@@ -431,21 +432,25 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
+      {/* Header */}
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate(-1)} className="text-white">
-              <ArrowLeft className="h-6 w-6" />
-            </button>
-            <h1 className="text-white text-lg font-medium ml-4">{t('common.add')} {t('common.deal')}</h1>
-          </div>
-          <button className="text-white">
-            <Info className="h-6 w-6" />
-          </button>
+          {customHeaderComponent ? (
+            customHeaderComponent
+          ) : (
+            <div className="flex items-center">
+              <button onClick={() => navigate(-1)} className="text-white">
+                <ArrowLeft className="h-6 w-6" />
+              </button>
+              <h1 className="text-white text-lg font-medium ml-4">
+                {isEditing ? 'Edit Deal' : 'Add New Deal'}
+              </h1>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pt-16 pb-24">
+      <div className="flex-1 overflow-y-auto pt-4 pb-24">
         <div className="px-4">
           {error && (
             <div className="bg-red-500 text-white px-4 py-3 rounded-md mb-4">
