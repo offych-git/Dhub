@@ -278,6 +278,7 @@ const ProfilePage: React.FC = () => {
     setSuccess(null);
 
     try {
+      // Сначала удаляем пользовательские данные из таблицы profiles
       const { error: dbError } = await supabase
         .from('profiles')
         .delete()
@@ -285,10 +286,26 @@ const ProfilePage: React.FC = () => {
 
       if (dbError) throw dbError;
 
+      // Вызываем хранимую процедуру для удаления пользователя
+      const { error: rpcError } = await supabase.rpc('delete_user');
+      
+      if (rpcError) {
+        // Если RPC не сработал, пробуем выйти глобально для деактивации аккаунта
+        console.error('Ошибка при удалении аккаунта через RPC:', rpcError);
+        
+        // Глобальный выход - деактивирует все сессии пользователя
+        await supabase.auth.signOut({ scope: 'global' });
+        await signOut();
+        navigate('/auth');
+        return;
+      }
+      
+      // Если удаление прошло успешно, выходим из аккаунта
       await signOut();
       navigate('/auth');
     } catch (err: any) {
-      setError(err.message);
+      console.error('Ошибка при удалении аккаунта:', err);
+      setError(err.message || 'Не удалось удалить аккаунт. Пожалуйста, попробуйте позже.');
     } finally {
       setLoading(false);
     }

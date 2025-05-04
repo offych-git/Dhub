@@ -26,15 +26,15 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const [configValid, setConfigValid] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   
-  // Check for recovery token on page load
+  // Check for recovery token or signup confirmation on page load
   useEffect(() => {
-    const checkForRecoveryFlow = async () => {
-      // Parse URL for tokens
+    const checkForSpecialFlows = async () => {
+      // Parse URL for tokens and types
       const searchParams = new URLSearchParams(window.location.search);
       const token = searchParams.get('token');
       const type = searchParams.get('type');
       
-      console.log('Recovery check:', { 
+      console.log('Auth flow check:', { 
         fullUrl: window.location.href,
         search: window.location.search,
         token: token ? `${token.substring(0, 10)}...` : 'none',
@@ -42,8 +42,30 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         isResetPage: isResetPasswordPage
       });
       
+      // If this is a signup confirmation
+      if (type === 'signup') {
+        try {
+          console.log('Detected signup confirmation flow');
+          
+          // Wait a short delay to make sure the auth state is updated
+          setTimeout(() => {
+            // Show success message
+            setSuccessMessage('Регистрация успешно завершена! Переход на страницу профиля...');
+            
+            // Redirect to profile page after a short delay to show the success message
+            setTimeout(() => {
+              navigate('/profile', { replace: true });
+            }, 1500);
+          }, 500);
+          
+          return; // Exit early - no need to check other flows
+        } catch (err) {
+          console.error('Error handling signup flow:', err);
+          setError('Произошла ошибка при подтверждении регистрации.');
+        }
+      }
       // If we have a recovery token
-      if (token && type === 'recovery') {
+      else if (token && type === 'recovery') {
         try {
           // Set immediately to show appropriate UI
           setIsResetPassword(true);
@@ -74,7 +96,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       }
     };
     
-    checkForRecoveryFlow();
+    checkForSpecialFlows();
   }, [location, navigate, isResetPasswordPage]);
   
   // Also check state for tokens passed during navigation
