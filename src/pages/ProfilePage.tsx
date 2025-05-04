@@ -91,19 +91,47 @@ const ProfilePage: React.FC = () => {
     if (!user) return;
 
     try {
-      // Get saved deals count
-      const { count: savedDealsCount } = await supabase
+      // 1. Получаем ID избранных скидок
+      const { data: dealFavorites, error: dealFavoritesError } = await supabase
         .from('deal_favorites')
-        .select('id', { count: 'exact' })
+        .select('deal_id')
         .eq('user_id', user.id);
 
-      // Get saved promos count
-      const { count: savedPromosCount } = await supabase
+      if (dealFavoritesError) {
+        console.error('Error fetching deal favorites:', dealFavoritesError);
+      }
+
+      // 2. Получаем количество реальных скидок, которые можно показать (существуют в таблице deals)
+      let dealsCount = 0;
+      if (dealFavorites && dealFavorites.length > 0) {
+        const dealIds = dealFavorites.map(fav => fav.deal_id);
+        const { count, error } = await supabase
+          .from('deals')
+          .select('id', { count: 'exact', head: true })
+          .in('id', dealIds);
+          
+        if (error) {
+          console.error('Error fetching deals count:', error);
+        } else {
+          dealsCount = count || 0;
+        }
+      }
+
+      // 3. Получаем количество избранных промокодов
+      const { count: promoCount, error: promosCountError } = await supabase
         .from('promo_favorites')
-        .select('id', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
 
-      setSavedItemsCount((savedDealsCount || 0) + (savedPromosCount || 0));
+      if (promosCountError) {
+        console.error('Error fetching saved promos count:', promosCountError);
+      }
+      
+      // Логируем фактические результаты для отладки
+      console.log('Actual saved items count - Deals:', dealsCount, 'Promos:', promoCount, 'Total:', (dealsCount || 0) + (promoCount || 0));
+      
+      // Устанавливаем правильное количество
+      setSavedItemsCount((dealsCount || 0) + (promoCount || 0));
     } catch (err) {
       console.error('Error loading saved items count:', err);
     }
