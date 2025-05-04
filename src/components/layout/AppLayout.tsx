@@ -35,8 +35,10 @@ const AppLayout: React.FC = () => {
     <div className="bg-gray-900 min-h-screen relative">
       <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
       
-      {/* Main content */}
-      <Outlet />
+      {/* Main content с учетом высоты Header и SearchBar */}
+      <div className="pt-28">
+        <Outlet />
+      </div>
       
       {/* Bottom navigation */}
       <Navigation />

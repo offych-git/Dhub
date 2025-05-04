@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { ChevronDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2, ExternalLink, Edit2 } from 'lucide-react';
-import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/shared/FilterBar';
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -333,9 +332,7 @@ const PromosPage: React.FC = () => {
   });
 
   return (
-    <div className="pb-16 pt-16 bg-gray-900 min-h-screen">
-      <SearchBar />
-
+    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
       <FilterBar
         selectedCategories={selectedCategories}
         selectedStores={selectedStores}

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import SearchBar from '../components/ui/SearchBar';
 import Tabs from '../components/deals/Tabs';
 import FilterBar from '../components/shared/FilterBar';
 import DealCard from '../components/deals/DealCard';
 import { Deal } from '../types';
 import { supabase } from '../lib/supabase';
 import { useGlobalState } from '../contexts/GlobalStateContext';
+import { useLanguage } from '../contexts/LanguageContext'; // Added import
 
 const formatRelativeTime = (date: Date) => {
   const now = new Date();
@@ -36,6 +36,7 @@ const DealsPage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const location = useLocation();
+  const { t } = useLanguage(); // Added language context
 
   const { state, dispatch, refreshDeals } = useGlobalState();
   const dbDeals = state.deals.items;
@@ -320,10 +321,14 @@ const DealsPage: React.FC = () => {
     });
   }
 
-  return (
-    <div className="pb-16 pt-16 bg-gray-900 min-h-screen">
-      <SearchBar />
+  const translations = {
+    en: 'Nothing found for your query',
+    ru: 'Ничего не найдено по вашему запросу',
+    es: 'Nada encontrado para su consulta'
+  };
 
+  return (
+    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
       <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
 
       <FilterBar
@@ -349,6 +354,10 @@ const DealsPage: React.FC = () => {
               onVoteChange={fetchDeals}
             />
           ))}
+        </div>
+      ) : searchParams.get('q') && searchParams.get('no_results') === 'true' ? (
+        <div className="text-gray-400 text-center py-8">
+          {translations[t('locale')] || translations.ru} {/* Use translation based on locale */}
         </div>
       ) : (
         <div className="flex justify-center items-center py-8">

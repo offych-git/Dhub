@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import AddDealMenu from '../deals/AddDealMenu';
 import NotificationBell from '../notifications/NotificationBell';
+import SearchBar from './SearchBar';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -34,7 +35,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   };
 
   return (
-    <header className="bg-gray-900 py-3 px-4 flex items-center justify-between fixed top-0 left-0 right-0 z-10">
+    <header className="bg-gray-900 py-3 px-4 flex flex-col fixed top-0 left-0 right-0 z-10">
       <div className="flex items-center w-full">
         <button onClick={onMenuClick} className="mr-4">
           <Menu className="h-6 w-6 text-white" />
@@ -47,6 +48,9 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           </button>
         </div>
       </div>
+      
+      {/* Добавляем компонент SearchBar */}
+      <SearchBar />
 
       <AddDealMenu 
         isOpen={isAddMenuOpen}

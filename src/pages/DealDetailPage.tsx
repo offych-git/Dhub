@@ -29,14 +29,14 @@ const DealDetailPage: React.FC = () => {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const isExpired = deal?.expires_at && new Date(deal.expires_at) < new Date();
-  
+
   // Получение списка изображений для карусели
   const dealImages = useMemo(() => {
     if (!deal) return [];
-    
+
     // Основное изображение всегда первое
     const images = [deal.image];
-    
+
     // Проверяем, есть ли в описании JSON с дополнительными изображениями
     if (deal.description) {
       const match = deal.description.match(/<!-- DEAL_IMAGES: (.*?) -->/);
@@ -44,7 +44,7 @@ const DealDetailPage: React.FC = () => {
         try {
           // Пытаемся распарсить JSON с изображениями
           const allImages = JSON.parse(match[1]);
-          
+
           // Если первое изображение в JSON совпадает с основным, не дублируем его
           if (allImages[0] === deal.image) {
             images.push(...allImages.slice(1));
@@ -57,14 +57,14 @@ const DealDetailPage: React.FC = () => {
         }
       }
     }
-    
+
     // Отладочная информация
     if (id === '73b11531-278d-46e1-9c4a-f674110b6ec5') {
       console.log('Deal ID:', id);
       console.log('Количество изображений:', images.length);
       console.log('Изображения:', images);
     }
-    
+
     return images;
   }, [deal, id]);
 
@@ -80,36 +80,36 @@ const DealDetailPage: React.FC = () => {
       prev === dealImages.length - 1 ? 0 : prev + 1
     );
   };
-  
+
   // Обработчики свайпов с улучшенной реактивностью
   const handleTouchStart = (e: React.TouchEvent) => {
     // Сохраняем начальную позицию касания
     setTouchStart(e.targetTouches[0].clientX);
     setTouchEnd(null); // Сбрасываем конечную позицию при новом касании
   };
-  
+
   const handleTouchMove = (e: React.TouchEvent) => {
     // Обновляем позицию при движении пальца
     setTouchEnd(e.targetTouches[0].clientX);
-    
+
     // Предотвращаем скролл страницы при горизонтальном свайпе
     if (Math.abs((touchStart || 0) - e.targetTouches[0].clientX) > 10) {
       e.preventDefault();
     }
   };
-  
+
   const handleTouchEnd = () => {
     if (touchStart === null) return;
-    
+
     // Если touchEnd не был установлен (пользователь просто тапнул), выходим
     if (touchEnd === null) {
       setTouchStart(null);
       return;
     }
-    
+
     const distance = touchStart - touchEnd;
     const minSwipeDistance = 50; // Минимальное расстояние свайпа для срабатывания
-    
+
     if (distance > minSwipeDistance) {
       // Свайп влево - следующее изображение
       goToNextImage();
@@ -117,7 +117,7 @@ const DealDetailPage: React.FC = () => {
       // Свайп вправо - предыдущее изображение
       goToPreviousImage();
     }
-    
+
     // Сбрасываем состояния касания
     setTouchStart(null);
     setTouchEnd(null);
@@ -465,7 +465,7 @@ const DealDetailPage: React.FC = () => {
     : 0;
 
   return (
-    <div className="pb-16 pt-16 bg-gray-900 min-h-screen">
+    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -498,7 +498,7 @@ const DealDetailPage: React.FC = () => {
           onClick={(e) => {
             // Находим текущий элемент img
             const img = e.target as HTMLImageElement;
-            
+
             // Проверяем, есть ли уже модальное окно для этого изображения
             const existingModal = document.querySelector('.fullscreen-image-modal');
             if (existingModal) {
@@ -506,11 +506,11 @@ const DealDetailPage: React.FC = () => {
               document.body.removeChild(existingModal);
               return;
             }
-            
+
             // Создаем модальное окно для просмотра изображения в полном размере
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 fullscreen-image-modal';
-            
+
             // При клике на фон закрываем модальное окно
             modal.addEventListener('click', (e) => {
               if (e.target === modal) {
@@ -520,12 +520,12 @@ const DealDetailPage: React.FC = () => {
 
             const content = document.createElement('div');
             content.className = 'relative max-w-4xl max-h-[90vh]';
-            
+
             const fullImg = document.createElement('img');
             fullImg.src = getValidImageUrl(dealImages[currentImageIndex] || deal.image);
             fullImg.className = 'max-w-full max-h-[90vh] object-contain cursor-pointer';
             fullImg.onError = handleImageError;
-            
+
             // При клике на изображение закрываем модальное окно
             fullImg.addEventListener('click', () => {
               document.body.removeChild(modal);
@@ -536,20 +536,20 @@ const DealDetailPage: React.FC = () => {
               // Создаем контейнер для навигационных точек
               const navContainer = document.createElement('div');
               navContainer.className = 'absolute bottom-4 left-0 right-0 flex justify-center space-x-2';
-              
+
               // Создаем точки для каждого изображения
               dealImages.forEach((_, index) => {
                 const dot = document.createElement('button');
                 dot.className = `h-2 w-2 rounded-full ${
                   index === currentImageIndex ? 'bg-orange-500' : 'bg-gray-400'
                 }`;
-                
+
                 // При клике на точку меняем изображение
                 dot.addEventListener('click', (e) => {
                   e.stopPropagation();
                   setCurrentImageIndex(index);
                   fullImg.src = getValidImageUrl(dealImages[index]);
-                  
+
                   // Обновляем активную точку
                   const dots = navContainer.querySelectorAll('button');
                   dots.forEach((d, i) => {
@@ -558,12 +558,12 @@ const DealDetailPage: React.FC = () => {
                     }`;
                   });
                 });
-                
+
                 navContainer.appendChild(dot);
               });
-              
+
               content.appendChild(navContainer);
-              
+
               // Стрелки навигации не добавляем в режиме увеличенного изображения
               // Навигация происходит свайпом или нажатием на точки
             }
@@ -573,7 +573,7 @@ const DealDetailPage: React.FC = () => {
             document.body.appendChild(modal);
           }}
         />
-        
+
         {dealImages.length > 1 && (
           <>
             {/* Кнопка предыдущего изображения */}
@@ -584,7 +584,7 @@ const DealDetailPage: React.FC = () => {
             >
               <ArrowLeftCircle className="h-6 w-6" />
             </button>
-            
+
             {/* Кнопка следующего изображения */}
             <button 
               onClick={goToNextImage}
@@ -593,7 +593,7 @@ const DealDetailPage: React.FC = () => {
             >
               <ArrowRightCircle className="h-6 w-6" />
             </button>
-            
+
             {/* Индикатор текущего изображения */}
             <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
               {dealImages.map((_, index) => (
@@ -812,7 +812,7 @@ const DealDetailPage: React.FC = () => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'popular')}
-                className="bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none flex-shrink-0"
+              className="bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none flex-shrink-0"
             >
               <option value="newest">Newest</option>
               <option value="oldest">Oldest</option>
