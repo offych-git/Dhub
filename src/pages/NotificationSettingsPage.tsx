@@ -87,7 +87,7 @@ const NotificationSettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 pb-16 pt-16">
+    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center">
           <button onClick={() => navigate(-1)} className="text-white">
@@ -97,7 +97,7 @@ const NotificationSettingsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="px-4 pt-4">
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>

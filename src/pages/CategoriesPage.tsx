@@ -77,17 +77,17 @@ const CategoriesPage: React.FC = () => {
   }
 
   return (
-    <div className="pb-16 pt-16 bg-gray-900 min-h-screen">
-      <div className="p-4">
+    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
+      <div className="px-4 pb-6">
         <h2 className="text-white text-xl font-medium mb-4">
           {t('navigation.categories')}
         </h2>
-        
+
         <div className="grid grid-cols-2 gap-4">
           {categories.map(category => {
             const Icon = categoryIcons[category.name];
             const subcategoryCount = category.subcategories?.length || 0;
-            
+
             return (
               <button
                 key={category.id}

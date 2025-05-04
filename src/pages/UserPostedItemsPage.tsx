@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2 } from 'lucide-react';
@@ -164,6 +163,7 @@ const UserPostedItemsPage: React.FC = () => {
       console.error('Error loading user items:', error);
     } finally {
       setLoading(false);
+      setIsFetchingMore(false);
     }
   };
 
@@ -186,7 +186,7 @@ const UserPostedItemsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 pb-16 pt-16">
+    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center justify-between">
@@ -211,7 +211,7 @@ const UserPostedItemsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-4 max-w-lg mx-auto">
+      <div className="px-4 pt-4">
         <div className="flex space-x-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
           <button 
             className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'deals' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}

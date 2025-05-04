@@ -13,6 +13,15 @@ const SavedItemsPage: React.FC = () => {
   const [savedDeals, setSavedDeals] = useState<Deal[]>([]);
   const [savedPromos, setSavedPromos] = useState<any[]>([]);
 
+  const formatTimeAgo = (dateString: string) => {
+    const minutes = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `${days}d`;
+  };
+
   useEffect(() => {
     if (user) {
       loadSavedItems();
@@ -33,7 +42,7 @@ const SavedItemsPage: React.FC = () => {
 
       if (dealFavorites && dealFavorites.length > 0) {
         const dealIds = dealFavorites.map(fav => fav.deal_id);
-        
+
         const { data: dealsData, error: dealsError } = await supabase
           .from('deals')
           .select(`
@@ -108,7 +117,7 @@ const SavedItemsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 pb-16 pt-16">
+    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center">
           <button onClick={() => navigate(-1)} className="text-white">
@@ -118,7 +127,7 @@ const SavedItemsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="px-4 pt-4">
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
@@ -156,6 +165,11 @@ const SavedItemsPage: React.FC = () => {
                       className="bg-gray-800 rounded-lg overflow-hidden"
                     >
                       <div className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-gray-400 text-xs">
+                            {formatTimeAgo(promo.created_at)}
+                          </div>
+                        </div>
                         <h3 className="text-white font-medium">{promo.title}</h3>
                         <div className="mt-2 flex items-center space-x-2">
                           <div className="bg-gray-700 px-3 py-1 rounded border border-gray-600">

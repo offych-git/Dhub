@@ -312,7 +312,7 @@ const UserCommentsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 pb-16 pt-16">
+    <div className="min-h-screen bg-gray-900 pb-16 pt-0">
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center">
@@ -324,7 +324,7 @@ const UserCommentsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="relative mx-4 my-3">
+      <div className="relative mx-4 mt-3 mb-3">
         <div className="flex items-center bg-gray-700 rounded-lg px-4 py-2 mb-4">
           <input
             type="text"

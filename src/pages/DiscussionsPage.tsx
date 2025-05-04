@@ -40,15 +40,15 @@ const DiscussionsPage: React.FC = () => {
   ];
 
   return (
-    <div className="pb-16 pt-24 bg-gray-900 min-h-screen">
-      <div className="p-4">
+    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
+      <div className="px-4 pt-1 pb-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-white text-xl font-medium">Popular Discussions</h2>
           <button className="bg-orange-500 text-white px-4 py-2 rounded-md text-sm font-medium">
             New Post
           </button>
         </div>
-        
+
         <div className="space-y-4">
           {discussions.map(discussion => (
             <div 
@@ -56,7 +56,7 @@ const DiscussionsPage: React.FC = () => {
               className="bg-gray-800 rounded-lg p-4"
             >
               <h3 className="text-white font-medium">{discussion.title}</h3>
-              
+
               <div className="mt-3 flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
@@ -71,7 +71,7 @@ const DiscussionsPage: React.FC = () => {
                     <div className="text-gray-500 text-xs">{discussion.createdAt}</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center text-gray-400">
                     <MessageSquare className="h-4 w-4 mr-1" />
