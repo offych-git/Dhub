@@ -19,12 +19,37 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   useEffect(() => {
+    // Сохраняем тему в localStorage
     localStorage.setItem('theme', theme);
-    document.documentElement.classList.toggle('light', theme === 'light');
+    
+    // Сначала удаляем все возможные классы тем
+    document.documentElement.classList.remove('light', 'dark');
+    
+    // Затем добавляем класс текущей темы
+    document.documentElement.classList.add(theme);
+    
+    // Принудительно обновляем CSS переменные
+    if (theme === 'light') {
+      document.documentElement.style.setProperty('--bg-primary', '#F3F4F6');
+      document.documentElement.style.setProperty('--bg-secondary', '#FFFFFF');
+      document.documentElement.style.setProperty('--text-primary', '#111827');
+    } else {
+      document.documentElement.style.setProperty('--bg-primary', '#111827');
+      document.documentElement.style.setProperty('--bg-secondary', '#1F2937');
+      document.documentElement.style.setProperty('--text-primary', '#FFFFFF');
+    }
+    
+    // Для отладки
+    console.log("Тема установлена:", theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+    console.log("Переключение темы, текущая тема:", theme);
+    setTheme(prevTheme => {
+      const newTheme = prevTheme === 'dark' ? 'light' : 'dark';
+      console.log("Новая тема:", newTheme);
+      return newTheme;
+    });
   };
 
   return (

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { cleanupUserData } from '../utils/accountUtils';
 
 const ProfilePage: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -109,7 +110,7 @@ const ProfilePage: React.FC = () => {
           .from('deals')
           .select('id', { count: 'exact', head: true })
           .in('id', dealIds);
-          
+
         if (error) {
           console.error('Error fetching deals count:', error);
         } else {
@@ -126,10 +127,10 @@ const ProfilePage: React.FC = () => {
       if (promosCountError) {
         console.error('Error fetching saved promos count:', promosCountError);
       }
-      
+
       // Логируем фактические результаты для отладки
       console.log('Actual saved items count - Deals:', dealsCount, 'Promos:', promoCount, 'Total:', (dealsCount || 0) + (promoCount || 0));
-      
+
       // Устанавливаем правильное количество
       setSavedItemsCount((dealsCount || 0) + (promoCount || 0));
     } catch (err) {
@@ -271,41 +272,44 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!user?.id) return;
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
     try {
-      // Сначала удаляем пользовательские данные из таблицы profiles
-      const { error: dbError } = await supabase
+      if (!user) return;
+
+      console.log('Начало процедуры удаления данных пользователя:', user.id);
+
+      // 1. Удаляем все связанные данные пользователя
+      await cleanupUserData(user.id);
+
+      // 2. Удаляем профиль с проверкой и логированием
+      const { error: profilesError, data: deletedProfile } = await supabase
         .from('profiles')
         .delete()
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select();
 
-      if (dbError) throw dbError;
-
-      // Вызываем хранимую процедуру для удаления пользователя
-      const { error: rpcError } = await supabase.rpc('delete_user');
-      
-      if (rpcError) {
-        // Если RPC не сработал, пробуем выйти глобально для деактивации аккаунта
-        console.error('Ошибка при удалении аккаунта через RPC:', rpcError);
-        
-        // Глобальный выход - деактивирует все сессии пользователя
-        await supabase.auth.signOut({ scope: 'global' });
-        await signOut();
-        navigate('/auth');
-        return;
+      if (profilesError) {
+        console.error('Ошибка при удалении профиля:', profilesError);
+        throw profilesError;
       }
-      
-      // Если удаление прошло успешно, выходим из аккаунта
+
+      console.log('Профиль успешно удален:', deletedProfile);
+
+      // 3. Выходим из всех сессий
+      console.log('Выход из всех сессий...');
+      await supabase.auth.signOut({ scope: 'global' });
+
+      // 4. Локальный выход
+      console.log('Локальный выход...');
       await signOut();
-      navigate('/auth');
-    } catch (err: any) {
-      console.error('Ошибка при удалении аккаунта:', err);
-      setError(err.message || 'Не удалось удалить аккаунт. Пожалуйста, попробуйте позже.');
+
+      setSuccess('Ваша учетная запись успешно деактивирована');
+
+      setTimeout(() => {
+        navigate('/auth');
+      }, 2000);
+    } catch (error: any) {
+      console.error('Ошибка при удалении аккаунта:', error);
+      setError(error.message || 'Не удалось удалить аккаунт. Пожалуйста, попробуйте позже.');
     } finally {
       setLoading(false);
     }
@@ -318,7 +322,7 @@ const ProfilePage: React.FC = () => {
   ];
 
   return (
-    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
+    <div className="pb-8 pt-0 bg-gray-900 min-h-screen">
       <div className="px-4 pt-4">
         {error && (
           <div className="bg-red-500 text-white px-4 py-2 rounded mb-4">
@@ -439,7 +443,7 @@ const ProfilePage: React.FC = () => {
                       <line x1="12" y1="17" x2="12.01" y2="17"></line>
                     </svg>
                   </button>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 opacity-0 transition-opacity duration-200 pointer-events-none">
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-64 opacity-0 transition-opacity duration-200 pointer-events-none z-50">
                     <div className="bg-white dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300 py-2 px-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                       <div className="font-medium mb-1 text-gray-900 dark:text-white">Status Progression:</div>
                       <div className="space-y-1">
@@ -451,8 +455,8 @@ const ProfilePage: React.FC = () => {
                         <div>Deal Master (1000+)</div>
                       </div>
                     </div>
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                      <div className="border-8 border-transparent border-t-white dark:border-t-gray-800"></div>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1">
+                      <div className="border-8 border-transparent border-b-white dark:border-b-gray-800"></div>
                     </div>
                   </div>
                 </div>

@@ -154,7 +154,7 @@ const SearchBar: React.FC = () => {
           type="text"
           value={searchTerm}
           onChange={handleSearch}
-          placeholder="Search deals, promos, comments..."
+          placeholder="Search deals, promos..."
           className="search-input bg-transparent text-gray-300 placeholder-gray-400 outline-none flex-1"
         />
         {searchTerm && (

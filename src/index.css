@@ -2,6 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Scrollbar styles */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera*/
+}
+
+/* Base styling for light/dark theme */
+:root {
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Свойства для темной темы (по умолчанию) */
+:root {
+  --base-foreground: #ffffff;
+  --base-background: #111827;
+  --header-background: #1F2937;
+  --card-background: #1F2937;
+  --input-background: #374151;
+  --border-color: #4B5563;
+  --text-color: #f5f5f5;
+  --text-muted: #9CA3AF;
+  --accent-color: #ff6b00;
+}
+
+/* Свойства для светлой темы */
+.light {
+  --base-foreground: #121212;
+  --base-background: #f9f9f9;
+  --header-background: #ffffff;
+  --card-background: #ffffff;
+  --input-background: #f5f5f5;
+  --border-color: #e0e0e0;
+  --text-color: #333333;
+  --text-muted: #666666;
+  --accent-color: #ff6b00;
+  color-scheme: light;
+}
+
+/* Для явного указания темной темы */
+.dark {
+  --base-foreground: #ffffff;
+  --base-background: #111827;
+  --header-background: #1F2937;
+  --card-background: #1F2937;
+  --input-background: #374151;
+  --border-color: #4B5563;
+  --text-color: #f5f5f5;
+  --text-muted: #9CA3AF;
+  --accent-color: #ff6b00;
+  color-scheme: dark;
+}
+
 /* Ensure text displays properly in preview */
 .description-preview {
   white-space: pre-wrap !important;
@@ -151,6 +212,19 @@
   --input-border: #E5E7EB;
 }
 
+/* Дополнительные стили для светлой темы */
+:root.light .bg-gray-800 {
+  background-color: var(--bg-secondary);
+}
+
+:root.light .bg-gray-700 {
+  background-color: var(--button-bg);
+}
+
+:root.light .border-gray-600 {
+  border-color: var(--input-border);
+}
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -170,6 +244,72 @@ body {
 
 .hover\:bg-gray-700:hover {
   background-color: var(--button-hover);
+}
+
+/* Специальные стили для карточек в светлой теме */
+:root.light .bg-gray-800.hover\:bg-gray-700:hover {
+  background-color: var(--button-hover);
+}
+
+/* Стили для обрамления поля комментариев в светлой теме */
+:root.light textarea.bg-gray-700 {
+  background-color: white;
+  border: 1px solid #E5E7EB;
+  color: #111827;
+}
+
+/* Обрамление контейнера комментариев в светлой теме */
+:root.light .relative > div > textarea.bg-gray-700 {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Обрамление строки поиска в светлой теме */
+:root.light .flex.items-center.bg-gray-700.rounded-lg {
+  background-color: white;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Изменение цвета текста и иконок поиска в светлой теме */
+:root.light .flex.items-center.bg-gray-700 .text-gray-400 {
+  color: #6B7280;
+}
+
+:root.light .search-input {
+  color: #111827;
+}
+
+/* Исправление цветов всплывающих подсказок в светлой теме */
+:root.light .w-64.opacity-0 .bg-white,
+:root.light .w-64.opacity-0 .bg-gray-800 {
+  background-color: white !important;
+}
+
+:root.light .w-64.opacity-0 .border-t-white,
+:root.light .w-64.opacity-0 .border-t-gray-800 {
+  border-top-color: white !important;
+}
+
+:root.light .w-64.opacity-0 .border-b-white,
+:root.light .w-64.opacity-0 .border-b-gray-800 {
+  border-bottom-color: white !important;
+}
+
+:root.light .w-64.opacity-0 .font-medium.text-gray-900,
+:root.light .w-64.opacity-0 .font-medium.text-white {
+  color: #111827 !important;
+}
+
+:root.light .w-64.opacity-0 .text-gray-600,
+:root.light .w-64.opacity-0 .text-gray-300 {
+  color: #4B5563 !important;
+}
+
+/* Исправление контрастности бейджа статуса в светлой теме */
+:root.light .bg-gray-500\/20.text-gray-600 {
+  background-color: rgba(107, 114, 128, 0.3) !important;
+  color: #111827 !important;
+  font-weight: 500 !important;
 }
 
 .text-white {

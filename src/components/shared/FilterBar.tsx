@@ -86,15 +86,15 @@ const FilterBar: React.FC<FilterBarProps> = ({
           {selectedCategories.length > 0 ? (
             <>
               <span>{getSelectedCategoryNames()[0]}</span>
-              <button
+              <div // Changed from <button> to <div>
                 onClick={(e) => {
                   e.stopPropagation();
                   onFilterChange('categories', []);
                 }}
-                className="ml-2 p-1 hover:bg-orange-600 rounded-full"
+                className="ml-2 p-1 hover:bg-orange-600 rounded-full cursor-pointer" // Added cursor-pointer
               >
                 <X className="h-3 w-3" />
-              </button>
+              </div>
             </>
           ) : (
             <>

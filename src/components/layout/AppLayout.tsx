@@ -32,7 +32,7 @@ const AppLayout: React.FC = () => {
   };
   
   return (
-    <div className="bg-gray-900 min-h-screen relative">
+    <div className={`min-h-screen relative`}>
       <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
       
       {/* Main content с учетом высоты Header и SearchBar */}
@@ -119,15 +119,15 @@ const AppLayout: React.FC = () => {
             onClick={toggleTheme}
             className="w-full flex items-center justify-center py-2 px-4 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
           >
-            {theme === 'dark' ? (
-              <>
-                <Sun className="h-5 w-5 mr-2" />
-                <span>Light Mode</span>
-              </>
-            ) : (
+            {theme === 'light' ? (
               <>
                 <Moon className="h-5 w-5 mr-2" />
                 <span>Dark Mode</span>
+              </>
+            ) : (
+              <>
+                <Sun className="h-5 w-5 mr-2" />
+                <span>Light Mode</span>
               </>
             )}
           </button>
