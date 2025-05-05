@@ -319,7 +319,18 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
               >
                 <Share2 className="h-4 w-4" />
               </button>
-              <button className="ml-3 text-orange-500 flex items-center">
+              <button 
+                className="ml-3 text-orange-500 flex items-center"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (deal.url) {
+                    window.open(deal.url, '_blank', 'noopener,noreferrer');
+                  } else {
+                    navigate(`/deals/${deal.id}`);
+                  }
+                }}
+              >
                 <span className="text-xs mr-1">View</span>
                 <ExternalLink className="h-3 w-3" />
               </button>
