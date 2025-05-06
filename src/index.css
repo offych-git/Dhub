@@ -279,6 +279,15 @@ body {
   color: #111827;
 }
 
+/* Стили для информационной строки дисклеймера */
+:root.light .bg-\[\#c1c1c1\] {
+  background-color: #c1c1c1 !important;
+}
+
+:root.dark .bg-\[\#c1c1c1\].dark\:bg-gray-700\/90 {
+  background-color: rgba(55, 65, 81, 0.9) !important;
+}
+
 /* Исправление цветов всплывающих подсказок в светлой теме */
 :root.light .w-64.opacity-0 .bg-white,
 :root.light .w-64.opacity-0 .bg-gray-800 {
