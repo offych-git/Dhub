@@ -1,21 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Heart, Tag, Bell, MessageSquare, KeyRound, Trash2, Globe2, Pencil, Check, X } from 'lucide-react';
+import { Heart, Tag, Bell, MessageSquare, Pencil, Check, X, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { cleanupUserData } from '../utils/accountUtils';
 
 const ProfilePage: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { language, setLanguage } = useLanguage();
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [originalName, setOriginalName] = useState('');
@@ -26,6 +18,8 @@ const ProfilePage: React.FC = () => {
     commentsCount: 0
   });
   const [userStatus, setUserStatus] = useState('Newcomer');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const getUserStatusColor = (status: string) => {
     switch (status) {
@@ -234,93 +228,6 @@ const ProfilePage: React.FC = () => {
     setIsEditingName(false);
   };
 
-  const handleSignOut = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-      // Even if there's an error, navigate to auth page
-      navigate('/auth');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordReset = async () => {
-    if (!user?.email) return;
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-
-      if (error) throw error;
-
-      setSuccess('Password reset instructions have been sent to your email');
-      setShowPasswordModal(false);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    try {
-      if (!user) return;
-
-      console.log('Начало процедуры удаления данных пользователя:', user.id);
-
-      // 1. Удаляем все связанные данные пользователя
-      await cleanupUserData(user.id);
-
-      // 2. Удаляем профиль с проверкой и логированием
-      const { error: profilesError, data: deletedProfile } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', user.id)
-        .select();
-
-      if (profilesError) {
-        console.error('Ошибка при удалении профиля:', profilesError);
-        throw profilesError;
-      }
-
-      console.log('Профиль успешно удален:', deletedProfile);
-
-      // 3. Выходим из всех сессий
-      console.log('Выход из всех сессий...');
-      await supabase.auth.signOut({ scope: 'global' });
-
-      // 4. Локальный выход
-      console.log('Локальный выход...');
-      await signOut();
-
-      setSuccess('Ваша учетная запись успешно деактивирована');
-
-      setTimeout(() => {
-        navigate('/auth');
-      }, 2000);
-    } catch (error: any) {
-      console.error('Ошибка при удалении аккаунта:', error);
-      setError(error.message || 'Не удалось удалить аккаунт. Пожалуйста, попробуйте позже.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const languages = [
-    { code: 'en', label: 'English' },
-    { code: 'ru', label: 'Русский' },
-    { code: 'es', label: 'Español' }
-  ];
-
   return (
     <div className="pb-8 pt-0 bg-gray-900 min-h-screen">
       <div className="px-4 pt-4">
@@ -383,27 +290,13 @@ const ProfilePage: React.FC = () => {
             </div>
             <p className="text-gray-400">{user?.email}</p>
           </div>
-          <div className="flex space-x-3">
+          <div>
             <button 
-              onClick={() => setShowLanguageModal(true)}
+              onClick={() => navigate('/user-settings')}
               className="p-2 text-white hover:text-orange-500"
-              title="Change Language"
+              title="User Settings"
             >
-              <Globe2 className="h-6 w-6" />
-            </button>
-            <button 
-              onClick={() => setShowPasswordModal(true)}
-              className="p-2 text-white hover:text-orange-500"
-              title="Change Password"
-            >
-              <KeyRound className="h-6 w-6" />
-            </button>
-            <button 
-              onClick={() => setShowDeleteModal(true)}
-              className="p-2 text-white hover:text-red-500"
-              title="Delete Account"
-            >
-              <Trash2 className="h-6 w-6" />
+              <Settings className="h-6 w-6" />
             </button>
           </div>
         </div>
@@ -541,121 +434,7 @@ const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* Sign Out button */}
-        <button
-          onClick={handleSignOut}
-          disabled={loading}
-          className="w-full bg-gray-800 text-white py-3 rounded-lg flex items-center justify-center disabled:opacity-50"
-        >
-          <LogOut className="h-5 w-5 text-orange-500 mr-2" />
-          <span>{loading ? 'Signing out...' : 'Sign Out'}</span>
-        </button>
       </div>
-
-      {/* Language Modal */}
-      {showLanguageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-white text-lg font-medium mb-4">Select Language</h3>
-            <div className="space-y-2">
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => {
-                    setLanguage(lang.code as 'en' | 'ru' | 'es');
-                    setShowLanguageModal(false);
-                  }}
-                  className={`w-full text-left px-4 py-3 rounded-md ${
-                    language === lang.code
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-gray-700 text-white hover:bg-gray-600'
-                  }`}
-                >
-                  {lang.label}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowLanguageModal(false)}
-              className="mt-4 w-full bg-gray-700 text-white py-2 rounded-md hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Password Change Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-white text-lg font-medium mb-4">Change Password</h3>
-            <p className="text-gray-300 mb-4">
-              We'll send you an email with instructions to change your password.
-            </p>
-            {error && (
-              <div className="bg-red-500 text-white px-4 py-2 rounded mb-4">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="bg-green-500 text-white px-4 py-2 rounded mb-4">
-                {success}
-              </div>
-            )}
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowPasswordModal(false)}
-                className="px-4 py-2 text-white hover:text-gray-300"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePasswordReset}
-                disabled={loading}
-                className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
-              >
-                {loading ? 'Sending...' : 'Send Instructions'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Account Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-white text-lg font-medium mb-4">Delete Account</h3>
-            <p className="text-gray-300 mb-4">
-              Are you sure you want to delete your account? This action cannot be undone.
-            </p>
-            {error && (
-              <div className="bg-red-500 text-white px-4 py-2 rounded mb-4">
-                {error}
-              </div>
-            )}
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-white hover:text-gray-300"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={loading}
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-              >
-                {loading ? 'Deleting...' : 'Delete Account'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

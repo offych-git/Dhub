@@ -333,6 +333,10 @@ const PromosPage: React.FC = () => {
 
   return (
     <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
+      {/* Информационная строка о промоакциях */}
+      <div className="bg-gray-100/80 dark:bg-gray-700/90 text-gray-500 dark:text-gray-200 text-[10px] text-center py-1 px-2">
+        We may get paid by brands for deals, including promoted items.
+      </div>
       <FilterBar
         selectedCategories={selectedCategories}
         selectedStores={selectedStores}
@@ -401,9 +405,6 @@ const PromosPage: React.FC = () => {
                           Expired
                         </div>
                       )}
-                    </div>
-                    <div className="text-orange-500 text-xs mt-0.5">
-                      {getStoreName(promo.discount_url)}
                     </div>
                   </div>
 

@@ -281,9 +281,6 @@ const UserPostedItemsPage: React.FC = () => {
 
                       <div className="mb-2">
                         <h3 className="text-white font-medium text-sm">{promo.title}</h3>
-                        <div className="text-orange-500 text-xs mt-0.5">
-                          {getStoreName(promo.discount_url)}
-                        </div>
                       </div>
 
                       <div className="mb-2">

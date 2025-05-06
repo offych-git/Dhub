@@ -349,9 +349,6 @@ const SavedItemsPage: React.FC = () => {
                             </div>
                           )}
                         </div>
-                        <div className="text-orange-500 text-xs mt-0.5">
-                          {getStoreName(promo.discount_url)}
-                        </div>
                       </div>
 
                       <div className="mb-2">

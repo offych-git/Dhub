@@ -20,6 +20,7 @@ import UserCommentsPage from './pages/UserCommentsPage';
 import UserPostedItemsPage from './pages/UserPostedItemsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
+import UserSettingsPage from './pages/UserSettingsPage';
 import PrivateRoute from './components/PrivateRoute';
 import AddDealPageNew from './pages/AddDealPageNew'; 
 
@@ -57,6 +58,7 @@ function App() {
                 <Route path="/comments" element={<PrivateRoute><UserCommentsPage /></PrivateRoute>} />
                 <Route path="/posted" element={<PrivateRoute><UserPostedItemsPage /></PrivateRoute>} />
                 <Route path="/settings/notifications" element={<PrivateRoute><NotificationSettingsPage /></PrivateRoute>} />
+                <Route path="/user-settings" element={<PrivateRoute><UserSettingsPage /></PrivateRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
