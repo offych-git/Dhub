@@ -179,7 +179,7 @@ const UserSettingsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="px-4 pt-16">
+      <div className="px-4 pt-4">
         {error && (
           <div className="bg-red-500 text-white px-4 py-2 rounded mb-4">
             {error}
