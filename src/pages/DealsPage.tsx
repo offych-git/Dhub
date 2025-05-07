@@ -56,7 +56,7 @@ const DealsPage: React.FC = () => {
     setPage(1);
     setHasMore(true);
 
-    // Запускаем загрузку свежих данных
+    // Запускаем загрузку свежих данных с учетом текущих URL-параметров
     fetchDeals();
   }, [location.key]);
 

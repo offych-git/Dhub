@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2, ArrowLeftCircle, ArrowRightCircle, Edit2 } from 'lucide-react';
 import { mockDeals } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,10 +8,14 @@ import { supabase } from '../lib/supabase';
 import Comment from '../components/comments/Comment';
 import CommentInput from '../components/comments/CommentInput';
 import { handleImageError, getValidImageUrl } from '../utils/imageUtils';
+import { highlightText } from '../utils/highlightText';
 
 const DealDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q') || '';
   const { user } = useAuth();
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<any[]>([]);
@@ -460,7 +464,7 @@ const DealDetailPage: React.FC = () => {
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <button onClick={() => navigate(-1)} className="text-white">
+            <button onClick={() => navigate('/deals')} className="text-white">
               <ArrowLeft className="h-6 w-6" />
             </button>
             <h1 className="text-white font-medium ml-4 truncate">Deal Details</h1>
@@ -604,20 +608,25 @@ const DealDetailPage: React.FC = () => {
 
       <div className="p-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-white text-xl font-medium">{deal.title}</h2>
+          <h2 className="text-white text-xl font-medium">
+            {searchQuery 
+              ? highlightText(deal.title, searchQuery)
+              : deal.title
+            }
+          </h2>
           <div className="flex items-center space-x-2">
             <button 
               onClick={() => {
                 if (navigator.share) {
                   // Формируем правильный URL для конкретной сделки
                   const dealUrl = `${window.location.origin}/deals/${deal.id}`;
-                  
+
                   // Очищаем HTML-теги из заголовка и описания
                   const cleanTitle = deal.title ? deal.title.replace(/<[^>]*>/g, '') : '';
                   const cleanDescription = deal.description 
                     ? deal.description.replace(/<[^>]*>/g, '')
                     : `Check out this deal at ${deal.store.name}`;
-                  
+
                   navigator.share({
                     title: cleanTitle,
                     text: cleanDescription,
@@ -735,25 +744,39 @@ const DealDetailPage: React.FC = () => {
           <pre 
             className="description-text font-sans text-sm bg-transparent overflow-visible whitespace-pre-wrap border-0 p-0 m-0"
             dangerouslySetInnerHTML={{ 
-              __html: deal.description
-                // Сначала удаляем технический блок с JSON изображений
-                .replace(/<!-- DEAL_IMAGES: .*? -->/g, '')
-                // Обрабатываем URL в тексте с улучшенным регулярным выражением
-                .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
-                  // Проверяем, заканчивается ли URL специальным символом
-                  const lastChar = match.charAt(match.length - 1);
-                  // Проверяем специальные символы на конце URL
-                  if ([',', '.', ':', ';', '!', '?', ')', ']', '}'].includes(lastChar)) {
-                    // Исключаем последний символ из ссылки (href и текста) и добавляем его после тега </a>
-                    return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
-                  }
-                  // Если URL не заканчивается специальным символом из списка, создаем ссылку как обычно
-                  return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
-                })
-                // Обрабатываем двойные переносы строк (пустые строки)
-                .replace(/\n\n/g, '<br><br>')
-                // Затем обрабатываем обычные переносы строк
-                .replace(/\n/g, '<br>')
+              __html: (() => {
+                // Сначала подготавливаем описание
+                let processedDescription = deal.description
+                  // Сначала удаляем технический блок с JSON изображений
+                  .replace(/<!-- DEAL_IMAGES: .*? -->/g, '')
+                  // Обрабатываем URL в тексте с улучшенным регулярным выражением
+                  .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
+                    // Проверяем, заканчивается ли URL специальным символом
+                    const lastChar = match.charAt(match.length - 1);
+                    // Проверяем специальные символы на конце URL
+                    if ([',', '.', ':', ';', '!', '?', ')', ']', '}'].includes(lastChar)) {
+                      // Исключаем последний символ из ссылки (href и текста) и добавляем его после тега </a>
+                      return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
+                    }
+                    // Если URL не заканчивается специальным символом из списка, создаем ссылку как обычно
+                    return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
+                  })
+                  // Обрабатываем двойные переносы строк (пустые строки)
+                  .replace(/\n\n/g, '<br><br>')
+                  // Затем обрабатываем обычные переносы строк
+                  .replace(/\n/g, '<br>');
+                
+                // Если есть поисковый запрос, применяем прямую подсветку в HTML строке
+                if (searchQuery) {
+                  const searchRegex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                  return processedDescription.replace(
+                    searchRegex, 
+                    '<span class="bg-orange-500 text-white px-0.5 rounded">$1</span>'
+                  );
+                }
+                
+                return processedDescription;
+              })()
             }}
             ref={(element) => {
               if (element) {

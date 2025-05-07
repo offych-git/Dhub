@@ -15,6 +15,14 @@ const SearchBar: React.FC = () => {
   const [noResults, setNoResults] = useState(false);
   const { t } = useLanguage();
 
+  // Синхронизируем searchTerm с URL при возвращении на страницу
+  useEffect(() => {
+    const queryParam = searchParams.get('q') || '';
+    if (queryParam !== searchTerm) {
+      setSearchTerm(queryParam);
+    }
+  }, [location.key]);
+
   useEffect(() => {
     if (debouncedSearch) {
       setIsSearching(true);
@@ -42,7 +50,7 @@ const SearchBar: React.FC = () => {
 
             // Поиск по promos
             const { data: promosResult, error: promosError } = await supabase
-              .from('promos')
+              .from('promo_codes')
               .select('id')
               .or(`title.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%`);
 

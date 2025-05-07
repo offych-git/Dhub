@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2, Edit2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Comment from '../components/comments/Comment';
 import CommentInput from '../components/comments/CommentInput';
 import AdminActions from '../components/admin/AdminActions';
+import { highlightText } from '../utils/highlightText';
 
 const PromoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q') || '';
   const { user } = useAuth();
   const [promo, setPromo] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -230,7 +234,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
 
     // Сохраняем исходное состояние голоса для логики обновления
     const previousVote = userVote;
-    
+
     try {
       // Если пользователь нажал на тот же тип голоса, который у него уже активен,
       // то не выполняем никаких действий (ни в БД, ни в UI)
@@ -257,14 +261,14 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
           .update({ vote_type: voteType })
           .eq('promo_id', id)
           .eq('user_id', user.id);
-        
+
         // Обновляем счетчик голосов - при смене типа голоса изменяем его на 1
         if (previousVote === true && voteType === false) {
           setVoteCount(prev => prev - 1); // С положительного на отрицательный (-1)
         } else if (previousVote === false && voteType === true) {
           setVoteCount(prev => prev + 1); // С отрицательного на положительный (+1)
         }
-        
+
         setUserVote(voteType);
       }
     } catch (error) {
@@ -330,7 +334,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <button onClick={() => navigate(-1)} className="text-white">
+            <button onClick={() => navigate('/promos')} className="text-white">
               <ArrowLeft className="h-6 w-6" />
             </button>
             <h1 className="text-white font-medium ml-4">Promo Details</h1>
@@ -346,7 +350,12 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
 
       <div className="p-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-white text-xl font-medium">{promo.title}</h2>
+          <h2 className="text-white text-xl font-medium">
+            {searchQuery 
+              ? highlightText(promo.title, searchQuery)
+              : promo.title
+            }
+          </h2>
           <div className="flex items-center space-x-2">
             <button 
               onClick={() => {
@@ -420,7 +429,23 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
             </button>
           </div>
 
-          <p className="text-gray-300">{promo.description}</p>
+          <div 
+            className="text-gray-300"
+            dangerouslySetInnerHTML={{ 
+              __html: (() => {
+                // Если есть поисковый запрос, применяем прямую подсветку в HTML строке
+                if (searchQuery) {
+                  const searchRegex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                  return promo.description.replace(
+                    searchRegex, 
+                    '<span class="bg-orange-500 text-white px-0.5 rounded">$1</span>'
+                  );
+                }
+
+                return promo.description;
+              })()
+            }}
+          />
 
           {promo.expires_at && (
             <div className="mt-4 text-gray-400 text-sm">

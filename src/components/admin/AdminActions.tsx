@@ -36,7 +36,7 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction 
       console.log("Already deleting, ignoring request");
       return;
     }
-    
+
     // Запрашиваем подтверждение перед удалением
     const confirmDelete = window.confirm(`Вы уверены, что хотите удалить этот ${type === 'deal_comment' || type === 'deal_comments' ? 'комментарий к товару' : type === 'promo_comment' || type === 'promo_comments'? 'комментарий к промокоду' : 'элемент'}?`);
 
@@ -44,7 +44,7 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction 
       console.log("User cancelled deletion");
       return; // Прерываем операцию если пользователь отменил
     }
-    
+
     setIsDeleting(true);
 
     console.log("Начало handleDelete, received params:", { 
@@ -74,7 +74,7 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction 
 
     try {
         console.log("Attempting to delete comment:", { id, type, userId });
-        
+
         let tableName;
     if (type === 'deal_comment' || type === 'deal_comments') {
       tableName = 'deal_comments';
@@ -93,12 +93,12 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction 
         try {
           // Определяем запрос в зависимости от роли
           let query = supabase.from(tableName).delete().eq('id', id);
-          
+
           // Если пользователь не администратор/модератор, добавляем проверку на владельца
           if (role !== 'admin' && role !== 'moderator' && role !== 'super_admin') {
             query = query.eq('user_id', userId);
           }
-          
+
           const { data, error } = await query;
 
           console.log("Supabase response:", { data, error, role });
@@ -120,14 +120,14 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction 
         }
 
         console.log(`Successfully deleted ${type} with ID: ${id}`);
-        
+
         // Помечаем соответствующие данные как устаревшие
         if (type === 'deal' || type === 'deal_comment' || type === 'deal_comments') {
           dispatch({ type: 'MARK_DEALS_STALE' });
         } else if (type === 'promo' || type === 'promo_comment' || type === 'promo_comments') {
           dispatch({ type: 'MARK_PROMOS_STALE' });
         }
-        
+
         if (onAction) {
           onAction();
         }
