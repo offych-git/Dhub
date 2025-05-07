@@ -11,7 +11,10 @@ const HIDDEN_ROUTES = [
   '/user-settings',
   '/settings/notifications',
   '/privacy-policy',
-  '/categories'
+  '/categories',
+  '/add-deal',
+  '/add-promo',
+  '/deals/new-carousel'
 ];
 
 const ScrollToTop: React.FC = () => {
