@@ -27,6 +27,7 @@ import AddDealPageNew from './pages/AddDealPageNew';
 import EditDealPage from './pages/EditDealPage';
 import EditDealCarouselPage from './pages/EditDealCarouselPage';
 import EditPromoPage from './pages/EditPromoPage';
+import CategoryItemsPage from './pages/CategoryItemsPage';
 
 function App() {
   return (
@@ -59,6 +60,7 @@ function App() {
                 <Route path="/posted" element={<PrivateRoute><UserPostedItemsPage /></PrivateRoute>} />
                 <Route path="/settings/notifications" element={<PrivateRoute><NotificationSettingsPage /></PrivateRoute>} />
                 <Route path="/user-settings" element={<PrivateRoute><UserSettingsPage /></PrivateRoute>} />
+                <Route path="/category/:categoryId" element={<CategoryItemsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { categories, categoryIcons } from '../data/mockData';
@@ -61,9 +62,15 @@ const CategoriesPage: React.FC = () => {
     fetchCategoryCounts();
   }, []);
 
-  const handleCategoryClick = (categoryId: string) => {
-    // Navigate directly to deals page with category filter
-    navigate(`/?category=${categoryId}`);
+  const handleCategoryClick = (categoryId: string, categoryName: string) => {
+    // Redirect to the category items page
+    navigate(`/category/${categoryId}`, { 
+      state: { 
+        categoryId, 
+        categoryName: language === 'ru' ? categoryName : t(categoryId),
+        itemCount: categoryCounts[categoryId] || 0
+      } 
+    });
   };
 
   return (
@@ -82,7 +89,7 @@ const CategoriesPage: React.FC = () => {
             return (
               <button
                 key={category.id}
-                onClick={() => handleCategoryClick(category.id)}
+                onClick={() => handleCategoryClick(category.id, category.name)}
                 className="bg-gray-800 rounded-lg p-4 flex flex-col items-center text-center"
               >
                 <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center mb-3">
