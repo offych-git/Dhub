@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2, ArrowLeftCircle, ArrowRightCircle, Edit2 } from 'lucide-react';
-import { mockDeals, generatePriceHistory } from '../data/mockData';
+import { mockDeals } from '../data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import AdminActions from '../components/admin/AdminActions';
 import { supabase } from '../lib/supabase';
@@ -123,17 +123,7 @@ const DealDetailPage: React.FC = () => {
     setTouchEnd(null);
   };
 
-  const priceHistory = useMemo(() => {
-    if (!deal) return [];
-
-    // Use original price if available, otherwise use 120% of current price as reference
-    const referencePrice = deal.originalPrice || (deal.currentPrice * 1.2);
-
-    // Only generate price history if we have valid prices
-    if (deal.currentPrice <= 0 || referencePrice <= 0) return [];
-
-    return generatePriceHistory(referencePrice, deal.currentPrice);
-  }, [deal?.originalPrice, deal?.currentPrice]);
+  // Функция генерации ценовой истории удалена
 
   useEffect(() => {
     if (id) {
@@ -765,56 +755,7 @@ const DealDetailPage: React.FC = () => {
           />
         </div>
 
-        {/* Не показываем блок Price History если товар бесплатный */}
-        {deal.currentPrice > 0 && (
-          <div className="mt-6">
-            <h3 className="text-white font-medium mb-2">Price History</h3>
-            {priceHistory.length > 0 ? (
-              <div className="bg-gray-800 rounded-md p-3 h-32">
-                <svg width="100%" height="100%" viewBox="0 0 300 100" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="rgba(249, 115, 22, 0.5)" />
-                      <stop offset="100%" stopColor="rgba(249, 115, 22, 0)" />
-                    </linearGradient>
-                  </defs>
-
-                  <path
-                    d={`
-                      M0,${100 - (priceHistory[0].price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80)}
-                      ${priceHistory.map((point, i) => {
-                        const x = (i / (priceHistory.length - 1)) * 300;
-                        const y = 100 - (point.price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80);
-                        return `L${x},${y}`;
-                      }).join(' ')}
-                      L300,100 L0,100 Z
-                    `}
-                    fill="url(#chartGradient)"
-                    stroke="none"
-                  />
-
-                  <path
-                    d={`
-                      M0,${100 - (priceHistory[0].price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80)}
-                      ${priceHistory.map((point, i) => {
-                        const x = (i / (priceHistory.length - 1)) * 300;
-                        const y = 100 - (point.price / (deal.originalPrice || (deal.currentPrice * 1.2)) * 80);
-                        return `L${x},${y}`;
-                      }).join(' ')}
-                    `}
-                    stroke="#F97316"
-                    strokeWidth="2"
-                    fill="none"
-                  />
-                </svg>
-              </div>
-            ) : (
-              <div className="bg-gray-800 rounded-md p-4 text-gray-400 text-center">
-                No price history available
-              </div>
-            )}
-          </div>
-        )}
+        {/* Блок с ценовой историей был удалён */}
 
         <div className="mt-6">
           <div className="flex items-center justify-between mb-4">

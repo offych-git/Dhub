@@ -210,21 +210,58 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
     }
   }, [isEditing, initialData, editor]);
 
+  // Отслеживаем состояние валидации каждого поля отдельно
+  const [validationState, setValidationState] = useState({
+    title: true,
+    description: true,
+    currentPrice: true,
+    originalPrice: true,
+    category: true,
+    dealImages: true,
+    dealUrl: true,
+  });
+
   useEffect(() => {
-    // Проверяем все обязательные поля
-    const isFormValid = formData.title.trim() !== '' &&
-      formData.description.trim() !== '' &&
-      formData.currentPrice !== '' &&
-      formData.category !== '' &&
-      dealImages.length > 0 &&
-      formData.dealUrl !== '' &&
-      (!formData.originalPrice || Number(formData.currentPrice) <= Number(formData.originalPrice));
-
-    // Проверка URL менее строгая для большей совместимости
+    // Проверяем каждое обязательное поле отдельно
+    const titleValid = formData.title.trim() !== '';
+    const descriptionValid = formData.description.trim() !== '';
+    const currentPriceValid = formData.currentPrice !== '' && !isNaN(Number(formData.currentPrice));
+    const originalPriceValid = !formData.originalPrice || 
+                              (Number(formData.currentPrice) <= Number(formData.originalPrice) && !isNaN(Number(formData.originalPrice)));
+    const categoryValid = formData.category !== '';
+    const imagesValid = dealImages.length > 0;
     const urlValid = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+([/?#].*)?$/.test(formData.dealUrl);
+    
+    // Обновляем состояние валидации
+    setValidationState({
+      title: titleValid,
+      description: descriptionValid,
+      currentPrice: currentPriceValid,
+      originalPrice: originalPriceValid,
+      category: categoryValid,
+      dealImages: imagesValid,
+      dealUrl: urlValid,
+    });
 
-    setIsValid(isFormValid && urlValid);
-    console.log('Form validation:', { isFormValid, urlValid, dealImages: dealImages.length });
+    // Общая проверка формы
+    const isFormValid = titleValid && 
+      descriptionValid && 
+      currentPriceValid && 
+      originalPriceValid &&
+      categoryValid && 
+      imagesValid && 
+      urlValid;
+
+    setIsValid(isFormValid);
+    console.log('Form validation:', { 
+      titleValid, 
+      descriptionValid, 
+      currentPriceValid, 
+      originalPriceValid,
+      categoryValid, 
+      imagesValid: dealImages.length, 
+      urlValid 
+    });
   }, [formData, dealImages]);
 
   const handleDealImageUpload = async (files: FileList | null) => {
@@ -460,59 +497,113 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <input
-                type="text"
-                placeholder="Title *"
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Title *"
+                  className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
+                    !validationState.title && formData.title !== '' ? 'border border-red-500' : 
+                    !validationState.title ? 'border border-yellow-500' : ''
+                  }`}
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
+                />
+                {validationState.title && formData.title && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              {!validationState.title && (
+                <p className="text-orange-500 text-xs mt-1">Title is required</p>
+              )}
             </div>
 
             <div>
-              <button
-                type="button"
-                onClick={() => setIsCategorySheetOpen(true)}
-                className={`w-full bg-gray-800 text-white rounded-md px-4 py-3 flex items-center justify-between ${
-                  formData.category ? 'text-white' : 'text-gray-500'
-                }`}
-              >
-                <span>
-                  {formData.category 
-                    ? language === 'ru' 
-                      ? categories.find(cat => cat.id === formData.category)?.name 
-                      : t(formData.category)
-                    : 'Select Category *'
-                  }
-                </span>
-                <ChevronDown className="h-5 w-5 text-gray-400" />
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsCategorySheetOpen(true)}
+                  className={`w-full bg-gray-800 text-white rounded-md px-4 py-3 flex items-center justify-between ${
+                    formData.category ? 'text-white' : 'text-gray-500'
+                  } ${
+                    !validationState.category ? 'border border-yellow-500' : ''
+                  }`}
+                >
+                  <span>
+                    {formData.category 
+                      ? language === 'ru' 
+                        ? categories.find(cat => cat.id === formData.category)?.name 
+                        : t(formData.category)
+                      : 'Select Category *'
+                    }
+                  </span>
+                  <div className="flex items-center">
+                    {validationState.category && formData.category && (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                  </div>
+                </button>
+              </div>
+              {!validationState.category && (
+                <p className="text-orange-500 text-xs mt-1">Category selection is required</p>
+              )}
             </div>
 
             <div className="flex space-x-4">
-              <div className="flex-1">
+              <div className="flex-1 relative">
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="Current Price *"
-                  className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                  className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
+                    !validationState.currentPrice && formData.currentPrice !== '' ? 'border border-red-500' : 
+                    !validationState.currentPrice ? 'border border-yellow-500' : ''
+                  }`}
                   value={formData.currentPrice}
                   onChange={(e) => setFormData({ ...formData, currentPrice: e.target.value })}
                   required
                 />
+                {validationState.currentPrice && formData.currentPrice && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+                {!validationState.currentPrice && (
+                  <p className="text-orange-500 text-xs mt-1">Valid current price is required</p>
+                )}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 relative">
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="Original Price"
-                  className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                  className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
+                    !validationState.originalPrice ? 'border border-red-500' : ''
+                  }`}
                   value={formData.originalPrice}
                   onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
                 />
+                {validationState.originalPrice && formData.originalPrice && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+                {!validationState.originalPrice && (
+                  <p className="text-red-500 text-xs mt-1">Original price should be greater than or equal to current price</p>
+                )}
               </div>
             </div>
 
@@ -662,7 +753,9 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
                   />
                   <label
                     htmlFor="deal-images-upload"
-                    className="block w-full bg-gray-800 text-white rounded-md px-4 py-3 cursor-pointer hover:bg-gray-700 text-center"
+                    className={`block w-full bg-gray-800 text-white rounded-md px-4 py-3 cursor-pointer hover:bg-gray-700 text-center ${
+                      !validationState.dealImages ? 'border border-yellow-500' : ''
+                    }`}
                   >
                     {isUploadingImage ? (
                       <div className="flex items-center justify-center">
@@ -672,10 +765,21 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
                     ) : (
                       <>
                         <Plus className="h-5 w-5 inline-block mr-2" />
-                        {dealImages.length === 0 ? 'Add Images' : 'Add More Images'}
+                        {dealImages.length === 0 ? 'Add Images *' : 'Add More Images'}
                       </>
                     )}
                   </label>
+                  {!validationState.dealImages && (
+                    <p className="text-orange-500 text-xs mt-1">At least one image is required</p>
+                  )}
+                  {validationState.dealImages && dealImages.length > 0 && (
+                    <div className="text-green-500 text-xs font-medium mt-1 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Images uploaded successfully
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -711,26 +815,61 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
                   <List className="h-5 w-5" />
                 </button>
               </div>
-              <div className="bg-gray-800 rounded-lg p-4 min-h-[200px]">
+              <div className={`bg-gray-800 rounded-lg p-4 min-h-[200px] ${
+                !validationState.description ? 'border border-yellow-500' : ''
+              }`}>
                 {!editor?.getText() && (
                   <div className="absolute text-gray-500 pointer-events-none p-1">Description *</div>
                 )}
                 <EditorContent editor={editor} />
               </div>
+              {!validationState.description && (
+                <p className="text-orange-500 text-xs mt-1">Description is required</p>
+              )}
+              {validationState.description && formData.description && (
+                <div className="text-green-500 text-xs font-medium mt-1 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Description looks good!
+                </div>
+              )}
             </div>
 
             <div>
               <input
                 type="url"
                 placeholder="Deal URL *"
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
+                  !validationState.dealUrl && formData.dealUrl !== '' ? 'border border-red-500' : 
+                  !validationState.dealUrl ? 'border border-yellow-500' : ''
+                }`}
                 value={formData.dealUrl}
                 onChange={handleUrlInput}
                 required
               />
-              <p className="text-gray-500 text-sm mt-1">
-                Add a link where users can find and purchase this deal
-              </p>
+              {!validationState.dealUrl && formData.dealUrl ? (
+                <p className="text-red-500 text-xs mt-1">
+                  Please enter a valid URL (e.g. example.com or https://example.com)
+                </p>
+              ) : !validationState.dealUrl ? (
+                <p className="text-orange-500 text-xs mt-1">
+                  Deal URL is required
+                </p>
+              ) : (
+                <div className="flex justify-between items-center mt-1">
+                  <p className="text-gray-500 text-sm">
+                    Add a link where users can find and purchase this deal
+                  </p>
+                  {validationState.dealUrl && formData.dealUrl && (
+                    <div className="text-green-500 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -764,10 +903,11 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
                 )}
               </div>
               <p className="text-gray-500 text-sm mt-1">
-                Expiry date (optional)
+                Expired date (optional)
               </p>
             </div>
 
+            {/* Проверка на роль пользователя для отображения HOT кнопки */}
             {canMarkHot && (
               <div className="flex items-center space-x-2 mt-4">
                 <input
@@ -806,7 +946,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 p-4 z-50">
-        <div className="flex space-x-4">
+        <div className="flex flex-col space-y-2">
           <button
             onClick={handleSubmit}
             disabled={loading || !isValid}

@@ -228,32 +228,49 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
       return;
     }
 
+    // Сохраняем исходное состояние голоса для логики обновления
+    const previousVote = userVote;
+    
     try {
+      // Если пользователь нажал на тот же тип голоса, который у него уже активен,
+      // то не выполняем никаких действий (ни в БД, ни в UI)
       if (userVote === voteType) {
+        // Ничего не делаем при повторном клике на тот же тип голоса
+        return;
+      } else if (previousVote === null) {
+        // Пользователь голосует впервые
         await supabase
           .from('promo_votes')
-          .delete()
-          .eq('promo_id', id)
-          .eq('user_id', user.id);
-
-        setUserVote(null);
-      } else {
-        await supabase
-          .from('promo_votes')
-          .upsert({
+          .insert({
             promo_id: id,
             user_id: user.id,
             vote_type: voteType
-          }, {
-            onConflict: 'promo_id,user_id'
           });
 
+        // Обновляем счетчик голосов и статус голоса пользователя
+        setVoteCount(prev => prev + (voteType ? 1 : -1));
+        setUserVote(voteType);
+      } else {
+        // Пользователь меняет тип голоса с одного на другой
+        await supabase
+          .from('promo_votes')
+          .update({ vote_type: voteType })
+          .eq('promo_id', id)
+          .eq('user_id', user.id);
+        
+        // Обновляем счетчик голосов - при смене типа голоса изменяем его на 1
+        if (previousVote === true && voteType === false) {
+          setVoteCount(prev => prev - 1); // С положительного на отрицательный (-1)
+        } else if (previousVote === false && voteType === true) {
+          setVoteCount(prev => prev + 1); // С отрицательного на положительный (+1)
+        }
+        
         setUserVote(voteType);
       }
-
-      loadVoteStatus();
     } catch (error) {
       console.error('Error handling vote:', error);
+      // В случае ошибки перезагружаем актуальный статус голосования
+      loadVoteStatus();
     }
   };
 
@@ -411,21 +428,21 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
         <div className="mt-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button 
-              className={`flex items-center ${userVote === true ? 'text-red-500' : 'text-gray-400'}`}
+              className={`flex items-center ${userVote === true ? 'text-green-500' : 'text-gray-400'}`}
               onClick={() => handleVote(true)}
             >
               <ArrowUp className="h-5 w-5 mr-1" />
             </button>
 
-            <span className={`font-medium ${voteCount > 0 ? 'text-red-500' : voteCount < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+            <span className={`font-medium ${voteCount > 0 ? 'text-green-500' : voteCount < 0 ? 'text-red-500' : 'text-gray-400'}`}>
               {voteCount > 0 ? '+' : ''}{voteCount}
             </span>
 
             <button 
-              className={`flex items-center ${userVote === false ? 'text-blue-500' : 'text-gray-400'}`}
+              className={`flex items-center ${userVote === false ? 'text-red-500' : 'text-gray-400'}`}
               onClick={() => handleVote(false)}
             >
-              <ArrowDown className="h-5 w-5 mr-1" />
+              <ArrowDown className="h-5 w-5 ml-1" />
             </button>
           </div>
 

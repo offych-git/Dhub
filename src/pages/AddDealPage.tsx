@@ -796,7 +796,7 @@ useEffect(() => {
                 )}
               </div>
               <p className="text-gray-500 text-sm mt-1">
-                Expiry date (optional)
+                Expired date (optional)
               </p>
             </div>
 

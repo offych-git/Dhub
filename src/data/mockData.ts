@@ -62,7 +62,7 @@ export const categories: Category[] = [
     ]
   },
   {
-    id: 'appliances',
+    id: 'Appliances',
     name: 'Бытовая техника',
     subcategories: [
       { id: 'major-appliances', name: 'Крупная бытовая техника' },

@@ -99,34 +99,65 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
       navigate('/auth');
       return;
     }
-
+    
+    // Предотвращаем множественные быстрые клики
+    if (e.currentTarget.hasAttribute('disabled')) {
+      return;
+    }
+    e.currentTarget.setAttribute('disabled', 'true');
+    
     try {
+      // Сохраняем предыдущее значение голоса
+      const previousVote = userVote;
+      
       if (userVote === voteType) {
+        // Если пользователь повторно нажимает на тот же тип голоса,
+        // то ничего не происходит (ни в БД, ни в интерфейсе)
+        return;
+      } else if (previousVote === null) {
+        // Если пользователь голосует впервые
         await supabase
           .from('deal_votes')
-          .delete()
-          .eq('deal_id', deal.id)
-          .eq('user_id', user.id);
-
-        setUserVote(null);
-      } else {
-        await supabase
-          .from('deal_votes')
-          .upsert({
+          .insert({
             deal_id: deal.id,
             user_id: user.id,
             vote_type: voteType
-          }, {
-            onConflict: 'deal_id,user_id'
           });
 
+        // Обновляем счетчик и статус голоса
+        setVoteCount(voteType ? voteCount + 1 : voteCount - 1);
+        setUserVote(voteType);
+      } else {
+        // Если пользователь меняет свой голос с одного типа на другой
+        // Обновляем существующую запись вместо удаления и создания новой
+        await supabase
+          .from('deal_votes')
+          .update({ vote_type: voteType })
+          .eq('deal_id', deal.id)
+          .eq('user_id', user.id);
+        
+        // Обновляем счетчик голосов - изменение на противоположный тип
+        // При смене голоса с положительного на отрицательный счетчик должен изменяться на 0
+        if (previousVote === true && voteType === false) {
+          setVoteCount(voteCount - 1); // С положительного на отрицательный (-1)
+        } else if (previousVote === false && voteType === true) {
+          setVoteCount(voteCount + 1); // С отрицательного на положительный (+1)
+        }
+        
         setUserVote(voteType);
       }
 
-      loadVoteStatus();
+      // Вызываем обратные функции после обновления UI
       if (onVoteChange) onVoteChange();
     } catch (error) {
       console.error('Error handling vote:', error);
+      // В случае ошибки загружаем актуальные данные с сервера
+      loadVoteStatus();
+    } finally {
+      // Проверяем, существует ли элемент, прежде чем удалять атрибут
+      if (e && e.currentTarget) {
+        e.currentTarget.removeAttribute('disabled');
+      }
     }
   };
 
@@ -183,16 +214,16 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
         <div className="ml-auto flex items-center text-sm">
           <button
             onClick={(e) => handleVote(e, true)}
-            className={`${userVote === true ? 'text-red-500' : 'text-gray-400'}`}
+            className={`${userVote === true ? 'text-green-500' : 'text-gray-400'}`}
           >
             <ArrowUp className="h-4 w-4" />
           </button>
-          <div className={`flex items-center mx-2 ${voteCount > 0 ? 'text-red-500' : voteCount < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+          <div className={`flex items-center mx-2 ${voteCount > 0 ? 'text-green-500' : voteCount < 0 ? 'text-red-500' : 'text-gray-400'}`}>
             <span className="font-medium">{voteCount > 0 ? '+' : ''}{voteCount}</span>
           </div>
           <button
             onClick={(e) => handleVote(e, false)}
-            className={`${userVote === false ? 'text-blue-500' : 'text-gray-400'}`}
+            className={`${userVote === false ? 'text-red-500' : 'text-gray-400'}`}
           >
             <ArrowDown className="h-4 w-4" />
           </button>

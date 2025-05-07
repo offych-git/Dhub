@@ -24,7 +24,9 @@ export const translations = {
       add: 'Add',
       feedback: 'Feedback',
       deal: 'Deal',
-      promoCode: 'Promo Code'
+      promoCode: 'Promo Code',
+      items: 'items',
+      no_items_in_category: 'No items in selected category'
     },
     auth: {
       signIn: 'Sign In',
@@ -70,7 +72,9 @@ export const translations = {
       add: 'Добавить',
       feedback: 'Обратная связь',
       deal: 'Скидку',
-      promoCode: 'Промокод'
+      promoCode: 'Промокод',
+      items: 'товаров',
+      no_items_in_category: 'Нет элементов в выбранной категории'
     },
     auth: {
       signIn: 'Войти',
@@ -116,7 +120,9 @@ export const translations = {
       add: 'Agregar',
       feedback: 'Comentarios',
       deal: 'Oferta',
-      promoCode: 'Código Promo'
+      promoCode: 'Código Promo',
+      items: 'items',
+      no_items_in_category: 'No hay elementos en la categoría seleccionada'
     },
     auth: {
       signIn: 'Iniciar Sesión',

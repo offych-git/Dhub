@@ -363,6 +363,10 @@ const DealsPage: React.FC = () => {
         <div className="text-gray-400 text-center py-8">
           {translations[t('locale')] || translations.ru} {/* Use translation based on locale */}
         </div>
+      ) : selectedCategories.length > 0 && !loading ? (
+        <div className="text-gray-400 text-center py-8">
+          {t('common.no_items_in_category', 'Нет элементов в выбранной категории')}
+        </div>
       ) : (
         <div className="flex justify-center items-center py-8">
           <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>

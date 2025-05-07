@@ -316,12 +316,12 @@ const SavedItemsPage: React.FC = () => {
                                 e.stopPropagation();
                                 // Здесь можно добавить функцию handleVote, если нужно
                               }}
-                              className="text-gray-400"
+                              className="text-green-500"
                             >
                               <ArrowUp className="h-4 w-4" />
                             </button>
-                            <span className={`text-sm font-medium ${(promo.vote_count || 0) > 0 ? 'text-red-500' : (promo.vote_count || 0) < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
-                              {(promo.vote_count || 0) > 0 ? '+' : ''}{promo.vote_count || 0}°
+                            <span className={`text-sm font-medium ${(promo.vote_count || 0) > 0 ? 'text-green-500' : (promo.vote_count || 0) < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                              {(promo.vote_count || 0) > 0 ? '+' : ''}{promo.vote_count || 0}{(promo.vote_count || 0) !== 0 ? '°' : ''}
                             </span>
                             <button
                               onClick={(e) => {
@@ -329,7 +329,7 @@ const SavedItemsPage: React.FC = () => {
                                 e.stopPropagation();
                                 // Здесь можно добавить функцию handleVote, если нужно
                               }}
-                              className="text-gray-400"
+                              className="text-red-500"
                             >
                               <ArrowDown className="h-4 w-4" />
                             </button>

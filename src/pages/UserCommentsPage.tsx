@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ChevronDown, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DealCard from '../components/deals/DealCard';
@@ -333,6 +333,14 @@ const UserCommentsPage: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="bg-transparent text-gray-300 placeholder-gray-400 outline-none flex-1"
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="text-gray-400 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-4 pb-2">
           <div className="flex-grow flex space-x-2 overflow-x-auto scrollbar-hide">

@@ -5,7 +5,7 @@ import './index.css';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 // Инициализируем тему при загрузке приложения
-const savedTheme = localStorage.getItem('theme') || 'dark';
+const savedTheme = localStorage.getItem('theme') || 'light';
 document.documentElement.classList.remove('light', 'dark');
 document.documentElement.classList.add(savedTheme);
 

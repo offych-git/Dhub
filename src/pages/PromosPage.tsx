@@ -198,39 +198,64 @@ const PromosPage: React.FC = () => {
       const promo = promoCodes.find(p => p.id === promoId);
       if (!promo) return;
 
-      const oldVote = promo.userVote;
-      let voteDiff = 0;
-
-      if (oldVote === voteType) {
+      // Сохраняем исходное состояние голоса для логики обновления
+      const previousVote = promo.userVote;
+      
+      // Если пользователь нажал на тот же тип голоса, который у него уже активен,
+      // то не выполняем никаких действий (ни в БД, ни в UI)
+      if (previousVote === voteType) {
+        // Ничего не делаем при повторном клике на тот же тип голоса
+        return;
+      } else if (previousVote === null) {
+        // Пользователь голосует впервые
         await supabase
           .from('promo_votes')
-          .delete()
-          .eq('promo_id', promoId)
-          .eq('user_id', user.id);
-        voteDiff = voteType ? -1 : 1;
-      } else {
-        await supabase
-          .from('promo_votes')
-          .upsert({
+          .insert({
             promo_id: promoId,
             user_id: user.id,
             vote_type: voteType
-          }, {
-            onConflict: 'promo_id,user_id'
           });
-        voteDiff = oldVote === null ? (voteType ? 1 : -1) : (voteType ? 2 : -2);
-      }
 
-      setPromoCodes(codes => codes.map(code => {
-        if (code.id === promoId) {
-          return {
-            ...code,
-            votes: code.votes + voteDiff,
-            userVote: oldVote === voteType ? null : voteType
-          };
-        }
-        return code;
-      }));
+        // Обновляем промокоды в состоянии
+        setPromoCodes(codes => codes.map(code => {
+          if (code.id === promoId) {
+            return {
+              ...code,
+              votes: code.votes + (voteType ? 1 : -1),
+              userVote: voteType
+            };
+          }
+          return code;
+        }));
+      } else {
+        // Пользователь меняет тип голоса с одного на другой
+        await supabase
+          .from('promo_votes')
+          .update({ vote_type: voteType })
+          .eq('promo_id', promoId)
+          .eq('user_id', user.id);
+        
+        // Обновляем промокоды в состоянии
+        setPromoCodes(codes => codes.map(code => {
+          if (code.id === promoId) {
+            // Вычисляем новое значение голосов
+            let newVotes = code.votes;
+            
+            if (previousVote === true && voteType === false) {
+              newVotes -= 1; // С положительного на отрицательный (-1)
+            } else if (previousVote === false && voteType === true) {
+              newVotes += 1; // С отрицательного на положительный (+1)
+            }
+            
+            return {
+              ...code,
+              votes: newVotes,
+              userVote: voteType
+            };
+          }
+          return code;
+        }));
+      }
     } catch (err) {
       console.error('Error updating vote:', err);
       fetchPromoCodes();
@@ -373,12 +398,12 @@ const PromosPage: React.FC = () => {
                             e.stopPropagation();
                             handleVote(promo.id, true);
                           }}
-                          className={`${promo.userVote === true ? 'text-red-500' : 'text-gray-400'}`}
+                          className={`${promo.userVote === true ? 'text-green-500' : 'text-gray-400'}`}
                         >
                           <ArrowUp className="h-4 w-4" />
                         </button>
-                        <span className={`text-sm font-medium ${promo.votes > 0 ? 'text-red-500' : promo.votes < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
-                          {promo.votes > 0 ? '+' : ''}{promo.votes}°
+                        <span className={`text-sm font-medium ${promo.votes > 0 ? 'text-green-500' : promo.votes < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                          {promo.votes > 0 ? '+' : ''}{promo.votes}
                         </span>
                         <button
                           onClick={(e) => {
@@ -386,7 +411,7 @@ const PromosPage: React.FC = () => {
                             e.stopPropagation();
                             handleVote(promo.id, false);
                           }}
-                          className={`${promo.userVote === false ? 'text-blue-500' : 'text-gray-400'}`}
+                          className={`${promo.userVote === false ? 'text-red-500' : 'text-gray-400'}`}
                         >
                           <ArrowDown className="h-4 w-4" />
                         </button>

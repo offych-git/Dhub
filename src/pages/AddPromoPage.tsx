@@ -245,7 +245,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
                 onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
               />
               <p className="text-gray-500 text-sm mt-1">
-                Expiry date (optional) - must be in the future
+                Expired date (optional) - must be in the future
               </p>
             </div>
 

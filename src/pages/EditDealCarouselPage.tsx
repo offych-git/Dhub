@@ -5,8 +5,11 @@ import AddDealPageNew from './AddDealPageNew';
 import { supabase } from '../lib/supabase';
 import { ArrowLeft } from 'lucide-react';
 import { useGlobalState } from '../contexts/GlobalStateContext';
+import { useAdmin } from '../hooks/useAdmin';
 
 const EditDealCarouselPage: React.FC = () => {
+  // Получаем роль пользователя для проверки доступа к функции HOT
+  const { role } = useAdmin();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [dealData, setDealData] = useState<any>(null);
@@ -108,7 +111,8 @@ const EditDealCarouselPage: React.FC = () => {
     <AddDealPageNew 
       isEditing={true} 
       dealId={id} 
-      initialData={dealData} 
+      initialData={dealData}
+      // Передаем информацию о возможности пометки как HOT только для админов и модераторов
       customHeaderComponent={
         <div className="flex items-center">
           <button onClick={() => navigate('/deals')} className="text-white">
