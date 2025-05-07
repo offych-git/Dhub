@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
@@ -26,7 +25,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [configValid, setConfigValid] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  
+
   // Check for recovery token or signup confirmation on page load
   useEffect(() => {
     const checkForSpecialFlows = async () => {
@@ -34,7 +33,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       const searchParams = new URLSearchParams(window.location.search);
       const token = searchParams.get('token');
       const type = searchParams.get('type');
-      
+
       console.log('Auth flow check:', { 
         fullUrl: window.location.href,
         search: window.location.search,
@@ -42,23 +41,23 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         type: type || 'none',
         isResetPage: isResetPasswordPage
       });
-      
+
       // If this is a signup confirmation
       if (type === 'signup') {
         try {
           console.log('Detected signup confirmation flow');
-          
+
           // Wait a short delay to make sure the auth state is updated
           setTimeout(() => {
             // Show success message
             setSuccessMessage('Регистрация успешно завершена! Переход на страницу профиля...');
-            
+
             // Redirect to profile page after a short delay to show the success message
             setTimeout(() => {
               navigate('/profile', { replace: true });
             }, 1500);
           }, 500);
-          
+
           return; // Exit early - no need to check other flows
         } catch (err) {
           console.error('Error handling signup flow:', err);
@@ -71,7 +70,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
           // Set immediately to show appropriate UI
           setIsResetPassword(true);
           setAccessToken(token);
-          
+
           // If not already on the reset password page, navigate there
           if (!isResetPasswordPage) {
             console.log('Redirecting to reset password page with token');
@@ -89,17 +88,64 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       else if (window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
-        
+
         if (accessToken) {
           console.log('Found OAuth token in hash');
           // Handle OAuth token if needed
         }
       }
     };
-    
+
     checkForSpecialFlows();
   }, [location, navigate, isResetPasswordPage]);
-  
+
+  // Добавляем обработчик для курсора в текстовых полях ввода для мобильных устройств
+  useEffect(() => {
+    const handleTouchMove = (event: TouchEvent) => {
+      // Получаем активный элемент
+      const activeElement = document.activeElement as HTMLInputElement;
+
+      // Проверяем, что это инпут и он имеет тип email, text или password
+      if (activeElement && 
+          (activeElement.tagName === 'INPUT') && 
+          (['email', 'text', 'password'].includes(activeElement.type))) {
+
+        // Получаем координаты касания
+        const touch = event.touches[0];
+        const touchX = touch.clientX;
+
+        // Получаем размеры и положение элемента
+        const rect = activeElement.getBoundingClientRect();
+        const leftPos = rect.left;
+        const width = rect.width;
+
+        // Рассчитываем относительную позицию в инпуте (от 0 до 1)
+        const positionRatio = Math.max(0, Math.min(1, (touchX - leftPos) / width));
+
+        // Получаем приблизительную позицию в тексте
+        const cursorPosition = Math.round(activeElement.value.length * positionRatio);
+
+        // Устанавливаем позицию курсора
+        try {
+          activeElement.setSelectionRange(cursorPosition, cursorPosition);
+        } catch(e) {
+          console.error("Ошибка установки позиции курсора:", e);
+        }
+
+        // Предотвращаем стандартное поведение для мобильных браузеров
+        event.preventDefault();
+      }
+    };
+
+    // Добавляем слушатель на все документе
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    // Очищаем слушатель при размонтировании
+    return () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
+
   // Also check state for tokens passed during navigation
   useEffect(() => {
     if (location.state?.token) {
@@ -108,23 +154,23 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       setIsResetPassword(true);
     }
   }, [location.state]);
-  
+
   // Validate Supabase config
   useEffect(() => {
     const validateConfig = async () => {
       const configResult = validateSupabaseConfig();
       setConfigValid(configResult.isValid);
-      
+
       if (!configResult.isValid) {
         setError('Supabase configuration is missing or invalid. Please check your environment variables.');
         return;
       }
-      
+
       // Check auth status
       const authStatus = await checkAuthStatus();
       console.log('Auth status check:', authStatus);
     };
-    
+
     validateConfig();
   }, []);
 
@@ -132,22 +178,22 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     // Trim the email and password to avoid whitespace issues
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
-    
+
     // For password reset with token
     if (isResetPassword && accessToken) {
       if (!trimmedPassword || trimmedPassword.length < 6) {
         setError('Пароль должен содержать не менее 6 символов');
         return false;
       }
-      
+
       if (trimmedPassword !== confirmPassword.trim()) {
         setError('Пароли не совпадают');
         return false;
       }
-      
+
       return true;
     }
-    
+
     // For other flows
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError('Пожалуйста, введите корректный email адрес');
@@ -171,18 +217,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const handleUpdatePassword = async () => {
     setError(null);
     setSuccessMessage(null);
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       console.log('Attempting to update password with token');
       await updatePassword(password);
       setSuccessMessage('Ваш пароль был успешно обновлен');
-      
+
       // Redirect to login page after password update
       setTimeout(() => {
         setIsResetPassword(false);
@@ -201,13 +247,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
-    
+
     // If we have a token and are on reset password page
     if (isResetPassword && accessToken) {
       handleUpdatePassword();
       return;
     }
-    
+
     if (!validateForm()) {
       return;
     }
@@ -217,7 +263,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     try {
       // Debug information
       console.log(`Attempting to ${isResetPassword ? 'reset password' : isSignUp ? 'sign up' : 'sign in'} with email: ${email}`);
-      
+
       if (isResetPassword && !accessToken) {
         await resetPassword(email);
         setSuccessMessage('Инструкции по сбросу пароля отправлены на ваш email');
@@ -226,7 +272,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         try {
           const result = await signUp(email, password);
           console.log('Sign up result:', result);
-          
+
           // Check for specific signup outcomes
           if (result?.user?.identities?.length === 0) {
             // User already exists
@@ -258,7 +304,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
           console.log('Sign in successful:', signInResult);
         } catch (signInErr: any) {
           console.error('Specific sign in error:', signInErr);
-          
+
           if (signInErr.message?.includes('incorrect') || 
               signInErr.code === 'invalid_credentials' ||
               signInErr.message?.includes('Invalid login credentials')) {
@@ -270,7 +316,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      
+
       // Handle errors not caught in inner try/catch blocks
       if (err.code === 'invalid_credentials' || 
           err.message?.includes('invalid_credentials') ||
@@ -307,7 +353,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     <div className="min-h-screen bg-gray-900 px-4 py-8">
       <div className="max-w-md mx-auto">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/')}
           className="flex items-center text-gray-400 hover:text-white mb-6"
         >
           <ArrowLeft className="h-5 w-5 mr-2" />
@@ -357,11 +403,24 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
             <div>
               <input
                 type="email"
+                inputMode="email"
+                autoComplete="email"
+                pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
                 placeholder="Email адрес"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
                   clearMessages();
+                }}
+                onTouchStart={(e) => {
+                  // При касании делаем фокус на поле
+                  e.currentTarget.focus();
+                }}
+                onTouchEnd={(e) => {
+                  // Обработчик конца касания для лучшего UX
+                  const input = e.currentTarget;
+                  // Предотвращаем всплытие события, чтобы не сработал клик
+                  e.stopPropagation();
                 }}
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
                 required
@@ -374,11 +433,21 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                autoComplete={isSignUp ? "new-password" : "current-password"}
                 placeholder={isSignUp ? "Пароль" : "Пароль"}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
                   clearMessages();
+                }}
+                onTouchStart={(e) => {
+                  // При касании делаем фокус на поле
+                  e.currentTarget.focus();
+                }}
+                onTouchEnd={(e) => {
+                  // Обработчик конца касания
+                  const input = e.currentTarget;
+                  e.stopPropagation();
                 }}
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 pr-10"
                 required
@@ -405,17 +474,27 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
               </button>
             </div>
           )}
-          
+
           {/* Additional field to confirm password when resetting with token */}
           {accessToken && (
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
                 placeholder="Подтвердите новый пароль"
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
                   clearMessages();
+                }}
+                onTouchStart={(e) => {
+                  // При касании делаем фокус на поле
+                  e.currentTarget.focus();
+                }}
+                onTouchEnd={(e) => {
+                  // Обработчик конца касания
+                  const input = e.currentTarget;
+                  e.stopPropagation();
                 }}
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 pr-10"
                 required
