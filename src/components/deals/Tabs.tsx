@@ -22,7 +22,8 @@ const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'hot', label: 'HOT' },
     { id: 'new', label: 'NEW' },
-    { id: 'discussed', label: 'MOST DISCUSSED' }
+    { id: 'discussed', label: 'MOST DISCUSSED' },
+    { id: 'free', label: 'FREE' }
   ];
 
   return (

@@ -300,6 +300,22 @@ const DealsPage: React.FC = () => {
       const dateB = b.createdAt || new Date(0);
       return dateB.getTime() - dateA.getTime();
     });
+  } else if (activeTab === 'free') {
+    // Фильтруем и показываем только бесплатные скидки (currentPrice = 0)
+    console.log("Обработка FREE скидок, всего скидок:", dbDeals.length);
+    
+    // Фильтруем скидки с ценой 0
+    const freeDeals = dbDeals.filter(deal => deal.currentPrice === 0);
+    
+    // Сортируем по дате создания (новые сверху)
+    freeDeals.sort((a, b) => {
+      const dateA = a.createdAt || new Date(0);
+      const dateB = b.createdAt || new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+    
+    displayDeals = freeDeals;
+    console.log("Найдено FREE скидок:", displayDeals.length);
   }
 
   // Apply category filter
