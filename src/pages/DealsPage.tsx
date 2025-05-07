@@ -25,7 +25,9 @@ import { DEAL_SETTINGS } from '../config/settings';
 import { useSearchParams, useLocation } from 'react-router-dom';
 
 const DealsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('hot');
+  // Читаем сохраненную вкладку сразу при инициализации компонента
+  const initialTab = sessionStorage.getItem('activeDealsTab') || 'hot';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -328,13 +330,19 @@ const DealsPage: React.FC = () => {
     es: 'Nada encontrado para su consulta'
   };
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // Сохраняем выбранную вкладку в sessionStorage
+    sessionStorage.setItem('activeDealsTab', tab);
+  };
+
   return (
     <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
       {/* Информационная строка о промоакциях */}
       <div className="bg-[#c1c1c1] dark:bg-gray-700/90 text-gray-500 dark:text-gray-200 text-[10px] text-center py-1 px-2">
         We may get paid by brands for deals, including promoted items.
       </div>
-      <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
+      <Tabs activeTab={activeTab} onTabChange={handleTabChange} />
 
       <FilterBar
         selectedCategories={selectedCategories}

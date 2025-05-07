@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface TabsProps {
   activeTab: string;
@@ -6,6 +6,19 @@ interface TabsProps {
 }
 
 const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange }) => {
+  const [selectedTab, setSelectedTab] = useState(activeTab); // Added state to manage active tab
+
+  useEffect(() => {
+    const storedTab = sessionStorage.getItem('activeDealsTab');
+    if (storedTab) {
+      setSelectedTab(storedTab); //Set active tab from session storage on mount
+    }
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem('activeDealsTab', selectedTab); //Persist tab on change
+  }, [selectedTab]);
+
   const tabs = [
     { id: 'hot', label: 'HOT' },
     { id: 'new', label: 'NEW' },
@@ -18,11 +31,14 @@ const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange }) => {
         <button
           key={tab.id}
           className={`py-3 px-4 text-sm font-medium ${
-            activeTab === tab.id
+            selectedTab === tab.id
               ? 'text-white border-b-2 border-orange-500'
               : 'text-gray-400'
           }`}
-          onClick={() => onTabChange(tab.id)}
+          onClick={() => {
+            setSelectedTab(tab.id); // Update local state first
+            onTabChange(tab.id);
+          }}
         >
           {tab.label}
         </button>

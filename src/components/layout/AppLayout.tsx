@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, Link } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../ui/Header';
 import Navigation from '../ui/Navigation';
+import ScrollToTop from '../ui/ScrollToTop';
 import { LogIn, LogOut, Sun, Moon } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+
+
+// Компонент ScrollToTop удален, вместо него используется импортированный
+
 
 const AppLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -13,15 +19,15 @@ const AppLayout: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  
+
   const handleAuthClick = async () => {
     setIsSidebarOpen(false);
-    
+
     if (!user) {
       navigate('/auth');
       return;
     }
-    
+
     try {
       await signOut();
       navigate('/auth');
@@ -30,19 +36,19 @@ const AppLayout: React.FC = () => {
       navigate('/auth');
     }
   };
-  
+
   return (
     <div className={`min-h-screen relative`}>
       <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-      
+
       {/* Main content с учетом высоты Header и SearchBar */}
       <div className="pt-28">
         <Outlet />
       </div>
-      
       {/* Bottom navigation */}
       <Navigation />
-      
+      <ScrollToTop /> {/* Added ScrollToTop here */}
+
       {/* Sidebar overlay */}
       {isSidebarOpen && (
         <div 
@@ -50,7 +56,7 @@ const AppLayout: React.FC = () => {
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-      
+
       {/* Sidebar */}
       <div 
         className={`fixed top-0 left-0 h-full w-64 bg-gray-800 z-30 transform transition-transform duration-300 ease-in-out flex flex-col ${
@@ -75,11 +81,11 @@ const AppLayout: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         <div className="p-4 border-b border-gray-700 flex-shrink-0">
           <h2 className="text-white text-xl font-bold">{t('common.menu')}</h2>
         </div>
-        
+
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-4">
@@ -131,7 +137,7 @@ const AppLayout: React.FC = () => {
               </>
             )}
           </button>
-          
+
           <button
             onClick={handleAuthClick}
             className="w-full flex items-center justify-center py-2 px-4 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors"
