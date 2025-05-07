@@ -45,7 +45,7 @@ function App() {
                 <Route path="/deals/:id" element={<DealDetailPage />} />
                 <Route path="/deals/new" element={<PrivateRoute><AddDealPage /></PrivateRoute>} />
                 <Route path="/deals/new-carousel" element={<PrivateRoute><AddDealPageNew /></PrivateRoute>} /> 
-                <Route path="/deals/:id/edit" element={<PrivateRoute><EditDealPage /></PrivateRoute>} />
+                <Route path="/deals/:id/edit" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} />
                 <Route path="/edit-carousel/:id" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} />
                 <Route path="/promos/new" element={<PrivateRoute><AddPromoPage /></PrivateRoute>} />
                 <Route path="/promos" element={<PromosPage />} />

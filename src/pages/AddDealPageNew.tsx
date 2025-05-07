@@ -28,9 +28,13 @@ interface AddDealPageNewProps {
   dealId?: string;
   initialData?: any;
   customHeaderComponent?: React.ReactNode; // Added custom header prop
+  allowHotToggle?: boolean;
+  labelOverrides?: {
+    expiryDate?: string;
+  };
 }
 
-const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, dealId, initialData, customHeaderComponent }) => {
+const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, dealId, initialData, customHeaderComponent, allowHotToggle, labelOverrides = {} }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { dispatch } = useGlobalState(); // Added dispatch
@@ -231,7 +235,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
     const categoryValid = formData.category !== '';
     const imagesValid = dealImages.length > 0;
     const urlValid = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+([/?#].*)?$/.test(formData.dealUrl);
-    
+
     // Обновляем состояние валидации
     setValidationState({
       title: titleValid,
@@ -903,21 +907,23 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
                 )}
               </div>
               <p className="text-gray-500 text-sm mt-1">
-                Expired date (optional)
+                {labelOverrides.expiryDate || "Expired date"} (optional)
               </p>
             </div>
 
             {/* Проверка на роль пользователя для отображения HOT кнопки */}
-            {canMarkHot && (
-              <div className="flex items-center space-x-2 mt-4">
-                <input
-                  type="checkbox"
-                  id="isHot"
-                  checked={formData.isHot}
-                  onChange={(e) => setFormData({ ...formData, isHot: e.target.checked })}
-                  className="form-checkbox h-5 w-5 text-orange-500"
-                />
-                <label htmlFor="isHot" className="text-white">Mark as HOT</label>
+            {!isUploadingImage && (allowHotToggle === undefined ? canMarkHot : allowHotToggle) && (
+              <div className="mt-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isHot"
+                    checked={formData.isHot}
+                    onChange={(e) => setFormData({ ...formData, isHot: e.target.checked })}
+                    className="form-checkbox h-5 w-5 text-orange-500"
+                  />
+                  <label htmlFor="isHot" className="text-white">Mark as HOT</label>
+                </div>
               </div>
             )}
 

@@ -68,13 +68,30 @@ const EditDealCarouselPage: React.FC = () => {
 
         // Извлекаем карусель изображений из описания
         let imageUrls: string[] = [];
+        
+        // Всегда добавляем основное изображение первым элементом массива
+        if (data.image_url) {
+          imageUrls.push(data.image_url);
+          console.log('Added main image URL:', data.image_url);
+        }
+        
+        // Далее пытаемся извлечь дополнительные изображения из комментария в описании
         if (data.description) {
           const match = data.description.match(/<!-- DEAL_IMAGES: (.*?) -->/);
           if (match && match[1]) {
             try {
-              imageUrls = JSON.parse(match[1]);
-              console.log('Found carousel images:', imageUrls.length);
-
+              const parsedImages = JSON.parse(match[1]);
+              console.log('Found carousel images in description:', parsedImages.length);
+              
+              // Проверяем, есть ли основное изображение в массиве из описания
+              // Если есть и оно совпадает с первым элементом, берем только остальные
+              if (parsedImages.length > 0 && parsedImages[0] === data.image_url) {
+                imageUrls = imageUrls.concat(parsedImages.slice(1));
+              } else {
+                // Если не совпадает, добавляем все дополнительные изображения
+                imageUrls = imageUrls.concat(parsedImages);
+              }
+              
               // Очищаем описание от JSON с изображениями
               transformedData.description = data.description.replace(/<!-- DEAL_IMAGES: .*? -->/, '').trim();
             } catch (e) {
@@ -82,6 +99,8 @@ const EditDealCarouselPage: React.FC = () => {
             }
           }
         }
+        
+        console.log('Final image URLs array:', imageUrls);
 
         console.log('Transformed carousel data:', transformedData);
 
@@ -113,6 +132,10 @@ const EditDealCarouselPage: React.FC = () => {
       dealId={id} 
       initialData={dealData}
       // Передаем информацию о возможности пометки как HOT только для админов и модераторов
+      allowHotToggle={role === 'admin' || role === 'moderator'}
+      labelOverrides={{
+        expiryDate: "Expired date"
+      }}
       customHeaderComponent={
         <div className="flex items-center">
           <button onClick={() => navigate('/deals')} className="text-white">
