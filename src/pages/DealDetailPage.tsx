@@ -130,6 +130,9 @@ const DealDetailPage: React.FC = () => {
   // Функция генерации ценовой истории удалена
 
   useEffect(() => {
+    // Прокручиваем страницу вверх при открытии деталей сделки
+    window.scrollTo(0, 0);
+    
     if (id) {
       loadDeal();
       loadComments();

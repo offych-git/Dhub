@@ -72,6 +72,9 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Прокручиваем страницу вверх при открытии деталей промокода
+    window.scrollTo(0, 0);
+    
     if (id) {
       loadPromo();
       loadComments();
