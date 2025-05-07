@@ -246,7 +246,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={images.length >= 2}
-            className="text-gray-400 hover:text-white disabled:opacity-50"
+            className={`text-gray-600 dark:text-gray-400 hover:text-orange-500 disabled:opacity-50`}
           >
             📎 Add image
           </button>
@@ -262,7 +262,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
             {onCancel && (
               <button
                 onClick={onCancel}
-                className="px-4 py-2 text-gray-400 hover:text-white"
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-orange-500 dark:hover:text-white font-medium"
               >
                 Cancel
               </button>
