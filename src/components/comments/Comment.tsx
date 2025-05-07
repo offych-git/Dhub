@@ -202,16 +202,16 @@ const Comment: React.FC<CommentProps> = ({
           {depth < maxDepth && (
             <button
               onClick={() => setShowReplyInput(!showReplyInput)}
-              className="text-gray-400 hover:text-white flex items-center"
+              className={`flex items-center ${showReplyInput ? 'text-orange-500' : 'text-gray-600 dark:text-gray-400 hover:text-orange-500 disabled:opacity-50'}`}
             >
               <Reply className="h-4 w-4 mr-1" />
-              Reply
+              <span>Reply</span>
             </button>
           )}
           <button
             onClick={handleLike}
             className={`flex items-center ${
-              isLiked ? 'text-orange-500' : 'text-gray-400 hover:text-white'
+              isLiked ? 'text-orange-500' : 'text-gray-600 dark:text-gray-400 hover:text-orange-500 dark:hover:text-orange-400'
             }`}
           >
             <ThumbsUp className="h-4 w-4 mr-1" fill={isLiked ? 'currentColor' : 'none'} />
@@ -229,7 +229,6 @@ const Comment: React.FC<CommentProps> = ({
                 setShowReplyInput(false);
                 onReply();
               }}
-              onCancel={() => setShowReplyInput(false)}
             />
           </div>
         )}
