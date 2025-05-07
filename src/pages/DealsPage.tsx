@@ -151,8 +151,9 @@ const DealsPage: React.FC = () => {
           .eq('deal_id', deal.id);
 
         // Get user profile information
-        const userEmail = deal.profiles?.email;
-        const userName = userEmail ? userEmail.split('@')[0] : 'Anonymous User';
+        const userDisplayName = deal.profiles?.display_name || (
+          deal.profiles?.email ? deal.profiles.email.split('@')[0] : 'Anonymous User'
+        );
 
         return {
           id: deal.id,
@@ -171,8 +172,8 @@ const DealsPage: React.FC = () => {
           comments: commentCount || 0,
           postedBy: {
             id: deal.profiles?.id || 'anonymous',
-            name: userName,
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random`
+            name: userDisplayName,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=random`
           },
           description: deal.description,
           url: deal.deal_url,

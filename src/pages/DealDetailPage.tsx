@@ -172,8 +172,9 @@ const DealDetailPage: React.FC = () => {
       }
 
       // Add null checks and default values for profile data
-      const profileEmail = data.profiles?.email || 'Anonymous';
-      const profileName = profileEmail === 'Anonymous' ? 'Anonymous' : profileEmail.split('@')[0];
+      const profileDisplayName = data.profiles?.display_name || (
+        data.profiles?.email ? data.profiles.email.split('@')[0] : 'Anonymous'
+      );
 
       // Log для отладки структуры данных сделки
       console.log('Загружены данные сделки:', data);
@@ -193,8 +194,8 @@ const DealDetailPage: React.FC = () => {
         postedAt: new Date(data.created_at).toLocaleDateString(),
         postedBy: {
           id: data.profiles?.id || 'anonymous',
-          name: profileName,
-          avatar: `https://ui-avatars.com/api/?name=${profileName}&background=random`
+          name: profileDisplayName,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(profileDisplayName)}&background=random`
         }
       });
     } catch (err: any) {
@@ -608,13 +609,24 @@ const DealDetailPage: React.FC = () => {
             <button 
               onClick={() => {
                 if (navigator.share) {
+                  // Формируем правильный URL для конкретной сделки
+                  const dealUrl = `${window.location.origin}/deals/${deal.id}`;
+                  
+                  // Очищаем HTML-теги из заголовка и описания
+                  const cleanTitle = deal.title ? deal.title.replace(/<[^>]*>/g, '') : '';
+                  const cleanDescription = deal.description 
+                    ? deal.description.replace(/<[^>]*>/g, '')
+                    : `Check out this deal at ${deal.store.name}`;
+                  
                   navigator.share({
-                    title: deal.title,
-                    text: deal.description || `Check out this deal at ${deal.store.name}`,
-                    url: window.location.href
+                    title: cleanTitle,
+                    text: cleanDescription,
+                    url: dealUrl
                   }).catch(console.error);
                 } else {
-                  navigator.clipboard.writeText(window.location.href);
+                  // Формируем правильный URL для копирования
+                  const dealUrl = `${window.location.origin}/deals/${deal.id}`;
+                  navigator.clipboard.writeText(dealUrl);
                   alert('Link copied to clipboard!');
                 }
               }}

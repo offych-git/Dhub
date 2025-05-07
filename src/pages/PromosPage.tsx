@@ -200,7 +200,7 @@ const PromosPage: React.FC = () => {
 
       // Сохраняем исходное состояние голоса для логики обновления
       const previousVote = promo.userVote;
-      
+
       // Если пользователь нажал на тот же тип голоса, который у него уже активен,
       // то не выполняем никаких действий (ни в БД, ни в UI)
       if (previousVote === voteType) {
@@ -234,19 +234,19 @@ const PromosPage: React.FC = () => {
           .update({ vote_type: voteType })
           .eq('promo_id', promoId)
           .eq('user_id', user.id);
-        
+
         // Обновляем промокоды в состоянии
         setPromoCodes(codes => codes.map(code => {
           if (code.id === promoId) {
             // Вычисляем новое значение голосов
             let newVotes = code.votes;
-            
+
             if (previousVote === true && voteType === false) {
               newVotes -= 1; // С положительного на отрицательный (-1)
             } else if (previousVote === false && voteType === true) {
               newVotes += 1; // С отрицательного на положительный (+1)
             }
-            
+
             return {
               ...code,
               votes: newVotes,
@@ -495,13 +495,17 @@ const PromosPage: React.FC = () => {
                           e.preventDefault();
                           e.stopPropagation();
                           if (navigator.share) {
+                            // Формируем правильный URL для конкретного промокода
+                            const promoUrl = `${window.location.origin}/promos/${promo.id}`;
                             navigator.share({
                               title: promo.title,
                               text: `Промокод: ${promo.code}`,
-                              url: window.location.href
+                              url: promoUrl
                             }).catch(console.error);
                           } else {
-                            navigator.clipboard.writeText(window.location.href);
+                            // Формируем правильный URL для копирования
+                            const promoUrl = `${window.location.origin}/promos/${promo.id}`;
+                            navigator.clipboard.writeText(promoUrl);
                             alert('Ссылка скопирована в буфер обмена!');
                           }
                         }}

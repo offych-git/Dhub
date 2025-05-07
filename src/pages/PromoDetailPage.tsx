@@ -351,13 +351,17 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
             <button 
               onClick={() => {
                 if (navigator.share) {
+                  // Формируем правильный URL для конкретного промокода
+                  const promoUrl = `${window.location.origin}/promos/${promo.id}`;
                   navigator.share({
                     title: promo.title,
                     text: `Use promo code ${promo.code} at ${new URL(promo.discount_url).hostname}`,
-                    url: window.location.href
+                    url: promoUrl
                   }).catch(console.error);
                 } else {
-                  navigator.clipboard.writeText(window.location.href);
+                  // Формируем правильный URL для копирования
+                  const promoUrl = `${window.location.origin}/promos/${promo.id}`;
+                  navigator.clipboard.writeText(promoUrl);
                   alert('Link copied to clipboard!');
                 }
               }}

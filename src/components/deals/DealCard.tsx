@@ -332,66 +332,73 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
             <span className="text-xs">{commentCount}</span>
           </div>
 
+          {/* Share button - always visible */}
+          <button 
+            className="ml-3 text-orange-500 flex items-center"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (navigator.share) {
+                const cleanTitle = deal.title ? deal.title.replace(/<[^>]*>/g, '') : '';
+                const cleanStoreName = deal.store && deal.store.name ? deal.store.name.replace(/<[^>]*>/g, '') : '';
+                
+                // Формируем URL для конкретного предложения
+                const dealUrl = `${window.location.origin}/deals/${deal.id}`;
+                
+                navigator.share({
+                  title: `${cleanTitle}${cleanStoreName ? ` - ${cleanStoreName}` : ''}`,
+                  text: `Скидка ${discountPercent}%! ${cleanTitle} за $${deal.currentPrice.toFixed(2)} ${deal.originalPrice ? `(было $${deal.originalPrice.toFixed(2)})` : ''}`,
+                  url: dealUrl
+                }).catch(console.error);
+              }
+            }}
+          >
+            <Share2 className="h-4 w-4" />
+          </button>
+          
+          {/* View button - always visible */}
+          <button 
+            className="ml-3 text-orange-500 flex items-center"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (deal.url) {
+                window.open(deal.url, '_blank', 'noopener,noreferrer');
+              } else {
+                navigate(`/deals/${deal.id}`);
+              }
+            }}
+          >
+            <span className="text-xs mr-1">View</span>
+            <ExternalLink className="h-3 w-3" />
+          </button>
+          
+          {/* User-specific actions */}
           {user && (
             <>
-              <button 
-                className="ml-3 text-orange-500 flex items-center"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `${deal.title} - ${deal.store.name}`,
-                      text: `Скидка ${discountPercent}%! ${deal.title} за $${deal.currentPrice.toFixed(2)} (было $${deal.originalPrice?.toFixed(2)})`,
-                      url: window.location.href
-                    }).catch(console.error);
-                  }
-                }}
-              >
-                <Share2 className="h-4 w-4" />
-              </button>
-              <button 
-                className="ml-3 text-orange-500 flex items-center"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (deal.url) {
-                    window.open(deal.url, '_blank', 'noopener,noreferrer');
-                  } else {
-                    navigate(`/deals/${deal.id}`);
-                  }
-                }}
-              >
-                <span className="text-xs mr-1">View</span>
-                <ExternalLink className="h-3 w-3" />
-              </button>
-              {user && (
-                <>
-                  {user.id === deal.postedBy.id && 
-                    new Date().getTime() - new Date(deal.createdAt).getTime() < 24 * 60 * 60 * 1000 && (
-                      <div
-                        className="ml-3 text-orange-500 flex items-center cursor-pointer"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          window.location.href = `/deals/${deal.id}/edit`;
-                        }}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </div>
-                    )
-                  }
-                  {(user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && (
-                    <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
-                      <AdminActions
-                        type="deal"
-                        id={deal.id}
-                        userId={deal.postedBy.id}
-                        onAction={onDelete || (() => {})}
-                      />
-                    </div>
-                  )}
-                </>
+              {user.id === deal.postedBy.id && 
+                new Date().getTime() - new Date(deal.createdAt).getTime() < 24 * 60 * 60 * 1000 && (
+                  <div
+                    className="ml-3 text-orange-500 flex items-center cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window.location.href = `/deals/${deal.id}/edit`;
+                    }}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </div>
+                )
+              }
+              {(user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && (
+                <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
+                  <AdminActions
+                    type="deal"
+                    id={deal.id}
+                    userId={deal.postedBy.id}
+                    onAction={onDelete || (() => {})}
+                  />
+                </div>
               )}
             </>
           )}
