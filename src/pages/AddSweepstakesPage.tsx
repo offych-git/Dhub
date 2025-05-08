@@ -460,7 +460,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pt-16 pb-24">
+      <div className="flex-1 overflow-y-auto pt-4 pb-24">
         <div className="px-4">
           {error && (
             <div className="bg-red-500 text-white px-4 py-3 rounded-md mb-4">
