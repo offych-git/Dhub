@@ -752,15 +752,11 @@ const SweepstakesDetailPage: React.FC = () => {
                   // Формируем правильный URL для конкретного розыгрыша
                   const sweepstakesUrl = `${window.location.origin}/sweepstakes/${sweepstakes.id}`;
 
-                  // Очищаем HTML-теги из заголовка и описания
+                  // Очищаем HTML-теги из заголовка
                   const cleanTitle = sweepstakes.title ? sweepstakes.title.replace(/<[^>]*>/g, '') : '';
-                  const cleanDescription = sweepstakes.description 
-                    ? sweepstakes.description.replace(/<[^>]*>/g, '')
-                    : `Участвуйте в розыгрыше!`;
 
                   navigator.share({
                     title: cleanTitle,
-                    text: cleanDescription,
                     url: sweepstakesUrl
                   }).catch(console.error);
                 } else {

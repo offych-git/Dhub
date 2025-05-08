@@ -354,7 +354,6 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
 
                 navigator.share({
                   title: `${cleanTitle}${cleanStoreName ? ` - ${cleanStoreName}` : ''}`,
-                  text: `Скидка ${discountPercent}%! ${cleanTitle} за $${deal.currentPrice.toFixed(2)} ${deal.originalPrice ? `(было $${deal.originalPrice.toFixed(2)})` : ''}`,
                   url: dealUrl
                 }).catch(console.error);
               }

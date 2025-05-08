@@ -494,7 +494,6 @@ const SavedItemsPage: React.FC = () => {
                               if (navigator.share) {
                                 navigator.share({
                                   title: promo.title,
-                                  text: `Промокод: ${promo.code}`,
                                   url: window.location.href
                                 }).catch(console.error);
                               } else {

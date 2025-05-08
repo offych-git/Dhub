@@ -499,7 +499,6 @@ const PromosPage: React.FC = () => {
                             const promoUrl = `${window.location.origin}/promos/${promo.id}`;
                             navigator.share({
                               title: promo.title,
-                              text: `Промокод: ${promo.code}`,
                               url: promoUrl
                             }).catch(console.error);
                           } else {

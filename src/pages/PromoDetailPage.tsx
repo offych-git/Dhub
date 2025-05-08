@@ -367,7 +367,6 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
                   const promoUrl = `${window.location.origin}/promos/${promo.id}`;
                   navigator.share({
                     title: promo.title,
-                    text: `Use promo code ${promo.code} at ${new URL(promo.discount_url).hostname}`,
                     url: promoUrl
                   }).catch(console.error);
                 } else {

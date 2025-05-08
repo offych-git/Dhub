@@ -777,15 +777,11 @@ const DealDetailPage: React.FC = () => {
                   // Формируем правильный URL для конкретной сделки
                   const dealUrl = `${window.location.origin}/deals/${deal.id}`;
 
-                  // Очищаем HTML-теги из заголовка и описания
+                  // Очищаем HTML-теги из заголовка
                   const cleanTitle = deal.title ? deal.title.replace(/<[^>]*>/g, '') : '';
-                  const cleanDescription = deal.description 
-                    ? deal.description.replace(/<[^>]*>/g, '')
-                    : `Check out this deal at ${deal.store.name}`;
 
                   navigator.share({
                     title: cleanTitle,
-                    text: cleanDescription,
                     url: dealUrl
                   }).catch(console.error);
                 } else {

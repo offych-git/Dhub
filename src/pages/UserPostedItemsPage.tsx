@@ -423,7 +423,6 @@ const UserPostedItemsPage: React.FC = () => {
                               if (navigator.share) {
                                 navigator.share({
                                   title: promo.title,
-                                  text: `Promo Code: ${promo.code}`,
                                   url: window.location.href
                                 }).catch(console.error);
                               } else {
