@@ -561,12 +561,6 @@ const SweepstakesDetailPage: React.FC = () => {
           </div>
         )}
 
-        <div className="mt-3">
-          <span className="px-4 py-1.5 bg-orange-500/20 text-orange-500 rounded-md text-xl font-semibold">
-            SWEEPSTAKES
-          </span>
-        </div>
-
         {sweepstakes.expiresAt && (
           <div className="mt-3 text-gray-300">
             <span className="font-medium">Окончание розыгрыша:</span> {sweepstakes.expiresAt}

@@ -112,6 +112,7 @@ const DealsPage: React.FC = () => {
             display_name
           )
         `)
+        .not('type', 'eq', 'sweepstakes')  // Exclude sweepstakes
         .order('updated_at', { ascending: false })  // Сначала недавно обновленные
         .limit(100);  // Увеличиваем лимит для получения большего объема данных
 

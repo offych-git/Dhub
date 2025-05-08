@@ -14,7 +14,8 @@ const SavedItemsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [savedDeals, setSavedDeals] = useState<Deal[]>([]);
   const [savedPromos, setSavedPromos] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'deals' | 'promos'>('deals');
+  const [savedSweepstakes, setSavedSweepstakes] = useState<Deal[]>([]);
+  const [activeTab, setActiveTab] = useState<'deals' | 'promos' | 'sweepstakes'>('deals');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
@@ -77,7 +78,24 @@ const SavedItemsPage: React.FC = () => {
               id
             )
           `)
-          .in('id', dealIds);
+          .in('id', dealIds)
+          .eq('type', 'deal');
+
+        let sweepstakesQuery = supabase
+          .from('deals')
+          .select(`
+            *,
+            profiles (
+              id,
+              email,
+              display_name
+            ),
+            deal_comments (
+              id
+            )
+          `)
+          .in('id', dealIds)
+          .eq('type', 'sweepstakes');
 
         // Apply sorting
         switch (sortBy) {
@@ -126,8 +144,44 @@ const SavedItemsPage: React.FC = () => {
 
           setSavedDeals(deals);
         }
+
+        // Process sweepstakes data 
+        const { data: sweepstakesData, error: sweepstakesError } = await sweepstakesQuery;
+
+        if (sweepstakesError) {
+          throw sweepstakesError;
+        }
+
+        if (sweepstakesData) {
+          const sweepstakes = sweepstakesData.map(deal => ({
+            id: deal.id,
+            title: deal.title,
+            currentPrice: parseFloat(deal.current_price),
+            originalPrice: deal.original_price ? parseFloat(deal.original_price) : undefined,
+            store: { id: deal.store_id, name: deal.store_id },
+            category: { id: deal.category_id, name: deal.category_id },
+            image: deal.image_url,
+            postedAt: {
+              relative: formatTimeAgo(deal.created_at),
+              exact: new Date(deal.created_at).toLocaleString()
+            },
+            popularity: deal.vote_count || 0,
+            comments: deal.deal_comments?.length || 0,
+            postedBy: {
+              id: deal.profiles.id,
+              name: deal.profiles.display_name || deal.profiles.email.split('@')[0],
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(deal.profiles.display_name || deal.profiles.email)}&background=random`
+            },
+            description: deal.description,
+            url: deal.deal_url,
+            type: 'sweepstakes'
+          }));
+
+          setSavedSweepstakes(sweepstakes);
+        }
       } else {
         setSavedDeals([]);
+        setSavedSweepstakes([]);
       }
 
       // Load saved promos - простой запрос только для получения ID
@@ -265,6 +319,12 @@ const SavedItemsPage: React.FC = () => {
           >
             Promos ({savedPromos.length})
           </button>
+          <button 
+            className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'sweepstakes' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
+            onClick={() => setActiveTab('sweepstakes')}
+          >
+            Sweepstakes ({savedSweepstakes.length})
+          </button>
         </div>
 
         {loading ? (
@@ -289,6 +349,24 @@ const SavedItemsPage: React.FC = () => {
                     key={deal.id}
                     deal={deal}
                     onVoteChange={loadSavedItems}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Saved Sweepstakes */}
+            {activeTab === 'sweepstakes' && savedSweepstakes.length > 0 && (
+              <div className="space-y-4">
+                {savedSweepstakes.map(sweepstake => (
+                  <DealCard
+                    key={`sweepstake-${sweepstake.id}`}
+                    deal={{
+                      ...sweepstake,
+                      // Override store name to prevent showing additional text
+                      store: { ...sweepstake.store, name: '' }
+                    }}
+                    onVoteChange={loadSavedItems}
+                    hideFreeLabel={true}
                   />
                 ))}
               </div>

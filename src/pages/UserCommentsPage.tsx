@@ -44,6 +44,7 @@ const UserCommentsPage: React.FC = () => {
   const [dealComments, setDealComments] = useState<Comment[]>([]);
   const [promoComments, setPromoComments] = useState<any[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [sweepstakes, setSweepstakes] = useState<Deal[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -55,12 +56,17 @@ const UserCommentsPage: React.FC = () => {
     deal.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredSweepstakes = sweepstakes.filter(sweep => 
+    sweep.userComment?.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sweep.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const filteredPromos = promoComments.filter(promo => 
     promo.userComment?.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
     promo.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const [activeTab, setActiveTab] = useState<'deals' | 'promos'>('deals');
+  const [activeTab, setActiveTab] = useState<'deals' | 'promos' | 'sweepstakes'>('deals');
 
 
   const sortComments = (comments: Comment[], sortBy: SortOption): Comment[] => {
@@ -199,8 +205,8 @@ const UserCommentsPage: React.FC = () => {
       // Сортируем древовидную структуру
       const sortedComments = sortComments(rootComments, sortBy);
 
-      // Преобразуем данные в формат Deal
-      const dealsWithComments = sortedComments
+      // Process all deal comments
+      const allDealsWithComments = sortedComments
         .filter(comment => comment?.deals)
         .map(comment => ({
           id: comment.deals!.id,
@@ -220,26 +226,33 @@ const UserCommentsPage: React.FC = () => {
           },
           description: comment.deals!.description,
           url: comment.deals!.deal_url,
+          type: comment.deals!.type || 'deal',
           userComment: {
-            id: comment.id, // Добавляем ID комментария
+            id: comment.id,
             content: comment.content,
             createdAt: new Date(comment.created_at).toLocaleString(),
-            images: comment.images, // Added images
+            images: comment.images,
             replies: comment.replies.map(reply => ({
-              id: reply.id, // Добавляем ID ответа
+              id: reply.id,
               content: reply.content,
               createdAt: new Date(reply.created_at).toLocaleString(),
-              images: reply.images // Added images to replies
+              images: reply.images
             }))
           }
         }));
+        
+      // Separate deals and sweepstakes
+      const dealsWithComments = allDealsWithComments.filter(item => item.type === 'deal' || !item.type);
+      const sweepstakesWithComments = allDealsWithComments.filter(item => item.type === 'sweepstakes');
 
       if (page === 1) {
         setDeals(dealsWithComments);
+        setSweepstakes(sweepstakesWithComments);
       } else {
         setDeals(prev => [...prev, ...dealsWithComments]);
+        setSweepstakes(prev => [...prev, ...sweepstakesWithComments]);
       }
-      setHasMore(dealsWithComments.length === 20);
+      setHasMore(dealsWithComments.length === 20 || sweepstakesWithComments.length === 20);
 
       // Load promo comments
       let promoCommentsQuery = supabase
@@ -315,11 +328,24 @@ const UserCommentsPage: React.FC = () => {
     <div className="min-h-screen bg-gray-900 pb-24 pt-0">
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="max-w-lg mx-auto">
-          <div className="flex items-center">
-            <button onClick={() => navigate(-1)} className="text-white">
-              <ArrowLeft className="h-6 w-6" />
-            </button>
-            <h1 className="text-white font-medium ml-4">My Comments</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <button onClick={() => navigate(-1)} className="text-white">
+                <ArrowLeft className="h-6 w-6" />
+              </button>
+              <h1 className="text-white font-medium ml-4">My Comments</h1>
+            </div>
+            <div className="flex items-center space-x-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none flex-shrink-0"
+              >
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="popular">Popular</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -356,16 +382,14 @@ const UserCommentsPage: React.FC = () => {
             >
               Promos ({filteredPromos.length})
             </button>
+            <button 
+              className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'sweepstakes' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
+              onClick={() => setActiveTab('sweepstakes')}
+            >
+              Sweepstakes ({filteredSweepstakes.length})
+            </button>
           </div>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none flex-shrink-0"
-          >
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="popular">Popular</option>
-          </select>
+          
         </div>
         {loading ? (
           <div className="flex justify-center items-center py-8">
@@ -456,6 +480,159 @@ const UserCommentsPage: React.FC = () => {
                           {deal.userComment.replies && deal.userComment.replies.length > 0 && (
                             <div className="ml-8 space-y-2">
                               {deal.userComment.replies.map((reply, index) => (
+                                <div key={index} className="bg-gray-700 rounded-md p-3 border-l-2 border-orange-400">
+                                  <div className="flex justify-between items-start">
+                                    <div className="text-gray-400 text-sm mb-1 flex items-center">
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                      {reply.createdAt}
+                                    </div>
+                                    {reply.id && (
+                                      <AdminActions 
+                                        type="deal_comment"
+                                        id={reply.id}
+                                        userId={user?.id || ''}
+                                        onAction={loadUserComments}
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="text-white">
+                                    {reply.content}
+                                    {reply.images && reply.images.length > 0 && (
+                                      <div className="flex gap-2 mt-2">
+                                        {reply.images.map((image, i) => (
+                                          <div key={i} className="relative">
+                                            <img
+                                              src={image}
+                                              alt={`Reply image ${i + 1}`}
+                                              className="w-16 h-16 object-cover rounded cursor-pointer"
+                                              onClick={() => {
+                                                const modal = document.createElement('div');
+                                                modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                                                modal.onclick = () => document.body.removeChild(modal);
+
+                                                const content = document.createElement('div');
+                                                content.className = 'relative max-w-4xl max-h-[90vh]';
+                                                content.onclick = e => e.stopPropagation();
+
+                                                const closeBtn = document.createElement('button');
+                                                closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
+                                                closeBtn.textContent = '×';
+                                                closeBtn.onclick = () => document.body.removeChild(modal);
+
+                                                const img = document.createElement('img');
+                                                img.src = image;
+                                                img.className = 'max-w-full max-h-[90vh] object-contain';
+
+                                                content.appendChild(closeBtn);
+                                                content.appendChild(img);
+                                                modal.appendChild(content);
+                                                document.body.appendChild(modal);
+                                              }}
+                                            />
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sweepstakes Comments */}
+            {activeTab === 'sweepstakes' && filteredSweepstakes.length > 0 && (
+              <div>
+                <h2 className="text-white font-medium mb-4">Sweepstakes Comments</h2>
+                <div className="space-y-4">
+                  {filteredSweepstakes.map((sweepstake, index) => (
+                    <div key={`sweepstake-${sweepstake.id}-${index}`} className="space-y-2">
+                      <DealCard 
+                        deal={{
+                          ...sweepstake,
+                          postedAt: {
+                            relative: sweepstake.postedAt,
+                            exact: typeof sweepstake.postedAt === 'string' ? sweepstake.postedAt : sweepstake.postedAt?.exact || ''
+                          },
+                          // Override store name to prevent showing additional text
+                          store: { ...sweepstake.store, name: '' }
+                        }} 
+                        onVoteChange={loadUserComments}
+                        hideFreeLabel={true}
+                      />
+                      {sweepstake.userComment && (
+                        <div className="space-y-2">
+                          <div className="bg-gray-800 rounded-md p-3 ml-4 border-l-2 border-orange-500">
+                            <div className="flex justify-between items-start">
+                              <div className="text-gray-400 text-sm mb-1 flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                  <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                                {sweepstake.userComment.createdAt}
+                              </div>
+                              {sweepstake.userComment && (
+                                <AdminActions 
+                                  type="deal_comments"
+                                  id={sweepstake.userComment.id}
+                                  userId={user?.id || ''}
+                                  onAction={loadUserComments}
+                                />
+                              )}
+                            </div>
+                            <div className="text-white">
+                              {sweepstake.userComment.content}
+                              {sweepstake.userComment.images && sweepstake.userComment.images.length > 0 && (
+                                <div className="flex gap-2 mt-2">
+                                  {sweepstake.userComment.images.map((image, index) => (
+                                    <div key={index} className="relative">
+                                      <img
+                                        src={image}
+                                        alt={`Comment image ${index + 1}`}
+                                        className="w-16 h-16 object-cover rounded cursor-pointer"
+                                        onClick={() => {
+                                          const modal = document.createElement('div');
+                                          modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                                          modal.onclick = () => document.body.removeChild(modal);
+
+                                          const content = document.createElement('div');
+                                          content.className = 'relative max-w-4xl max-h-[90vh]';
+                                          content.onclick = e => e.stopPropagation();
+
+                                          const closeBtn = document.createElement('button');
+                                          closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
+                                          closeBtn.textContent = '×';
+                                          closeBtn.onclick = () => document.body.removeChild(modal);
+
+                                          const img = document.createElement('img');
+                                          img.src = image;
+                                          img.className = 'max-w-full max-h-[90vh] object-contain';
+
+                                          content.appendChild(closeBtn);
+                                          content.appendChild(img);
+                                          modal.appendChild(content);
+                                          document.body.appendChild(modal);
+                                        }}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {/* Display replies */}
+                          {sweepstake.userComment.replies && sweepstake.userComment.replies.length > 0 && (
+                            <div className="ml-8 space-y-2">
+                              {sweepstake.userComment.replies.map((reply, index) => (
                                 <div key={index} className="bg-gray-700 rounded-md p-3 border-l-2 border-orange-400">
                                   <div className="flex justify-between items-start">
                                     <div className="text-gray-400 text-sm mb-1 flex items-center">

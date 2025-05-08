@@ -171,7 +171,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         uploadedImageUrl = urlData.publicUrl;
       }
 
-      // Create sweepstakes object without type field first
+      // Create sweepstakes data with type field
       const sweepstakesData = {
         title: formData.title,
         description: formData.description,
@@ -184,15 +184,9 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         deal_url: formData.dealUrl,
         user_id: user?.id,
         expires_at: formData.expiryDate || null,
-        is_hot: false
+        is_hot: false,
+        type: 'sweepstakes'
       };
-      
-      // Try to add type field - if it fails, we'll use the version without it
-      try {
-        sweepstakesData.type = 'sweepstakes';
-      } catch (e) {
-        console.log('Type column may not exist yet, continuing without it');
-      }
       
       const { data: sweepstakes, error: sweepstakesError } = await supabase
         .from('deals')
@@ -384,7 +378,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pt-16 pb-24">
+      <div className="flex-1 overflow-y-auto pt-4 pb-24">
         <div className="px-4">
           {error && (
             <div className="bg-red-500 text-white px-4 py-3 rounded-md mb-4">

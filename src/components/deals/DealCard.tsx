@@ -15,12 +15,15 @@ interface DealCardProps {
   deal: Deal;
   onVoteChange?: () => void;
   onDelete?: () => void;
+  hideFreeLabel?: boolean;
 }
 
-const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => {
+const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideFreeLabel = false }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { role } = useAdmin();
+  // Determine if this is a sweepstakes based on deal type or other properties
+  const isSweepstakes = deal.type === 'sweepstakes';
   const [voteCount, setVoteCount] = useState(deal.popularity);
   const [userVote, setUserVote] = useState<boolean | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -99,17 +102,17 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
       navigate('/auth');
       return;
     }
-    
+
     // Предотвращаем множественные быстрые клики
     if (e.currentTarget.hasAttribute('disabled')) {
       return;
     }
     e.currentTarget.setAttribute('disabled', 'true');
-    
+
     try {
       // Сохраняем предыдущее значение голоса
       const previousVote = userVote;
-      
+
       if (userVote === voteType) {
         // Если пользователь повторно нажимает на тот же тип голоса,
         // то ничего не происходит (ни в БД, ни в интерфейсе)
@@ -135,7 +138,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
           .update({ vote_type: voteType })
           .eq('deal_id', deal.id)
           .eq('user_id', user.id);
-        
+
         // Обновляем счетчик голосов - изменение на противоположный тип
         // При смене голоса с положительного на отрицательный счетчик должен изменяться на 0
         if (previousVote === true && voteType === false) {
@@ -143,7 +146,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
         } else if (previousVote === false && voteType === true) {
           setVoteCount(voteCount + 1); // С отрицательного на положительный (+1)
         }
-        
+
         setUserVote(voteType);
       }
 
@@ -240,30 +243,34 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
           />
         </div>
 
-        <div className="flex-1 min-w-0" onClick={() => navigate(`/deals/${deal.id}`)}>
-          <h3 onClick={() => navigate(`/deals/${deal.id}`)} className="text-white font-medium text-sm line-clamp-2 cursor-pointer">
+        <div className="flex-1 min-w-0" onClick={() => navigate(isSweepstakes ? `/sweepstakes/${deal.id}` : `/deals/${deal.id}`)}>
+          <h3 onClick={() => navigate(isSweepstakes ? `/sweepstakes/${deal.id}` : `/deals/${deal.id}`)} className="text-white font-medium text-sm line-clamp-2 cursor-pointer">
             {searchParams.get('q') ? highlightText(deal.title, searchParams.get('q') || '') : deal.title}
           </h3>
 
           <div className="mt-1 flex items-center">
-            <span className="text-orange-500 font-bold text-base">
-              {deal.currentPrice === 0 ? (
-                <span className="px-2.5 py-1 bg-orange-500/20 text-orange-500 rounded-md text-sm font-semibold">FREE</span>
-              ) : (
-                `$${deal.currentPrice.toFixed(2)}`
-              )}
-            </span>
+            {!hideFreeLabel && (
+              <>
+                <span className="text-orange-500 font-bold text-base">
+                  {deal.currentPrice === 0 ? (
+                    <span className="px-2.5 py-1 bg-orange-500/20 text-orange-500 rounded-md text-sm font-semibold">FREE</span>
+                  ) : (
+                    `$${deal.currentPrice.toFixed(2)}`
+                  )}
+                </span>
 
-            {deal.originalPrice && (
-              <span className="ml-2 text-gray-400 line-through text-xs">
-                ${deal.originalPrice.toFixed(2)}
-              </span>
-            )}
+                {deal.originalPrice && (
+                  <span className="ml-2 text-gray-400 line-through text-xs">
+                    ${deal.originalPrice.toFixed(2)}
+                  </span>
+                )}
 
-            {discountPercent > 0 && (
-              <span className="ml-2 text-green-500 text-xs">
-                (-{discountPercent}%)
-              </span>
+                {discountPercent > 0 && (
+                  <span className="ml-2 text-green-500 text-xs">
+                    (-{discountPercent}%)
+                  </span>
+                )}
+              </>
             )}
           </div>
 
@@ -289,7 +296,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
                   // Заменяем множественные пробелы на один
                   .replace(/\s+/g, ' ')
                   .trim();
-                
+
                 // Затем применяем подсветку, если есть поисковый запрос
                 return searchParams.get('q') 
                   ? highlightText(cleanDescription, searchParams.get('q') || '') 
@@ -341,10 +348,10 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
               if (navigator.share) {
                 const cleanTitle = deal.title ? deal.title.replace(/<[^>]*>/g, '') : '';
                 const cleanStoreName = deal.store && deal.store.name ? deal.store.name.replace(/<[^>]*>/g, '') : '';
-                
+
                 // Формируем URL для конкретного предложения
                 const dealUrl = `${window.location.origin}/deals/${deal.id}`;
-                
+
                 navigator.share({
                   title: `${cleanTitle}${cleanStoreName ? ` - ${cleanStoreName}` : ''}`,
                   text: `Скидка ${discountPercent}%! ${cleanTitle} за $${deal.currentPrice.toFixed(2)} ${deal.originalPrice ? `(было $${deal.originalPrice.toFixed(2)})` : ''}`,
@@ -355,7 +362,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
           >
             <Share2 className="h-4 w-4" />
           </button>
-          
+
           {/* View button - always visible */}
           <button 
             className="ml-3 text-orange-500 flex items-center"
@@ -372,7 +379,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange }) => 
             <span className="text-xs mr-1">View</span>
             <ExternalLink className="h-3 w-3" />
           </button>
-          
+
           {/* User-specific actions */}
           {user && (
             <>

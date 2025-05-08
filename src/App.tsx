@@ -28,7 +28,8 @@ import EditDealCarouselPage from './pages/EditDealCarouselPage';
 import EditPromoPage from './pages/EditPromoPage';
 import CategoryItemsPage from './pages/CategoryItemsPage';
 import AddSweepstakesPage from './pages/AddSweepstakesPage';
-import SweepstakesDetailPage from './pages/SweepstakesDetailPage'; // Added import
+import SweepstakesDetailPage from './pages/SweepstakesDetailPage';
+import SweepstakesPage from './pages/SweepstakesPage'; // Added import
 
 
 function App() {
@@ -55,7 +56,8 @@ function App() {
                 <Route path="/promos/:id" element={<PrivateRoute><PromoDetailPage /></PrivateRoute>} />
                 <Route path="/promos/:id/edit" element={<PrivateRoute><EditPromoPage /></PrivateRoute>} />
                 <Route path="/sweepstakes/new" element={<PrivateRoute><AddSweepstakesPage /></PrivateRoute>} /> 
-                <Route path="/sweepstakes/:id" element={<SweepstakesDetailPage />} /> {/* Added route */}
+                <Route path="/sweepstakes/:id" element={<SweepstakesDetailPage />} /> 
+                <Route path="/sweepstakes" element={<SweepstakesPage />} /> {/* Added route */}
                 <Route path="/discussions" element={<PrivateRoute><DiscussionsPage /></PrivateRoute>} />
                 <Route path="/categories" element={<PrivateRoute><CategoriesPage /></PrivateRoute>} />
                 <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />

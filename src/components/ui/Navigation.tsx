@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Tag, Ticket, Layers, User } from 'lucide-react';
+import { Tag, Ticket, Layers, User, Gift } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 const Navigation: React.FC = () => {
@@ -10,7 +10,7 @@ const Navigation: React.FC = () => {
   const navItems = [
     { path: '/', icon: Tag, label: t('navigation.deals') },
     { path: '/promos', icon: Ticket, label: t('navigation.promos') },
-    { path: '/categories', icon: Layers, label: t('navigation.categories') },
+    { path: '/sweepstakes', icon: Gift, label: t('navigation.sweepstakes') },
     { path: '/profile', icon: User, label: t('navigation.profile') },
   ];
 

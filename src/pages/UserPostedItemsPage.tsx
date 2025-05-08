@@ -14,7 +14,8 @@ const UserPostedItemsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [promos, setPromos] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'deals' | 'promos'>('deals');
+  const [sweepstakes, setSweepstakes] = useState<Deal[]>([]);
+  const [activeTab, setActiveTab] = useState<'deals' | 'promos' | 'sweepstakes'>('deals');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -76,7 +77,25 @@ const UserPostedItemsPage: React.FC = () => {
             id
           )
         `)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('type', 'deal');
+        
+      // Load sweepstakes with sorting
+      let sweepstakesQuery = supabase
+        .from('deals')
+        .select(`
+          *,
+          profiles (
+            id,
+            email,
+            display_name
+          ),
+          deal_comments (
+            id
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('type', 'sweepstakes');
 
       switch (sortBy) {
         case 'oldest':
@@ -125,6 +144,50 @@ const UserPostedItemsPage: React.FC = () => {
         setDeals(prev => [...prev, ...(transformedDeals || [])]);
       }
       setHasMore((transformedDeals || []).length === 20);
+
+      // Process sweepstakes query
+      switch (sortBy) {
+        case 'oldest':
+          sweepstakesQuery = sweepstakesQuery.order('created_at', { ascending: true });
+          break;
+        case 'popular':
+          sweepstakesQuery = sweepstakesQuery.order('vote_count', { ascending: false })
+            .order('created_at', { ascending: false });
+          break;
+        case 'newest':
+        default:
+          sweepstakesQuery = sweepstakesQuery.order('created_at', { ascending: false });
+          break;
+      }
+      
+      const { data: sweepstakesData, error: sweepstakesError } = await sweepstakesQuery;
+      
+      if (sweepstakesError) throw sweepstakesError;
+      
+      const transformedSweepstakes = sweepstakesData?.map(deal => ({
+        id: deal.id,
+        title: deal.title,
+        currentPrice: parseFloat(deal.current_price),
+        originalPrice: deal.original_price ? parseFloat(deal.original_price) : undefined,
+        store: { id: deal.store_id, name: deal.store_id },
+        category: { id: deal.category_id, name: deal.category_id },
+        image: deal.image_url,
+        postedAt: new Date(deal.created_at).toLocaleDateString(),
+        popularity: deal.vote_count || 0,
+        comments: deal.deal_comments?.count || 0,
+        postedBy: {
+          id: deal.profiles?.id || 'anonymous',
+          name: deal.profiles?.display_name || deal.profiles?.email?.split('@')[0] || 'Anonymous',
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(deal.profiles?.display_name || deal.profiles?.email || 'Anonymous')}&background=random`
+        },
+        description: deal.description,
+        url: deal.deal_url,
+        createdAt: deal.created_at,
+        expires_at: deal.expires_at,
+        type: 'sweepstakes'
+      }));
+      
+      setSweepstakes(transformedSweepstakes || []);
 
       // Load promos with sorting
       let promosQuery = supabase
@@ -227,6 +290,12 @@ const UserPostedItemsPage: React.FC = () => {
           >
             Promos ({promos.length})
           </button>
+          <button 
+            className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'sweepstakes' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
+            onClick={() => setActiveTab('sweepstakes')}
+          >
+            Sweepstakes ({sweepstakes.length})
+          </button>
         </div>
 
         {loading ? (
@@ -251,6 +320,28 @@ const UserPostedItemsPage: React.FC = () => {
                     key={deal.id}
                     deal={{...deal, postedAt: {relative: deal.postedAt, exact: new Date(deal.createdAt).toLocaleString()}}}
                     onVoteChange={loadUserItems}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Sweepstakes */}
+            {activeTab === 'sweepstakes' && sweepstakes.length > 0 && (
+              <div className="space-y-4">
+                {sweepstakes.map(sweepstake => (
+                  <DealCard
+                    key={`sweepstake-${sweepstake.id}`}
+                    deal={{
+                      ...sweepstake, 
+                      postedAt: {
+                        relative: sweepstake.postedAt, 
+                        exact: new Date(sweepstake.createdAt).toLocaleString()
+                      },
+                      // Override store name to prevent showing additional text
+                      store: { ...sweepstake.store, name: '' }
+                    }}
+                    onVoteChange={loadUserItems}
+                    hideFreeLabel={true}
                   />
                 ))}
               </div>
