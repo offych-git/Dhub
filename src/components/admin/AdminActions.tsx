@@ -170,6 +170,8 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, createdAt
       editUrl = `/edit-deal/${id}`;
     } else if (type === 'promo') {
       editUrl = `/edit-promo/${id}`;
+    } else if (type === 'sweepstakes') {
+      editUrl = `/edit-sweepstakes/${id}`;
     }
 
     if (editUrl) {
@@ -179,7 +181,6 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, createdAt
 
   return (
     <div className="flex gap-2">
-
       <button
         onClick={(e) => {
           e.preventDefault();

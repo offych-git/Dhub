@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2, Edit2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2, Edit2, Edit } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AdminActions from '../components/admin/AdminActions';
 import { supabase } from '../lib/supabase';
@@ -165,6 +165,7 @@ const SweepstakesDetailPage: React.FC = () => {
         description: data.description,
         url: data.deal_url,
         postedAt: new Date(data.created_at).toLocaleDateString(),
+        createdAtISO: data.created_at, // Сохраняем оригинальную дату в ISO формате
         expiresAt: data.expires_at ? new Date(data.expires_at).toLocaleDateString() : null,
         postedBy: {
           id: data.profiles?.id || 'anonymous',
@@ -460,6 +461,7 @@ const SweepstakesDetailPage: React.FC = () => {
             type="sweepstakes"
             id={sweepstakes.id}
             userId={sweepstakes.postedBy.id}
+            createdAt={sweepstakes.createdAtISO}
             onAction={() => navigate('/')}
           />
         </div>
@@ -734,6 +736,16 @@ const SweepstakesDetailPage: React.FC = () => {
             }
           </h2>
           <div className="flex items-center space-x-2">
+            {/* Проверяем, что текущий пользователь - владелец розыгрыша и прошло менее 24 часов */}
+            {user && user.id === sweepstakes.postedBy.id && 
+              new Date().getTime() - new Date(sweepstakes.createdAtISO).getTime() < 24 * 60 * 60 * 1000 && (
+              <button 
+                onClick={() => navigate(`/edit-sweepstakes/${sweepstakes.id}`)}
+                className="p-2 rounded-full text-orange-500 hover:text-orange-700"
+              >
+                <Edit2 className="h-6 w-6" />
+              </button>
+            )}
             <button 
               onClick={() => {
                 if (navigator.share) {
