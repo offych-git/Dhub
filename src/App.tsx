@@ -73,6 +73,7 @@ function App() {
                 <Route path="/edit-promo/:id" element={<PrivateRoute><EditPromoPage /></PrivateRoute>} />
                 {/* Маршрут для редактирования розыгрыша */}
                 <Route path="/edit-sweepstakes/:id" element={<PrivateRoute><EditSweepstakesPage /></PrivateRoute>} />
+                <Route path="/sweepstakes/:id/edit" element={<PrivateRoute><EditSweepstakesPage /></PrivateRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>

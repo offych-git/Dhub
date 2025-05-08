@@ -457,7 +457,7 @@ const SweepstakesDetailPage: React.FC = () => {
             <h1 className="text-white font-medium ml-4 truncate">Sweepstakes Details</h1>
           </div>
           <AdminActions
-            type="deal"
+            type="sweepstakes"
             id={sweepstakes.id}
             userId={sweepstakes.postedBy.id}
             onAction={() => navigate('/')}
@@ -768,27 +768,6 @@ const SweepstakesDetailPage: React.FC = () => {
             >
               <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'} />
             </button>
-            {user && user.id === sweepstakes.postedBy.id && 
-              new Date().getTime() - new Date(sweepstakes.postedAt).getTime() < 24 * 60 * 60 * 1000 && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault(); 
-                    e.stopPropagation();
-                    
-                    // Отладочные логи для трассировки пути редиректа
-                    console.log(`🚨 Редактирование розыгрыша`);
-                    console.log(`🚨 ID розыгрыша: ${sweepstakes.id}`);
-                    
-                    // Напрямую используем navigate вместо window.location
-                    navigate(`/edit-sweepstakes/${sweepstakes.id}`);
-                  }}
-                  className="p-2 rounded-full text-orange-500 flex items-center bg-gray-800/50 hover:bg-gray-700/50"
-                >
-                  <Edit2 className="h-6 w-6" />
-                  <span className="ml-1 text-sm">Редактировать</span>
-                </button>
-              )
-            }
           </div>
         </div>
 

@@ -155,7 +155,7 @@ const Comment: React.FC<CommentProps> = ({
             <div className="text-white font-medium">{user.name}</div>
             <div className="text-gray-400 text-xs">{formatDate(createdAt)}</div>
           </div>
-          <AdminActions type={sourceType} id={id} userId={user.id} onAction={onReply} />
+          <AdminActions type={sourceType} id={id} userId={user.id} createdAt={createdAt} onAction={onReply} />
         </div>
 
         <div className="text-white mb-3">
