@@ -87,7 +87,8 @@ const SweepstakesPage: React.FC = () => {
         `)
         .eq('type', 'sweepstakes')
         .order('updated_at', { ascending: false })
-        .limit(100);
+        .limit(100)
+        .range((page - 1) * 100, page * 100 -1); //Added pagination
 
       console.log(`Загрузка розыгрышей с параметром cache_invalidator=${cacheInvalidator}`);
 
@@ -108,8 +109,10 @@ const SweepstakesPage: React.FC = () => {
 
       if (fetchError) throw fetchError;
 
-      // Get votes and comments for each deal
-      const sweepstakesWithStats = await Promise.all((deals || []).map(async (deal) => {
+      // Deduplication added here
+      const uniqueDeals = [...new Map(deals.map(deal => [deal.id, deal])).values()];
+
+      const sweepstakesWithStats = await Promise.all(uniqueDeals.map(async (deal) => {
         const { data: votes } = await supabase
           .from('deal_votes')
           .select('vote_type')
@@ -163,7 +166,7 @@ const SweepstakesPage: React.FC = () => {
         setSweepstakes(prev => [...prev, ...sweepstakesWithStats]);
       }
 
-      setHasMore(sweepstakesWithStats.length === 20);
+      setHasMore(sweepstakesWithStats.length === 100); //Adjust for pagination
       setIsFetchingMore(false);
     } catch (err: any) {
       console.error('Error fetching sweepstakes:', err);

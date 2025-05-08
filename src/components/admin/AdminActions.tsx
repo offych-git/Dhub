@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useGlobalState } from '../../contexts/GlobalStateContext';
 
 interface AdminActionsProps {
-  type: 'deal' | 'promo' | 'deal_comment' | 'promo_comment' | 'deal_comments' | 'promo_comments';
+  type: 'deal' | 'promo' | 'deal_comment' | 'promo_comment' | 'deal_comments' | 'promo_comments' | 'sweepstakes';
   id: string;
   userId: string;
   onAction?: () => void;
@@ -38,7 +38,7 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction 
     }
 
     // Запрашиваем подтверждение перед удалением
-    const confirmDelete = window.confirm(`Вы уверены, что хотите удалить этот ${type === 'deal_comment' || type === 'deal_comments' ? 'комментарий к товару' : type === 'promo_comment' || type === 'promo_comments'? 'комментарий к промокоду' : 'элемент'}?`);
+    const confirmDelete = window.confirm(`Вы уверены, что хотите удалить этот ${type === 'deal_comment' || type === 'deal_comments' ? 'комментарий к товару' : type === 'promo_comment' || type === 'promo_comments'? 'комментарий к промокоду' : type === 'sweepstakes' ? 'розыгрыш' : 'элемент'}?`);
 
     if (!confirmDelete) {
       console.log("User cancelled deletion");
@@ -84,9 +84,11 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction 
       tableName = 'deals';
     } else if (type === 'promo') {
       tableName = 'promo_codes';
+    } else if (type === 'sweepstakes') {
+      tableName = 'deals'; // Corrected table name
     }
 
-        console.log(`Executing delete from ${tableName} where id = ${id} and user_id = ${userId}`);
+        console.log(`Executing delete from ${tableName} where id = ${id} and user_id = ${userId}, current user role: ${role}`);
 
         let responseError = null;
 
@@ -95,9 +97,18 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction 
           let query = supabase.from(tableName).delete().eq('id', id);
 
           // Если пользователь не администратор/модератор, добавляем проверку на владельца
+          // Для администраторов убираем проверку user_id, позволяя удалять любые записи
           if (role !== 'admin' && role !== 'moderator' && role !== 'super_admin') {
             query = query.eq('user_id', userId);
           }
+
+          console.log("Выполняется запрос на удаление:", { 
+            tableName, 
+            id, 
+            role,
+            isAdmin: role === 'admin' || role === 'moderator' || role === 'super_admin',
+            withUserCheck: role !== 'admin' && role !== 'moderator' && role !== 'super_admin'
+          });
 
           const { data, error } = await query;
 
@@ -126,7 +137,15 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, onAction 
           dispatch({ type: 'MARK_DEALS_STALE' });
         } else if (type === 'promo' || type === 'promo_comment' || type === 'promo_comments') {
           dispatch({ type: 'MARK_PROMOS_STALE' });
+        } else if (type === 'sweepstakes') {
+          dispatch({ type: 'MARK_SWEEPSTAKES_STALE' }); // Assuming this action exists
         }
+
+        // Оповещаем пользователя об успешном удалении
+        alert(`${type === 'deal' ? 'Скидка' : type === 'promo' ? 'Промокод' : type === 'sweepstakes' ? 'Розыгрыш' : 'Элемент'} успешно удален`);
+        
+        // Перезагружаем страницу для обновления содержимого
+        window.location.reload();
 
         if (onAction) {
           onAction();
