@@ -29,7 +29,8 @@ import EditPromoPage from './pages/EditPromoPage';
 import CategoryItemsPage from './pages/CategoryItemsPage';
 import AddSweepstakesPage from './pages/AddSweepstakesPage';
 import SweepstakesDetailPage from './pages/SweepstakesDetailPage';
-import SweepstakesPage from './pages/SweepstakesPage'; // Added import
+import SweepstakesPage from './pages/SweepstakesPage'; 
+import EditSweepstakesPage from './pages/EditSweepstakesPage'; 
 
 
 function App() {
@@ -57,7 +58,7 @@ function App() {
                 <Route path="/promos/:id/edit" element={<PrivateRoute><EditPromoPage /></PrivateRoute>} />
                 <Route path="/sweepstakes/new" element={<PrivateRoute><AddSweepstakesPage /></PrivateRoute>} /> 
                 <Route path="/sweepstakes/:id" element={<SweepstakesDetailPage />} /> 
-                <Route path="/sweepstakes" element={<SweepstakesPage />} /> {/* Added route */}
+                <Route path="/sweepstakes" element={<SweepstakesPage />} /> 
                 <Route path="/discussions" element={<PrivateRoute><DiscussionsPage /></PrivateRoute>} />
                 <Route path="/categories" element={<PrivateRoute><CategoriesPage /></PrivateRoute>} />
                 <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
@@ -67,6 +68,11 @@ function App() {
                 <Route path="/settings/notifications" element={<PrivateRoute><NotificationSettingsPage /></PrivateRoute>} />
                 <Route path="/user-settings" element={<PrivateRoute><UserSettingsPage /></PrivateRoute>} />
                 <Route path="/category/:categoryId" element={<CategoryItemsPage />} />
+                <Route path="/edit-deal/:id" element={<PrivateRoute><EditDealPage /></PrivateRoute>} />
+                <Route path="/edit-carousel/:id" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} />
+                <Route path="/edit-promo/:id" element={<PrivateRoute><EditPromoPage /></PrivateRoute>} />
+                {/* Маршрут для редактирования розыгрыша */}
+                <Route path="/edit-sweepstakes/:id" element={<PrivateRoute><EditSweepstakesPage /></PrivateRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>

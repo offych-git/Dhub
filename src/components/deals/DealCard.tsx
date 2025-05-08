@@ -385,16 +385,22 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
             <>
               {user.id === deal.postedBy.id && 
                 new Date().getTime() - new Date(deal.createdAt).getTime() < 24 * 60 * 60 * 1000 && (
-                  <div
-                    className="ml-3 text-orange-500 flex items-center cursor-pointer"
+                  <button
                     onClick={(e) => {
-                      e.preventDefault();
                       e.stopPropagation();
-                      window.location.href = `/deals/${deal.id}/edit`;
+                      // Проверяем тип сделки и выбираем правильный маршрут
+                      if (deal.type === 'sweepstakes') {
+                        console.log('Перенаправление на страницу редактирования розыгрыша:', `/edit-sweepstakes/${deal.id}`);
+                        navigate(`/edit-sweepstakes/${deal.id}`);
+                      } else {
+                        console.log('Перенаправление на страницу редактирования обычной сделки:', `/deals/${deal.id}/edit`);
+                        navigate(`/deals/${deal.id}/edit`);
+                      }
                     }}
+                    className="p-2 rounded-full text-orange-500 flex items-center"
                   >
-                    <Edit2 className="h-4 w-4" />
-                  </div>
+                    <Edit2 className="h-5 w-5" />
+                  </button>
                 )
               }
               {(user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && (

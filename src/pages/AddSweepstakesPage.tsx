@@ -33,6 +33,14 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
   const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
   const [sweepstakesImage, setSweepstakesImage] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  
+  // Отладочная информация при инициализации компонента
+  useEffect(() => {
+    console.log('📋 AddSweepstakesPage инициализирована');
+    console.log('📋 Режим редактирования:', isEditing);
+    console.log('📋 ID редактируемого розыгрыша:', sweepstakesId);
+    console.log('📋 Начальные данные:', initialData);
+  }, [isEditing, sweepstakesId, initialData]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -40,7 +48,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
     dealUrl: '',
     expiryDate: ''
   });
-  
+
   // Отслеживаем состояние валидации каждого поля отдельно
   const [validationState, setValidationState] = useState({
     title: true,
@@ -142,7 +150,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
     const descriptionValid = formData.description.trim() !== '';
     const imageValid = sweepstakesImage !== null;
     const urlValid = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(formData.dealUrl);
-    
+
     // Если указана дата, проверяем что она не раньше текущей
     let expiryDateValid = true;
     if (formData.expiryDate) {
@@ -228,7 +236,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         is_hot: false,
         type: 'sweepstakes'
       };
-      
+
       const { data: sweepstakes, error: sweepstakesError } = await supabase
         .from('deals')
         .insert(sweepstakesData)
@@ -698,7 +706,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                 {loading ? (
                   <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 ) : (
-                  'Post Sweepstakes'
+                  isEditing ? 'Update Sweepstakes' : 'Post Sweepstakes'
                 )}
               </button>
             </div>
@@ -725,7 +733,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
             {loading ? (
               <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              'Post Sweepstakes'
+              isEditing ? 'Update Sweepstakes' : 'Post Sweepstakes'
             )}
           </button>
         </div>

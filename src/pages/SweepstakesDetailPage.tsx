@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2, Edit2 } from 'lucide-react';
@@ -123,7 +122,7 @@ const SweepstakesDetailPage: React.FC = () => {
   useEffect(() => {
     // Прокручиваем страницу вверх при открытии деталей розыгрыша
     window.scrollTo(0, 0);
-    
+
     if (id) {
       loadSweepstakes();
       loadComments();
@@ -506,7 +505,7 @@ const SweepstakesDetailPage: React.FC = () => {
 
             // Определяем переменные заранее, чтобы избежать ошибок в ссылках
             let prevButton, nextButton, counterElement;
-            
+
             // Функция для навигации по изображениям с циклическим переходом
             const goToPrevImage = () => {
               // Циклическая навигация: если мы на первом изображении, переходим к последнему
@@ -523,15 +522,15 @@ const SweepstakesDetailPage: React.FC = () => {
                 : 0;
               updateFullscreenImage(newIndex);
             };
-            
+
             // Функция для обновления отображаемого изображения в полноэкранном режиме
             const updateFullscreenImage = (index) => {
               // Обновляем индекс
               currentFullscreenIndex = index;
-              
+
               // Обновляем источник изображения
               fullImg.src = getValidImageUrl(sweepstakesImages[index]);
-              
+
               // Обновляем активную точку навигации
               const dots = navContainer.querySelectorAll('button.nav-dot');
               dots.forEach((d, i) => {
@@ -539,7 +538,7 @@ const SweepstakesDetailPage: React.FC = () => {
                   i === index ? 'bg-orange-500' : 'bg-gray-400'
                 }`;
               });
-              
+
               // Обновляем счетчик изображений
               if (counterElement) {
                 counterElement.textContent = `${index + 1} / ${sweepstakesImages.length}`;
@@ -548,7 +547,7 @@ const SweepstakesDetailPage: React.FC = () => {
 
             const content = document.createElement('div');
             content.className = 'relative max-w-4xl max-h-[90vh]';
-            
+
             // Добавляем кнопку закрытия (крестик)
             const closeBtn = document.createElement('button');
             closeBtn.className = 'absolute top-4 right-4 bg-black/70 hover:bg-orange-500 text-orange-500 hover:text-white text-2xl font-bold rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10';
@@ -557,41 +556,41 @@ const SweepstakesDetailPage: React.FC = () => {
               e.stopPropagation();
               document.body.removeChild(modal);
             };
-            
+
             const fullImg = document.createElement('img');
             fullImg.src = getValidImageUrl(sweepstakesImages[currentImageIndex] || sweepstakes.image);
             fullImg.className = 'max-w-full max-h-[90vh] object-contain';
             fullImg.onError = handleImageError;
             fullImg.draggable = false; // Отключаем стандартное перетаскивание
-            
+
             // Добавляем обработчики событий касания для свайпов
             let touchStartX = 0;
             let touchEndX = 0;
-            
+
             // Функция обработки начала касания
             const handleTouchStartModal = (e) => {
               touchStartX = e.changedTouches[0].screenX;
             };
-            
+
             // Функция обработки движения касания
             const handleTouchMoveModal = (e) => {
               // Предотвращаем стандартное поведение браузера при горизонтальном свайпе
               const currentX = e.changedTouches[0].screenX;
               const diff = Math.abs(touchStartX - currentX);
-              
+
               if (diff > 10) {
                 e.preventDefault();
               }
             };
-            
+
             // Функция обработки окончания касания
             const handleTouchEndModal = (e) => {
               touchEndX = e.changedTouches[0].screenX;
-              
+
               // Определяем направление свайпа
               const diff = touchStartX - touchEndX;
               const threshold = 50; // Минимальное расстояние для засчитывания свайпа
-              
+
               if (Math.abs(diff) > threshold) {
                 if (diff > 0) {
                   // Свайп влево - следующее изображение
@@ -602,18 +601,18 @@ const SweepstakesDetailPage: React.FC = () => {
                 }
               }
             };
-            
+
             // Назначаем обработчики событий касания для полноэкранного изображения
             fullImg.addEventListener('touchstart', handleTouchStartModal, {passive: false});
             fullImg.addEventListener('touchmove', handleTouchMoveModal, {passive: false});
             fullImg.addEventListener('touchend', handleTouchEndModal);
-            
+
             content.appendChild(closeBtn);
-            
+
             // Создаем контейнер для навигационных точек
             const navContainer = document.createElement('div');
             navContainer.className = 'absolute bottom-4 left-0 right-0 flex justify-center space-x-2';
-            
+
             // Создаем счетчик изображений
             counterElement = document.createElement('div');
             counterElement.className = 'absolute top-4 left-4 bg-black/70 text-white px-2 py-1 rounded-md text-sm';
@@ -632,7 +631,7 @@ const SweepstakesDetailPage: React.FC = () => {
               };
               // Всегда активно для циклической навигации
               content.appendChild(prevButton);
-              
+
               // Кнопка "Следующее изображение"
               const nextButton = document.createElement('button');
               nextButton.className = 'absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-orange-500/80 text-white rounded-full p-3 z-10';
@@ -666,7 +665,7 @@ const SweepstakesDetailPage: React.FC = () => {
             content.appendChild(fullImg);
             modal.appendChild(content);
             document.body.appendChild(modal);
-            
+
             // Обработчик клавиатуры для навигации
             const handleKeyDown = (e) => {
               if (e.key === 'ArrowLeft') {
@@ -678,10 +677,10 @@ const SweepstakesDetailPage: React.FC = () => {
                 document.removeEventListener('keydown', handleKeyDown);
               }
             };
-            
+
             // Добавляем обработчик клавиатуры
             document.addEventListener('keydown', handleKeyDown);
-            
+
             // Удаляем обработчик при закрытии модального окна
             modal.addEventListener('remove', () => {
               document.removeEventListener('keydown', handleKeyDown);
@@ -772,8 +771,18 @@ const SweepstakesDetailPage: React.FC = () => {
             {user && user.id === sweepstakes.postedBy.id && 
               new Date().getTime() - new Date(sweepstakes.postedAt).getTime() < 24 * 60 * 60 * 1000 && (
                 <button
-                  onClick={() => navigate(`/sweepstakes/${sweepstakes.id}/edit`)}
-                  className="p-2 rounded-full text-orange-500 flex items-center"
+                  onClick={(e) => {
+                    e.preventDefault(); 
+                    e.stopPropagation();
+                    
+                    // Отладочные логи для трассировки пути редиректа
+                    console.log(`🚨 Редактирование розыгрыша`);
+                    console.log(`🚨 ID розыгрыша: ${sweepstakes.id}`);
+                    
+                    // Напрямую используем navigate вместо window.location
+                    navigate(`/edit-sweepstakes/${sweepstakes.id}`);
+                  }}
+                  className="p-2 rounded-full text-orange-500 flex items-center bg-gray-800/50 hover:bg-gray-700/50"
                 >
                   <Edit2 className="h-6 w-6" />
                   <span className="ml-1 text-sm">Редактировать</span>
@@ -817,8 +826,8 @@ const SweepstakesDetailPage: React.FC = () => {
             >
               <ArrowDown className="h-5 w-5 mr-1" />
             </button>
-            
-            
+
+
           </div>
         </div>
 
@@ -868,7 +877,7 @@ const SweepstakesDetailPage: React.FC = () => {
                   .replace(/\n\n/g, '<br><br>')
                   // Затем обрабатываем обычные переносы строк
                   .replace(/\n/g, '<br>');
-                
+
                 // Если есть поисковый запрос, применяем прямую подсветку в HTML строке
                 if (searchQuery) {
                   const searchRegex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -877,7 +886,7 @@ const SweepstakesDetailPage: React.FC = () => {
                     '<span class="bg-orange-500 text-white px-0.5 rounded">$1</span>'
                   );
                 }
-                
+
                 return processedDescription;
               })()
             }}
