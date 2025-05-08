@@ -32,6 +32,12 @@ const AddDealMenu: React.FC<AddDealMenuProps> = ({ isOpen, onClose }) => {
             {t('common.promoCode')}
           </Link>
           <Link 
+            to="/sweepstakes/new" 
+            className="block px-4 py-3 text-white hover:bg-gray-700"
+          >
+            Sweepstakes
+          </Link>
+          <Link 
             to="/feedback" 
             className="block px-4 py-3 text-white hover:bg-gray-700"
           >
