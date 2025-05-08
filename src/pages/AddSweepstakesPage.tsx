@@ -40,6 +40,15 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
     dealUrl: '',
     expiryDate: ''
   });
+  
+  // Отслеживаем состояние валидации каждого поля отдельно
+  const [validationState, setValidationState] = useState({
+    title: true,
+    description: true,
+    image: true,
+    dealUrl: true,
+    expiryDate: true
+  });
 
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -128,13 +137,45 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
   };
 
   useEffect(() => {
-    const isFormValid = formData.title.trim() !== '' &&
-      formData.description.trim() !== '' &&
-      sweepstakesImage !== null &&
-      formData.dealUrl !== '' &&
-      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(formData.dealUrl);
+    // Проверяем каждое обязательное поле отдельно
+    const titleValid = formData.title.trim() !== '';
+    const descriptionValid = formData.description.trim() !== '';
+    const imageValid = sweepstakesImage !== null;
+    const urlValid = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(formData.dealUrl);
+    
+    // Если указана дата, проверяем что она не раньше текущей
+    let expiryDateValid = true;
+    if (formData.expiryDate) {
+      const selectedDate = new Date(formData.expiryDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      expiryDateValid = selectedDate >= today;
+    }
+
+    // Обновляем состояние валидации
+    setValidationState({
+      title: titleValid,
+      description: descriptionValid,
+      image: imageValid,
+      dealUrl: urlValid,
+      expiryDate: expiryDateValid
+    });
+
+    // Общая проверка формы
+    const isFormValid = titleValid && 
+      descriptionValid && 
+      imageValid && 
+      urlValid &&
+      expiryDateValid;
 
     setIsValid(isFormValid);
+    console.log('Form validation:', { 
+      titleValid, 
+      descriptionValid, 
+      imageValid, 
+      urlValid,
+      expiryDateValid
+    });
   }, [formData, sweepstakesImage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -388,14 +429,29 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <input
-                type="text"
-                placeholder="Title *"
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Title *"
+                  className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
+                    !validationState.title && formData.title !== '' ? 'border border-red-500' : 
+                    !validationState.title ? 'border border-yellow-500' : ''
+                  }`}
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
+                />
+                {validationState.title && formData.title && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              {!validationState.title && (
+                <p className="text-orange-500 text-xs mt-1">Title is required</p>
+              )}
             </div>
 
             <div className="mb-4">
@@ -417,11 +473,17 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                   >
                     <X className="h-4 w-4" />
                   </button>
+                  {validationState.image && (
+                    <div className="absolute top-2 left-2 bg-green-500/80 text-white font-semibold text-xs px-2 py-1 rounded-md">
+                      Изображение загружено
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div
                   className={`border-2 border-dashed rounded-lg p-4 text-center ${
-                    isUploadingImage ? 'border-orange-500 bg-orange-500/10' : 'border-gray-700'
+                    isUploadingImage ? 'border-orange-500 bg-orange-500/10' : 
+                    !validationState.image ? 'border-yellow-500' : 'border-gray-700'
                   }`}
                 >
                   <input
@@ -441,6 +503,9 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                     </p>
                   </label>
                 </div>
+              )}
+              {!validationState.image && !imageUrl && (
+                <p className="text-orange-500 text-xs mt-1">Image is required</p>
               )}
             </div>
 
@@ -495,30 +560,70 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                   )}
                 </div>
               </div>
-              <div className="bg-gray-800 rounded-lg p-4 min-h-[200px]">
+              <div className={`bg-gray-800 rounded-lg p-4 min-h-[200px] ${
+                !validationState.description ? 'border border-yellow-500' : ''
+              }`}>
+                {!editor?.getText() && (
+                  <div className="absolute text-gray-500 pointer-events-none p-1">Description *</div>
+                )}
                 <EditorContent editor={editor} />
               </div>
+              {!validationState.description && (
+                <p className="text-orange-500 text-xs mt-1">Description is required</p>
+              )}
+              {validationState.description && formData.description && (
+                <div className="text-green-500 text-xs font-medium mt-1 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Description looks good!
+                </div>
+              )}
             </div>
 
             <div>
-              <input
-                type="url"
-                placeholder="Sweepstakes URL *"
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
-                value={formData.dealUrl}
-                onChange={(e) => setFormData({ ...formData, dealUrl: e.target.value })}
-                required
-              />
-              <p className="text-gray-500 text-sm mt-1">
-                Add a link where users can participate in this sweepstakes
-              </p>
+              <div className="relative">
+                <input
+                  type="url"
+                  placeholder="Sweepstakes URL *"
+                  className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
+                    !validationState.dealUrl && formData.dealUrl !== '' ? 'border border-red-500' : 
+                    !validationState.dealUrl ? 'border border-yellow-500' : ''
+                  }`}
+                  value={formData.dealUrl}
+                  onChange={(e) => setFormData({ ...formData, dealUrl: e.target.value })}
+                  required
+                />
+                {validationState.dealUrl && formData.dealUrl && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              {!validationState.dealUrl && formData.dealUrl ? (
+                <p className="text-red-500 text-xs mt-1">
+                  Please enter a valid URL (e.g. example.com or https://example.com)
+                </p>
+              ) : !validationState.dealUrl ? (
+                <p className="text-orange-500 text-xs mt-1">
+                  Sweepstakes URL is required
+                </p>
+              ) : (
+                <p className="text-gray-500 text-sm mt-1">
+                  Add a link where users can participate in this sweepstakes
+                </p>
+              )}
             </div>
 
             <div>
               <div className="relative">
                 <input
                   type="date"
-                  className="w-full bg-gray-800 text-white rounded-md px-4 py-3"
+                  className={`w-full bg-gray-800 text-white rounded-md px-4 py-3 ${
+                    !validationState.expiryDate ? 'border border-red-500' : ''
+                  }`}
                   value={formData.expiryDate}
                   min={new Date().toISOString().split('T')[0]}
                   onChange={(e) => {
@@ -543,10 +648,23 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                     <X className="h-5 w-5" />
                   </button>
                 )}
+                {validationState.expiryDate && formData.expiryDate && (
+                  <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
               </div>
-              <p className="text-gray-500 text-sm mt-1">
-                End date of sweepstakes (required)
-              </p>
+              {!validationState.expiryDate ? (
+                <p className="text-red-500 text-xs mt-1">
+                  Expiry date cannot be earlier than today
+                </p>
+              ) : (
+                <p className="text-gray-500 text-sm mt-1">
+                  End date of sweepstakes (required)
+                </p>
+              )}
             </div>
 
 
