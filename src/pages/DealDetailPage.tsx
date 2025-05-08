@@ -342,29 +342,50 @@ const DealDetailPage: React.FC = () => {
       return;
     }
 
-    if (userVote === voteType) {
-      await supabase
-        .from('deal_votes')
-        .delete()
-        .eq('deal_id', id)
-        .eq('user_id', user.id);
+    // Сохраняем исходное состояние голоса для логики обновления
+    const previousVote = userVote;
 
-      setUserVote(null);
-    } else {
-      await supabase
-        .from('deal_votes')
-        .upsert({
-          deal_id: id,
-          user_id: user.id,
-          vote_type: voteType
-        }, {
-          onConflict: 'deal_id,user_id'
-        });
+    try {
+      // Если пользователь нажал на тот же тип голоса, который у него уже активен,
+      // то не выполняем никаких действий (ни в БД, ни в UI)
+      if (userVote === voteType) {
+        // Ничего не делаем при повторном клике на тот же тип голоса
+        return;
+      } else if (previousVote === null) {
+        // Пользователь голосует впервые
+        await supabase
+          .from('deal_votes')
+          .insert({
+            deal_id: id,
+            user_id: user.id,
+            vote_type: voteType
+          });
 
-      setUserVote(voteType);
+        // Обновляем счетчик голосов и статус голоса пользователя
+        setVoteCount(prev => prev + (voteType ? 1 : -1));
+        setUserVote(voteType);
+      } else {
+        // Пользователь меняет тип голоса с одного на другой
+        await supabase
+          .from('deal_votes')
+          .update({ vote_type: voteType })
+          .eq('deal_id', id)
+          .eq('user_id', user.id);
+
+        // Обновляем счетчик голосов - при смене типа голоса изменяем его на 1
+        if (previousVote === true && voteType === false) {
+          setVoteCount(prev => prev - 1); // С положительного на отрицательный (-1)
+        } else if (previousVote === false && voteType === true) {
+          setVoteCount(prev => prev + 1); // С отрицательного на положительный (+1)
+        }
+
+        setUserVote(voteType);
+      }
+    } catch (error) {
+      console.error('Error handling vote:', error);
+      // В случае ошибки перезагружаем актуальный статус голосования
+      loadVoteStatus();
     }
-
-    loadVoteStatus();
   };
 
   const toggleFavorite = async () => {

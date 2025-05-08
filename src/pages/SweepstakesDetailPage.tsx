@@ -310,29 +310,50 @@ const SweepstakesDetailPage: React.FC = () => {
       return;
     }
 
-    if (userVote === voteType) {
-      await supabase
-        .from('deal_votes')
-        .delete()
-        .eq('deal_id', id)
-        .eq('user_id', user.id);
+    // Сохраняем исходное состояние голоса для логики обновления
+    const previousVote = userVote;
 
-      setUserVote(null);
-    } else {
-      await supabase
-        .from('deal_votes')
-        .upsert({
-          deal_id: id,
-          user_id: user.id,
-          vote_type: voteType
-        }, {
-          onConflict: 'deal_id,user_id'
-        });
+    try {
+      // Если пользователь нажал на тот же тип голоса, который у него уже активен,
+      // то не выполняем никаких действий (ни в БД, ни в UI)
+      if (userVote === voteType) {
+        // Ничего не делаем при повторном клике на тот же тип голоса
+        return;
+      } else if (previousVote === null) {
+        // Пользователь голосует впервые
+        await supabase
+          .from('deal_votes')
+          .insert({
+            deal_id: id,
+            user_id: user.id,
+            vote_type: voteType
+          });
 
-      setUserVote(voteType);
+        // Обновляем счетчик голосов и статус голоса пользователя
+        setVoteCount(prev => prev + (voteType ? 1 : -1));
+        setUserVote(voteType);
+      } else {
+        // Пользователь меняет тип голоса с одного на другой
+        await supabase
+          .from('deal_votes')
+          .update({ vote_type: voteType })
+          .eq('deal_id', id)
+          .eq('user_id', user.id);
+
+        // Обновляем счетчик голосов - при смене типа голоса изменяем его на 1
+        if (previousVote === true && voteType === false) {
+          setVoteCount(prev => prev - 1); // С положительного на отрицательный (-1)
+        } else if (previousVote === false && voteType === true) {
+          setVoteCount(prev => prev + 1); // С отрицательного на положительный (+1)
+        }
+
+        setUserVote(voteType);
+      }
+    } catch (error) {
+      console.error('Error handling vote:', error);
+      // В случае ошибки перезагружаем актуальный статус голосования
+      loadVoteStatus();
     }
-
-    loadVoteStatus();
   };
 
   const toggleFavorite = async () => {
@@ -431,7 +452,7 @@ const SweepstakesDetailPage: React.FC = () => {
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <button onClick={() => navigate('/deals')} className="text-white">
+            <button onClick={() => navigate('/sweepstakes')} className="text-white">
               <ArrowLeft className="h-6 w-6" />
             </button>
             <h1 className="text-white font-medium ml-4 truncate">Sweepstakes Details</h1>
@@ -457,6 +478,215 @@ const SweepstakesDetailPage: React.FC = () => {
           className="w-full h-full object-contain cursor-pointer"
           onError={handleImageError}
           draggable="false"
+          onClick={(e) => {
+            // Находим текущий элемент img
+            const img = e.target as HTMLImageElement;
+
+            // Проверяем, есть ли уже модальное окно для этого изображения
+            const existingModal = document.querySelector('.fullscreen-image-modal');
+            if (existingModal) {
+              // Если модальное окно уже открыто, закрываем его
+              document.body.removeChild(existingModal);
+              return;
+            }
+
+            // Создаем модальное окно для просмотра изображения в полном размере
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 fullscreen-image-modal';
+
+            // Переменная для отслеживания текущего индекса изображения в полноэкранном режиме
+            let currentFullscreenIndex = currentImageIndex;
+
+            // При клике на фон закрываем модальное окно
+            modal.addEventListener('click', (e) => {
+              if (e.target === modal) {
+                document.body.removeChild(modal);
+              }
+            });
+
+            // Определяем переменные заранее, чтобы избежать ошибок в ссылках
+            let prevButton, nextButton, counterElement;
+            
+            // Функция для навигации по изображениям с циклическим переходом
+            const goToPrevImage = () => {
+              // Циклическая навигация: если мы на первом изображении, переходим к последнему
+              const newIndex = currentFullscreenIndex > 0 
+                ? currentFullscreenIndex - 1 
+                : sweepstakesImages.length - 1;
+              updateFullscreenImage(newIndex);
+            };
+
+            const goToNextImage = () => {
+              // Циклическая навигация: если мы на последнем изображении, переходим к первому
+              const newIndex = currentFullscreenIndex < sweepstakesImages.length - 1 
+                ? currentFullscreenIndex + 1 
+                : 0;
+              updateFullscreenImage(newIndex);
+            };
+            
+            // Функция для обновления отображаемого изображения в полноэкранном режиме
+            const updateFullscreenImage = (index) => {
+              // Обновляем индекс
+              currentFullscreenIndex = index;
+              
+              // Обновляем источник изображения
+              fullImg.src = getValidImageUrl(sweepstakesImages[index]);
+              
+              // Обновляем активную точку навигации
+              const dots = navContainer.querySelectorAll('button.nav-dot');
+              dots.forEach((d, i) => {
+                d.className = `nav-dot h-2 w-2 rounded-full ${
+                  i === index ? 'bg-orange-500' : 'bg-gray-400'
+                }`;
+              });
+              
+              // Обновляем счетчик изображений
+              if (counterElement) {
+                counterElement.textContent = `${index + 1} / ${sweepstakesImages.length}`;
+              }
+            };
+
+            const content = document.createElement('div');
+            content.className = 'relative max-w-4xl max-h-[90vh]';
+            
+            // Добавляем кнопку закрытия (крестик)
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'absolute top-4 right-4 bg-black/70 hover:bg-orange-500 text-orange-500 hover:text-white text-2xl font-bold rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10';
+            closeBtn.innerHTML = '×';
+            closeBtn.onclick = (e) => {
+              e.stopPropagation();
+              document.body.removeChild(modal);
+            };
+            
+            const fullImg = document.createElement('img');
+            fullImg.src = getValidImageUrl(sweepstakesImages[currentImageIndex] || sweepstakes.image);
+            fullImg.className = 'max-w-full max-h-[90vh] object-contain';
+            fullImg.onError = handleImageError;
+            fullImg.draggable = false; // Отключаем стандартное перетаскивание
+            
+            // Добавляем обработчики событий касания для свайпов
+            let touchStartX = 0;
+            let touchEndX = 0;
+            
+            // Функция обработки начала касания
+            const handleTouchStartModal = (e) => {
+              touchStartX = e.changedTouches[0].screenX;
+            };
+            
+            // Функция обработки движения касания
+            const handleTouchMoveModal = (e) => {
+              // Предотвращаем стандартное поведение браузера при горизонтальном свайпе
+              const currentX = e.changedTouches[0].screenX;
+              const diff = Math.abs(touchStartX - currentX);
+              
+              if (diff > 10) {
+                e.preventDefault();
+              }
+            };
+            
+            // Функция обработки окончания касания
+            const handleTouchEndModal = (e) => {
+              touchEndX = e.changedTouches[0].screenX;
+              
+              // Определяем направление свайпа
+              const diff = touchStartX - touchEndX;
+              const threshold = 50; // Минимальное расстояние для засчитывания свайпа
+              
+              if (Math.abs(diff) > threshold) {
+                if (diff > 0) {
+                  // Свайп влево - следующее изображение
+                  goToNextImage();
+                } else {
+                  // Свайп вправо - предыдущее изображение
+                  goToPrevImage();
+                }
+              }
+            };
+            
+            // Назначаем обработчики событий касания для полноэкранного изображения
+            fullImg.addEventListener('touchstart', handleTouchStartModal, {passive: false});
+            fullImg.addEventListener('touchmove', handleTouchMoveModal, {passive: false});
+            fullImg.addEventListener('touchend', handleTouchEndModal);
+            
+            content.appendChild(closeBtn);
+            
+            // Создаем контейнер для навигационных точек
+            const navContainer = document.createElement('div');
+            navContainer.className = 'absolute bottom-4 left-0 right-0 flex justify-center space-x-2';
+            
+            // Создаем счетчик изображений
+            counterElement = document.createElement('div');
+            counterElement.className = 'absolute top-4 left-4 bg-black/70 text-white px-2 py-1 rounded-md text-sm';
+            counterElement.textContent = `${currentFullscreenIndex + 1} / ${sweepstakesImages.length}`;
+            content.appendChild(counterElement);
+
+            // Добавляем кнопки навигации при наличии нескольких изображений
+            if (sweepstakesImages.length > 1) {
+              // Кнопка "Предыдущее изображение"
+              const prevButton = document.createElement('button');
+              prevButton.className = 'absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-orange-500/80 text-white rounded-full p-3 z-10';
+              prevButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+              prevButton.onclick = (e) => {
+                e.stopPropagation();
+                goToPrevImage();
+              };
+              // Всегда активно для циклической навигации
+              content.appendChild(prevButton);
+              
+              // Кнопка "Следующее изображение"
+              const nextButton = document.createElement('button');
+              nextButton.className = 'absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-orange-500/80 text-white rounded-full p-3 z-10';
+              nextButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+              nextButton.onclick = (e) => {
+                e.stopPropagation();
+                goToNextImage();
+              };
+              // Всегда активно для циклической навигации
+              content.appendChild(nextButton);
+
+              // Создаем точки для каждого изображения
+              sweepstakesImages.forEach((_, index) => {
+                const dot = document.createElement('button');
+                dot.className = `nav-dot h-2 w-2 rounded-full ${
+                  index === currentFullscreenIndex ? 'bg-orange-500' : 'bg-gray-400'
+                }`;
+
+                // При клике на точку меняем изображение
+                dot.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  updateFullscreenImage(index);
+                });
+
+                navContainer.appendChild(dot);
+              });
+
+              content.appendChild(navContainer);
+            }
+
+            content.appendChild(fullImg);
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+            
+            // Обработчик клавиатуры для навигации
+            const handleKeyDown = (e) => {
+              if (e.key === 'ArrowLeft') {
+                goToPrevImage();
+              } else if (e.key === 'ArrowRight') {
+                goToNextImage();
+              } else if (e.key === 'Escape') {
+                document.body.removeChild(modal);
+                document.removeEventListener('keydown', handleKeyDown);
+              }
+            };
+            
+            // Добавляем обработчик клавиатуры
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // Удаляем обработчик при закрытии модального окна
+            modal.addEventListener('remove', () => {
+              document.removeEventListener('keydown', handleKeyDown);
+            });
+          }}
         />
 
         {sweepstakesImages.length > 1 && (
@@ -543,9 +773,10 @@ const SweepstakesDetailPage: React.FC = () => {
               new Date().getTime() - new Date(sweepstakes.postedAt).getTime() < 24 * 60 * 60 * 1000 && (
                 <button
                   onClick={() => navigate(`/sweepstakes/${sweepstakes.id}/edit`)}
-                  className="ml-3 text-orange-500 flex items-center"
+                  className="p-2 rounded-full text-orange-500 flex items-center"
                 >
-                  <Edit2 className="h-5 w-5" />
+                  <Edit2 className="h-6 w-6" />
+                  <span className="ml-1 text-sm">Редактировать</span>
                 </button>
               )
             }
@@ -586,6 +817,8 @@ const SweepstakesDetailPage: React.FC = () => {
             >
               <ArrowDown className="h-5 w-5 mr-1" />
             </button>
+            
+            
           </div>
         </div>
 
