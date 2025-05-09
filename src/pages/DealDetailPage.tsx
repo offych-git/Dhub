@@ -132,7 +132,7 @@ const DealDetailPage: React.FC = () => {
   useEffect(() => {
     // Прокручиваем страницу вверх при открытии деталей сделки
     window.scrollTo(0, 0);
-    
+
     if (id) {
       loadDeal();
       loadComments();
@@ -351,8 +351,8 @@ const DealDetailPage: React.FC = () => {
       if (userVote === voteType) {
         // Ничего не делаем при повторном клике на тот же тип голоса
         return;
-      } else if (previousVote === null) {
-        // Пользователь голосует впервые
+      } else if (previousVote === null || userVote === null) {
+        // Пользователь голосует впервые или из нейтрального состояния
         await supabase
           .from('deal_votes')
           .insert({
@@ -364,22 +364,24 @@ const DealDetailPage: React.FC = () => {
         // Обновляем счетчик голосов и статус голоса пользователя
         setVoteCount(prev => prev + (voteType ? 1 : -1));
         setUserVote(voteType);
-      } else {
-        // Пользователь меняет тип голоса с одного на другой
+      } else if (previousVote !== null) {
+        // Пользователь нажимает на противоположный тип голоса,
+        // удаляем существующий голос (приводим к нейтральному состоянию)
         await supabase
           .from('deal_votes')
-          .update({ vote_type: voteType })
+          .delete()
           .eq('deal_id', id)
           .eq('user_id', user.id);
 
-        // Обновляем счетчик голосов - при смене типа голоса изменяем его на 1
-        if (previousVote === true && voteType === false) {
-          setVoteCount(prev => prev - 1); // С положительного на отрицательный (-1)
-        } else if (previousVote === false && voteType === true) {
-          setVoteCount(prev => prev + 1); // С отрицательного на положительный (+1)
+        // Корректируем счетчик: отменяем эффект предыдущего голоса
+        if (previousVote === true) {
+          setVoteCount(prev => prev - 1); // Отмена положительного голоса
+        } else if (previousVote === false) {
+          setVoteCount(prev => prev + 1); // Отмена отрицательного голоса
         }
 
-        setUserVote(voteType);
+        // Устанавливаем нейтральное состояние голоса
+        setUserVote(null);
       }
     } catch (error) {
       console.error('Error handling vote:', error);
@@ -542,7 +544,7 @@ const DealDetailPage: React.FC = () => {
 
             // Определяем переменные заранее, чтобы избежать ошибок в ссылках
             let prevButton, nextButton, counterElement;
-            
+
             // Функция для навигации по изображениям с циклическим переходом
             const goToPrevImage = () => {
               // Циклическая навигация: если мы на первом изображении, переходим к последнему
@@ -559,15 +561,15 @@ const DealDetailPage: React.FC = () => {
                 : 0;
               updateFullscreenImage(newIndex);
             };
-            
+
             // Функция для обновления отображаемого изображения в полноэкранном режиме
             const updateFullscreenImage = (index) => {
               // Обновляем индекс
               currentFullscreenIndex = index;
-              
+
               // Обновляем источник изображения
               fullImg.src = getValidImageUrl(dealImages[index]);
-              
+
               // Обновляем активную точку навигации
               const dots = navContainer.querySelectorAll('button.nav-dot');
               dots.forEach((d, i) => {
@@ -575,7 +577,7 @@ const DealDetailPage: React.FC = () => {
                   i === index ? 'bg-orange-500' : 'bg-gray-400'
                 }`;
               });
-              
+
               // Обновляем счетчик изображений
               if (counterElement) {
                 counterElement.textContent = `${index + 1} / ${dealImages.length}`;
@@ -584,7 +586,7 @@ const DealDetailPage: React.FC = () => {
 
             const content = document.createElement('div');
             content.className = 'relative max-w-4xl max-h-[90vh]';
-            
+
             // Добавляем кнопку закрытия (крестик) с улучшенной видимостью
             const closeBtn = document.createElement('button');
             closeBtn.className = 'absolute top-4 right-4 bg-orange-500 hover:bg-orange-600 text-white text-2xl font-bold rounded-full w-12 h-12 flex items-center justify-center shadow-xl z-10 border-2 border-white';
@@ -593,41 +595,41 @@ const DealDetailPage: React.FC = () => {
               e.stopPropagation();
               document.body.removeChild(modal);
             };
-            
+
             const fullImg = document.createElement('img');
             fullImg.src = getValidImageUrl(dealImages[currentImageIndex] || deal.image);
             fullImg.className = 'max-w-full max-h-[90vh] object-contain';
             fullImg.onError = handleImageError;
             fullImg.draggable = false; // Отключаем стандартное перетаскивание
-            
+
             // Добавляем обработчики событий касания для свайпов
             let touchStartX = 0;
             let touchEndX = 0;
-            
+
             // Функция обработки начала касания
             const handleTouchStartModal = (e) => {
               touchStartX = e.changedTouches[0].screenX;
             };
-            
+
             // Функция обработки движения касания
             const handleTouchMoveModal = (e) => {
               // Предотвращаем стандартное поведение браузера при горизонтальном свайпе
               const currentX = e.changedTouches[0].screenX;
               const diff = Math.abs(touchStartX - currentX);
-              
+
               if (diff > 10) {
                 e.preventDefault();
               }
             };
-            
+
             // Функция обработки окончания касания
             const handleTouchEndModal = (e) => {
               touchEndX = e.changedTouches[0].screenX;
-              
+
               // Определяем направление свайпа
               const diff = touchStartX - touchEndX;
               const threshold = 50; // Минимальное расстояние для засчитывания свайпа
-              
+
               if (Math.abs(diff) > threshold) {
                 if (diff > 0) {
                   // Свайп влево - следующее изображение
@@ -638,18 +640,18 @@ const DealDetailPage: React.FC = () => {
                 }
               }
             };
-            
+
             // Назначаем обработчики событий касания для полноэкранного изображения
             fullImg.addEventListener('touchstart', handleTouchStartModal, {passive: false});
             fullImg.addEventListener('touchmove', handleTouchMoveModal, {passive: false});
             fullImg.addEventListener('touchend', handleTouchEndModal);
-            
+
             content.appendChild(closeBtn);
-            
+
             // Создаем контейнер для навигационных точек
             const navContainer = document.createElement('div');
             navContainer.className = 'absolute bottom-4 left-0 right-0 flex justify-center space-x-2';
-            
+
             // Создаем счетчик изображений (только если есть больше одного изображения)
             if (dealImages.length > 1) {
               counterElement = document.createElement('div');
@@ -670,7 +672,7 @@ const DealDetailPage: React.FC = () => {
               };
               // Всегда активно для циклической навигации
               content.appendChild(prevButton);
-              
+
               // Кнопка "Следующее изображение"
               const nextButton = document.createElement('button');
               nextButton.className = 'absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30';
@@ -704,7 +706,7 @@ const DealDetailPage: React.FC = () => {
             content.appendChild(fullImg);
             modal.appendChild(content);
             document.body.appendChild(modal);
-            
+
             // Обработчик клавиатуры для навигации
             const handleKeyDown = (e) => {
               if (e.key === 'ArrowLeft') {
@@ -716,10 +718,10 @@ const DealDetailPage: React.FC = () => {
                 document.removeEventListener('keydown', handleKeyDown);
               }
             };
-            
+
             // Добавляем обработчик клавиатуры
             document.addEventListener('keydown', handleKeyDown);
-            
+
             // Удаляем обработчик при закрытии модального окна
             modal.addEventListener('remove', () => {
               document.removeEventListener('keydown', handleKeyDown);
@@ -760,7 +762,7 @@ const DealDetailPage: React.FC = () => {
                 />
               ))}
             </div>
-            
+
             {/* Счетчик изображений */}
             {dealImages.length > 1 && (
               <div className="absolute top-3 right-3 bg-orange-500 text-white px-2 py-1 rounded font-medium text-sm shadow-md border border-white/60">
@@ -861,21 +863,21 @@ const DealDetailPage: React.FC = () => {
 
           <div className="flex items-center space-x-4">
             <button 
-              className={`flex items-center ${userVote === true ? 'text-red-500' : 'text-gray-400'}`}
+              className={`flex items-center ${userVote === true ? 'text-green-500' : 'text-gray-400'}`}
               onClick={() => handleVote(true)}
             >
               <ArrowUp className="h-5 w-5 mr-1" />
             </button>
 
-            <span className={`font-medium ${voteCount > 0 ? 'text-red-500' : voteCount < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+            <span className={`font-medium ${voteCount > 0 ? 'text-green-500' : voteCount < 0 ? 'text-red-500' : 'text-gray-400'}`}>
               {voteCount > 0 ? '+' : ''}{voteCount}
             </span>
 
             <button 
-              className={`flex items-center ${userVote === false ? 'text-blue-500' : 'text-gray-400'}`}
+              className={`flex items-center ${userVote === false ? 'text-red-500' : 'text-gray-400'}`}
               onClick={() => handleVote(false)}
             >
-              <ArrowDown className="h-5 w-5 mr-1" />
+              <ArrowDown className="h-5 w-5 ml-1" />
             </button>
           </div>
         </div>
@@ -926,7 +928,7 @@ const DealDetailPage: React.FC = () => {
                   .replace(/\n\n/g, '<br><br>')
                   // Затем обрабатываем обычные переносы строк
                   .replace(/\n/g, '<br>');
-                
+
                 // Если есть поисковый запрос, применяем прямую подсветку в HTML строке
                 if (searchQuery) {
                   const searchRegex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -935,7 +937,7 @@ const DealDetailPage: React.FC = () => {
                     '<span class="bg-orange-500 text-white px-0.5 rounded">$1</span>'
                   );
                 }
-                
+
                 return processedDescription;
               })()
             }}
