@@ -240,7 +240,7 @@ const UserCommentsPage: React.FC = () => {
             }))
           }
         }));
-        
+
       // Separate deals and sweepstakes
       const dealsWithComments = allDealsWithComments.filter(item => item.type === 'deal' || !item.type);
       const sweepstakesWithComments = allDealsWithComments.filter(item => item.type === 'sweepstakes');
@@ -389,7 +389,7 @@ const UserCommentsPage: React.FC = () => {
               Sweepstakes ({filteredSweepstakes.length})
             </button>
           </div>
-          
+
         </div>
         {loading ? (
           <div className="flex justify-center items-center py-8">
@@ -853,6 +853,44 @@ const UserCommentsPage: React.FC = () => {
                       >
                         Use Code
                       </a>
+                        <button
+                          onClick={() => {
+                              // Формируем правильный URL для конкретного промокода
+                              const promoUrl = `${window.location.origin}/promos/${promo.id}`;
+
+                              // Очищаем HTML-теги из заголовка
+                              const cleanTitle = promo.title ? promo.title.replace(/<[^>]*>/g, '') : '';
+
+                              // Для мобильных устройств используем только текст для лучшей совместимости
+                              const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+                              try {
+                                if (navigator.share) {
+                                  if (isMobile) {
+                                    // На мобильных только text для максимальной совместимости
+                                    navigator.share({
+                                      text: `${cleanTitle}\n${promoUrl}`
+                                    });
+                                  } else {
+                                    // На десктопе используем полный набор параметров
+                                    navigator.share({
+                                      title: cleanTitle,
+                                      text: `${cleanTitle}\n${promoUrl}`,
+                                      url: promoUrl
+                                    });
+                                  }
+                                } else {
+                                  navigator.clipboard.writeText(`${cleanTitle}\n${promoUrl}`);
+                                  alert('Link copied to clipboard!');
+                                }
+                              } catch (error) {
+                                console.error('Error sharing:', error);
+                              }
+                          }}
+                          className="block bg-blue-500 text-center text-white py-2"
+                        >
+                          Share
+                        </button>
                     </div>
                   ))}
                 </div>

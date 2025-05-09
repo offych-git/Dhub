@@ -244,7 +244,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
         </div>
 
         <div className="flex-1 min-w-0" onClick={() => navigate(isSweepstakes ? `/sweepstakes/${deal.id}` : `/deals/${deal.id}`)}>
-          <h3 onClick={() => navigate(isSweepstakes ? `/sweepstakes/${deal.id}` : `/deals/${deal.id}`)} className="text-white font-medium text-sm line-clamp-2 cursor-pointer">
+          <h3 className="text-white font-medium text-sm line-clamp-2 cursor-pointer">
             {searchParams.get('q') ? highlightText(deal.title, searchParams.get('q') || '') : deal.title}
           </h3>
 
@@ -351,11 +351,35 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
 
                 // Формируем URL для конкретного предложения
                 const dealUrl = `${window.location.origin}/deals/${deal.id}`;
-
-                navigator.share({
-                  title: `${cleanTitle}${cleanStoreName ? ` - ${cleanStoreName}` : ''}`,
-                  url: dealUrl
-                }).catch(console.error);
+                const shareTitle = `${cleanTitle}${cleanStoreName ? ` - ${cleanStoreName}` : ''}`;
+                
+                try {
+                  // Определяем устройство и браузер для разных стратегий sharing
+                  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                  const isChrome = /Chrome/i.test(navigator.userAgent) && !/Edge|Edg/i.test(navigator.userAgent);
+                  
+                  if (isMobile) {
+                    // На мобильных используем только text без url параметра, чтобы избежать дублирования
+                    navigator.share({
+                      text: `${shareTitle}\n${dealUrl}`
+                    });
+                  } else if (isChrome) {
+                    // В Chrome на десктопе используем только title и url, чтобы избежать дублирования
+                    navigator.share({
+                      title: shareTitle,
+                      url: dealUrl
+                    });
+                  } else {
+                    // В других браузерах на десктопе используем все параметры
+                    navigator.share({
+                      title: shareTitle,
+                      text: shareTitle,
+                      url: dealUrl
+                    });
+                  }
+                } catch (error) {
+                  console.error('Error sharing:', error);
+                }
               }
             }}
           >

@@ -79,7 +79,7 @@ const UserPostedItemsPage: React.FC = () => {
         `)
         .eq('user_id', user.id)
         .eq('type', 'deal');
-        
+
       // Load sweepstakes with sorting
       let sweepstakesQuery = supabase
         .from('deals')
@@ -159,11 +159,11 @@ const UserPostedItemsPage: React.FC = () => {
           sweepstakesQuery = sweepstakesQuery.order('created_at', { ascending: false });
           break;
       }
-      
+
       const { data: sweepstakesData, error: sweepstakesError } = await sweepstakesQuery;
-      
+
       if (sweepstakesError) throw sweepstakesError;
-      
+
       const transformedSweepstakes = sweepstakesData?.map(deal => ({
         id: deal.id,
         title: deal.title,
@@ -186,7 +186,7 @@ const UserPostedItemsPage: React.FC = () => {
         expires_at: deal.expires_at,
         type: 'sweepstakes'
       }));
-      
+
       setSweepstakes(transformedSweepstakes || []);
 
       // Load promos with sorting
@@ -420,14 +420,36 @@ const UserPostedItemsPage: React.FC = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (navigator.share) {
-                                navigator.share({
-                                  title: promo.title,
-                                  url: window.location.href
-                                }).catch(console.error);
-                              } else {
-                                navigator.clipboard.writeText(window.location.href);
-                                alert('Link copied to clipboard!');
+                              // Формируем правильный URL для конкретного промокода
+                              const promoUrl = `${window.location.origin}/promos/${promo.id}`;
+
+                              // Очищаем HTML-теги из заголовка
+                              const cleanTitle = promo.title ? promo.title.replace(/<[^>]*>/g, '') : '';
+
+                              // Для мобильных устройств используем только текст для лучшей совместимости
+                              const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+                              try {
+                                if (navigator.share) {
+                                  if (isMobile) {
+                                    // На мобильных только text для максимальной совместимости
+                                    navigator.share({
+                                      text: `${cleanTitle}\n${promoUrl}`
+                                    });
+                                  } else {
+                                    // На десктопе используем полный набор параметров
+                                    navigator.share({
+                                      title: cleanTitle,
+                                      text: `${cleanTitle}\n${promoUrl}`,
+                                      url: promoUrl
+                                    });
+                                  }
+                                } else {
+                                  navigator.clipboard.writeText(`${cleanTitle}\n${promoUrl}`);
+                                  alert('Ссылка скопирована в буфер обмена!');
+                                }
+                              } catch (error) {
+                                console.error('Ошибка при шаринге:', error);
                               }
                             }}
                             className="ml-2 text-orange-500"
