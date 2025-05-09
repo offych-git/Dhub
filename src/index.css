@@ -225,6 +225,19 @@
   border-color: var(--input-border);
 }
 
+/* Стили для кнопок навигации в карусели в светлой теме */
+:root.light button.bg-black\/40 {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+}
+
+:root.light button.bg-black\/40:hover {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+:root.light button.bg-black\/40 svg {
+  stroke: white !important;
+}
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);

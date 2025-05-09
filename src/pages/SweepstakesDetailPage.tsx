@@ -618,7 +618,7 @@ const SweepstakesDetailPage: React.FC = () => {
             // Создаем счетчик изображений (только если есть больше одного изображения)
             if (sweepstakesImages.length > 1) {
               counterElement = document.createElement('div');
-              counterElement.className = 'absolute top-4 left-4 bg-black/80 text-white px-2 py-1 rounded-md text-sm font-semibold shadow-lg';
+              counterElement.className = 'absolute top-4 left-4 bg-orange-500 text-white px-2 py-1 rounded-md text-sm font-semibold shadow-lg border border-white/60';
               counterElement.textContent = `${currentFullscreenIndex + 1} / ${sweepstakesImages.length}`;
               content.appendChild(counterElement);
             }
@@ -627,7 +627,7 @@ const SweepstakesDetailPage: React.FC = () => {
             if (sweepstakesImages.length > 1) {
               // Кнопка "Предыдущее изображение"
               const prevButton = document.createElement('button');
-              prevButton.className = 'absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-orange-500/80 text-white rounded-full p-3 z-10';
+              prevButton.className = 'absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30';
               prevButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
               prevButton.onclick = (e) => {
                 e.stopPropagation();
@@ -638,7 +638,7 @@ const SweepstakesDetailPage: React.FC = () => {
 
               // Кнопка "Следующее изображение"
               const nextButton = document.createElement('button');
-              nextButton.className = 'absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-orange-500/80 text-white rounded-full p-3 z-10';
+              nextButton.className = 'absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30';
               nextButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
               nextButton.onclick = (e) => {
                 e.stopPropagation();
@@ -697,19 +697,19 @@ const SweepstakesDetailPage: React.FC = () => {
             {/* Кнопка предыдущего изображения */}
             <button 
               onClick={goToPreviousImage}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-orange-500/80 text-white rounded-full p-3 z-10"
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30"
               aria-label="Previous image"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
             </button>
 
             {/* Кнопка следующего изображения */}
             <button 
               onClick={goToNextImage}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-orange-500/80 text-white rounded-full p-3 z-10"
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30"
               aria-label="Next image"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </button>
 
             {/* Индикатор текущего изображения */}
@@ -728,7 +728,7 @@ const SweepstakesDetailPage: React.FC = () => {
             
             {/* Счетчик изображений */}
             {sweepstakesImages.length > 1 && (
-              <div className="absolute top-3 right-3 bg-orange-500 text-white px-2 py-1 rounded font-medium text-sm shadow-md">
+              <div className="absolute top-3 right-3 bg-orange-500 text-white px-2 py-1 rounded font-medium text-sm shadow-md border border-white/60">
                 {currentImageIndex + 1} / {sweepstakesImages.length}
               </div>
             )}
