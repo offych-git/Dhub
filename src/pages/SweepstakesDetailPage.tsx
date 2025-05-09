@@ -725,6 +725,13 @@ const SweepstakesDetailPage: React.FC = () => {
                 />
               ))}
             </div>
+            
+            {/* Счетчик изображений */}
+            {sweepstakesImages.length > 1 && (
+              <div className="absolute top-3 right-3 bg-orange-500 text-white px-2 py-1 rounded font-medium text-sm shadow-md">
+                {currentImageIndex + 1} / {sweepstakesImages.length}
+              </div>
+            )}
           </>
         )}
       </div>

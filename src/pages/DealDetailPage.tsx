@@ -747,7 +747,7 @@ const DealDetailPage: React.FC = () => {
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </button>
 
-            {/* Индикатор текущего изображения */}
+            {/* Индикатор текущего изображения с счетчиком */}
             <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
               {dealImages.map((_, index) => (
                 <button
@@ -760,6 +760,13 @@ const DealDetailPage: React.FC = () => {
                 />
               ))}
             </div>
+            
+            {/* Счетчик изображений */}
+            {dealImages.length > 1 && (
+              <div className="absolute top-3 right-3 bg-orange-500 text-white px-2 py-1 rounded font-medium text-sm shadow-md">
+                {currentImageIndex + 1} / {dealImages.length}
+              </div>
+            )}
           </>
         )}
       </div>
