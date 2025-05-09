@@ -550,9 +550,9 @@ const SweepstakesDetailPage: React.FC = () => {
             const content = document.createElement('div');
             content.className = 'relative max-w-4xl max-h-[90vh]';
 
-            // Добавляем кнопку закрытия (крестик)
+            // Добавляем кнопку закрытия (крестик) с улучшенной видимостью
             const closeBtn = document.createElement('button');
-            closeBtn.className = 'absolute top-4 right-4 bg-black/70 hover:bg-orange-500 text-orange-500 hover:text-white text-2xl font-bold rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10';
+            closeBtn.className = 'absolute top-4 right-4 bg-orange-500 hover:bg-orange-600 text-white text-2xl font-bold rounded-full w-12 h-12 flex items-center justify-center shadow-xl z-10 border-2 border-white';
             closeBtn.innerHTML = '×';
             closeBtn.onclick = (e) => {
               e.stopPropagation();
@@ -615,11 +615,13 @@ const SweepstakesDetailPage: React.FC = () => {
             const navContainer = document.createElement('div');
             navContainer.className = 'absolute bottom-4 left-0 right-0 flex justify-center space-x-2';
 
-            // Создаем счетчик изображений
-            counterElement = document.createElement('div');
-            counterElement.className = 'absolute top-4 left-4 bg-black/70 text-white px-2 py-1 rounded-md text-sm';
-            counterElement.textContent = `${currentFullscreenIndex + 1} / ${sweepstakesImages.length}`;
-            content.appendChild(counterElement);
+            // Создаем счетчик изображений (только если есть больше одного изображения)
+            if (sweepstakesImages.length > 1) {
+              counterElement = document.createElement('div');
+              counterElement.className = 'absolute top-4 left-4 bg-black/80 text-white px-2 py-1 rounded-md text-sm font-semibold shadow-lg';
+              counterElement.textContent = `${currentFullscreenIndex + 1} / ${sweepstakesImages.length}`;
+              content.appendChild(counterElement);
+            }
 
             // Добавляем кнопки навигации при наличии нескольких изображений
             if (sweepstakesImages.length > 1) {
