@@ -529,7 +529,7 @@ const PromosPage: React.FC = () => {
                         <span className="text-xs mr-1">View</span>
                         <ExternalLink className="h-3 w-3" />
                       </button>
-                      {((role === 'admin' || role === 'moderator') || (user && promo.user.id === user.id)) && (
+                      {(role === 'admin' || role === 'moderator' || (user && user.id === promo.user.id)) && (
                         <div className="ml-2 border-l border-gray-700 pl-2" onClick={(e) => e.stopPropagation()}>
                           <AdminActions
                             type="promo"

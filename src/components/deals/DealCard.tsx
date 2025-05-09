@@ -404,39 +404,35 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
           </button>
 
           {/* User-specific actions */}
-          {user && (
-            <>
-              {user.id === deal.postedBy.id && 
-                new Date().getTime() - new Date(deal.createdAt).getTime() < 24 * 60 * 60 * 1000 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Проверяем тип сделки и выбираем правильный маршрут
-                      if (deal.type === 'sweepstakes') {
-                        console.log('Перенаправление на страницу редактирования розыгрыша:', `/edit-sweepstakes/${deal.id}`);
-                        navigate(`/edit-sweepstakes/${deal.id}`);
-                      } else {
-                        console.log('Перенаправление на страницу редактирования обычной сделки:', `/deals/${deal.id}/edit`);
-                        navigate(`/deals/${deal.id}/edit`);
-                      }
-                    }}
-                    className="p-2 rounded-full text-orange-500 flex items-center"
-                  >
-                    <Edit2 className="h-5 w-5" />
-                  </button>
-                )
-              }
-              {(user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && (
-                <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
-                  <AdminActions
-                    type="deal"
-                    id={deal.id}
-                    userId={deal.postedBy.id}
-                    onAction={onDelete || (() => {})}
-                  />
-                </div>
-              )}
-            </>
+          {user && user.id === deal.postedBy.id && 
+            new Date().getTime() - new Date(deal.createdAt).getTime() < 24 * 60 * 60 * 1000 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Проверяем тип сделки и выбираем правильный маршрут
+                  if (deal.type === 'sweepstakes') {
+                    console.log('Перенаправление на страницу редактирования розыгрыша:', `/edit-sweepstakes/${deal.id}`);
+                    navigate(`/edit-sweepstakes/${deal.id}`);
+                  } else {
+                    console.log('Перенаправление на страницу редактирования обычной сделки:', `/deals/${deal.id}/edit`);
+                    navigate(`/deals/${deal.id}/edit`);
+                  }
+                }}
+                className="ml-3 text-orange-500 flex items-center"
+              >
+                <Edit2 className="h-4 w-4" />
+              </button>
+            )
+          }
+          {user && (user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && (
+            <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
+              <AdminActions
+                type="deal"
+                id={deal.id}
+                userId={deal.postedBy.id}
+                onAction={onDelete || (() => {})}
+              />
+            </div>
           )}
         </div>
       </div>
