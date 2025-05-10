@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2, Edit2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Calendar, Share2, Edit2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DealCard from '../components/deals/DealCard';

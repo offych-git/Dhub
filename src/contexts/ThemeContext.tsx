@@ -38,9 +38,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       document.documentElement.style.setProperty('--bg-secondary', '#1F2937');
       document.documentElement.style.setProperty('--text-primary', '#FFFFFF');
     }
-    
-    // Для отладки
-    console.log("Тема установлена:", theme);
   }, [theme]);
 
   const toggleTheme = () => {

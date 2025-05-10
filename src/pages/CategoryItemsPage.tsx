@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
+import VoteControls from '../components/deals/VoteControls';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, Edit2, Share2, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Edit2, Share2, MessageSquare, Calendar, Heart, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DealCard from '../components/deals/DealCard';
@@ -32,7 +33,7 @@ const CategoryItemsPage: React.FC = () => {
     } else {
       // Если имя не передано через state, используем categoryId
       setCategoryName(categoryId || '');
-      
+
       // Дополнительно можно загрузить имя категории через API если необходимо
       // Например: fetch(`/api/categories/${categoryId}`).then(...)
     }
@@ -321,13 +322,13 @@ const CategoryItemsPage: React.FC = () => {
 
       <div className="px-4 pt-4">
         <div className="flex space-x-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-          <button 
+          <button
             className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'deals' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
             onClick={() => setActiveTab('deals')}
           >
             Deals ({categoryDeals.length})
           </button>
-          <button 
+          <button
             className={`px-4 py-2 rounded-full whitespace-nowrap ${activeTab === 'promos' ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400'}`}
             onClick={() => setActiveTab('promos')}
           >
@@ -373,31 +374,7 @@ const CategoryItemsPage: React.FC = () => {
                           {formatTimeAgo(promo.created_at)}
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="flex items-center space-x-1">
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                // Здесь можно добавить функцию handleVote, если нужно
-                              }}
-                              className="text-green-500"
-                            >
-                              <ArrowUp className="h-4 w-4" />
-                            </button>
-                            <span className={`text-sm font-medium ${(promo.vote_count || 0) > 0 ? 'text-green-500' : (promo.vote_count || 0) < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                              {(promo.vote_count || 0) > 0 ? '+' : ''}{promo.vote_count || 0}{(promo.vote_count || 0) !== 0 ? '°' : ''}
-                            </span>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                // Здесь можно добавить функцию handleVote, если нужно
-                              }}
-                              className="text-red-500"
-                            >
-                              <ArrowDown className="h-4 w-4" />
-                            </button>
-                          </div>
+                          <VoteControls dealId={promo.id} type="promo" />
                         </div>
                       </div>
 

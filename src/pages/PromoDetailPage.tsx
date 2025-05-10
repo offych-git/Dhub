@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import VoteControls from '../components/deals/VoteControls';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, ArrowUp, ArrowDown, MessageSquare, Heart, Share2, Edit2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Heart, Share2, Edit2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import Comment from '../components/comments/Comment';
@@ -18,8 +19,7 @@ const PromoDetailPage: React.FC = () => {
   const [promo, setPromo] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [commentCount, setCommentCount] = useState(0);
-  const [voteCount, setVoteCount] = useState(0);
-  const [userVote, setUserVote] = useState<boolean | null>(null);
+  // Removed voteCount and userVote state
   const [isFavorite, setIsFavorite] = useState(false);
   const isExpired = promo?.expires_at && new Date(promo.expires_at) < new Date();
 
@@ -74,12 +74,12 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
   useEffect(() => {
     // Прокручиваем страницу вверх при открытии деталей промокода
     window.scrollTo(0, 0);
-    
+
     if (id) {
       loadPromo();
       loadComments();
       if (user) {
-        loadVoteStatus();
+        // loadVoteStatus(); // removed
         loadFavoriteStatus();
       }
     }
@@ -182,37 +182,6 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
     }
   };
 
-  const loadVoteStatus = async () => {
-    try {
-      if (!user) {
-        setUserVote(null);
-        return;
-      }
-
-      const { data: votes } = await supabase
-        .from('promo_votes')
-        .select('vote_type')
-        .eq('promo_id', id)
-        .eq('user_id', user.id);
-
-      if (votes && votes.length > 0) {
-        setUserVote(votes[0].vote_type);
-      }
-
-      const { data: allVotes } = await supabase
-        .from('promo_votes')
-        .select('vote_type')
-        .eq('promo_id', id);
-
-      const count = allVotes?.reduce((acc, vote) => {
-        return acc + (vote.vote_type ? 1 : -1);
-      }, 0) || 0;
-
-      setVoteCount(count);
-    } catch (error) {
-      console.error('Error loading vote status:', error);
-    }
-  };
 
   const loadFavoriteStatus = async () => {
     try {
@@ -229,57 +198,6 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
     }
   };
 
-  const handleVote = async (voteType: boolean) => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
-    // Сохраняем исходное состояние голоса для логики обновления
-    const previousVote = userVote;
-
-    try {
-      // Если пользователь нажал на тот же тип голоса, который у него уже активен,
-      // то не выполняем никаких действий (ни в БД, ни в UI)
-      if (userVote === voteType) {
-        // Ничего не делаем при повторном клике на тот же тип голоса
-        return;
-      } else if (previousVote === null) {
-        // Пользователь голосует впервые
-        await supabase
-          .from('promo_votes')
-          .insert({
-            promo_id: id,
-            user_id: user.id,
-            vote_type: voteType
-          });
-
-        // Обновляем счетчик голосов и статус голоса пользователя
-        setVoteCount(prev => prev + (voteType ? 1 : -1));
-        setUserVote(voteType);
-      } else {
-        // Пользователь меняет тип голоса с одного на другой
-        await supabase
-          .from('promo_votes')
-          .update({ vote_type: voteType })
-          .eq('promo_id', id)
-          .eq('user_id', user.id);
-
-        // Обновляем счетчик голосов - при смене типа голоса изменяем его на 1
-        if (previousVote === true && voteType === false) {
-          setVoteCount(prev => prev - 1); // С положительного на отрицательный (-1)
-        } else if (previousVote === false && voteType === true) {
-          setVoteCount(prev => prev + 1); // С отрицательного на положительный (+1)
-        }
-
-        setUserVote(voteType);
-      }
-    } catch (error) {
-      console.error('Error handling vote:', error);
-      // В случае ошибки перезагружаем актуальный статус голосования
-      loadVoteStatus();
-    }
-  };
 
   const toggleFavorite = async () => {
     if (!user) {
@@ -321,7 +239,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
         <h2 className="text-white text-xl mb-4">{error || 'Promo code not found'}</h2>
-        <button 
+        <button
           onClick={() => navigate('/promos')}
           className="bg-orange-500 text-white py-2 px-4 rounded-md flex items-center"
         >
@@ -354,13 +272,13 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
       <div className="p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-white text-xl font-medium">
-            {searchQuery 
+            {searchQuery
               ? highlightText(promo.title, searchQuery)
               : promo.title
             }
           </h2>
           <div className="flex items-center space-x-2">
-            <button 
+            <button
               onClick={() => {
                 if (navigator.share) {
                   // Формируем правильный URL для конкретного промокода
@@ -380,13 +298,13 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
             >
               <Share2 className="h-6 w-6" />
             </button>
-            <button 
+            <button
               onClick={toggleFavorite}
               className={`p-2 rounded-full ${isFavorite ? 'text-red-500' : 'text-gray-400'}`}
             >
               <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'} />
             </button>
-            {user && user.id === promo.user.id && 
+            {user && user.id === promo.user.id &&
                 new Date().getTime() - new Date(promo.created_at).getTime() < 24 * 60 * 60 * 1000 && (
                   <button
                     onClick={(e) => {
@@ -431,15 +349,15 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
             </button>
           </div>
 
-          <div 
+          <div
             className="text-gray-300"
-            dangerouslySetInnerHTML={{ 
+            dangerouslySetInnerHTML={{
               __html: (() => {
                 // Если есть поисковый запрос, применяем прямую подсветку в HTML строке
                 if (searchQuery) {
                   const searchRegex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
                   return promo.description.replace(
-                    searchRegex, 
+                    searchRegex,
                     '<span class="bg-orange-500 text-white px-0.5 rounded">$1</span>'
                   );
                 }
@@ -457,26 +375,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
         </div>
 
         <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button 
-              className={`flex items-center ${userVote === true ? 'text-green-500' : 'text-gray-400'}`}
-              onClick={() => handleVote(true)}
-            >
-              <ArrowUp className="h-5 w-5 mr-1" />
-            </button>
-
-            <span className={`font-medium ${voteCount > 0 ? 'text-green-500' : voteCount < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-              {voteCount > 0 ? '+' : ''}{voteCount}
-            </span>
-
-            <button 
-              className={`flex items-center ${userVote === false ? 'text-red-500' : 'text-gray-400'}`}
-              onClick={() => handleVote(false)}
-            >
-              <ArrowDown className="h-5 w-5 ml-1" />
-            </button>
-          </div>
-
+          <VoteControls dealId={promo.id} type="promo" />
           <a
             href={promo.discount_url}
             target="_blank"

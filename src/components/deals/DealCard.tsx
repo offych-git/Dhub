@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Deal } from '../../types';
-import { ArrowUp, ArrowDown, MessageSquare, ExternalLink, Heart, Share2, Edit2 } from 'lucide-react';
+import { MessageSquare, ExternalLink, Heart, Share2, Edit2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import AdminActions from '../admin/AdminActions';
@@ -9,6 +9,7 @@ import { useAdmin } from '../../hooks/useAdmin';
 import { handleImageError, getValidImageUrl } from '../../utils/imageUtils';
 import { useSearchParams } from 'react-router-dom'; // Added import
 import { highlightText } from '../../utils/highlightText'; // Added import
+import VoteControls from '../deals/VoteControls';
 
 
 interface DealCardProps {
@@ -24,8 +25,6 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
   const { role } = useAdmin();
   // Determine if this is a sweepstakes based on deal type or other properties
   const isSweepstakes = deal.type === 'sweepstakes';
-  const [voteCount, setVoteCount] = useState(deal.popularity);
-  const [userVote, setUserVote] = useState<boolean | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [commentCount, setCommentCount] = useState(deal.comments);
   const isOwnDeal = user && deal.postedBy.id === user.id;
@@ -33,38 +32,10 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
 
   useEffect(() => {
     if (user) {
-      loadVoteStatus();
       loadFavoriteStatus();
     }
     loadCommentCount();
   }, [user, deal.id]);
-
-  const loadVoteStatus = async () => {
-    try {
-      const { data: votes } = await supabase
-        .from('deal_votes')
-        .select('vote_type')
-        .eq('deal_id', deal.id)
-        .eq('user_id', user!.id);
-
-      if (votes && votes.length > 0) {
-        setUserVote(votes[0].vote_type);
-      }
-
-      const { data: voteCount } = await supabase
-        .from('deal_votes')
-        .select('vote_type', { count: 'exact' })
-        .eq('deal_id', deal.id);
-
-      const count = voteCount?.reduce((acc, vote) => {
-        return acc + (vote.vote_type ? 1 : -1);
-      }, 0) || 0;
-
-      setVoteCount(count);
-    } catch (error) {
-      console.error('Error loading vote status:', error);
-    }
-  };
 
   const loadFavoriteStatus = async () => {
     try {
@@ -94,75 +65,6 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
     }
   };
 
-  const handleVote = async (e: React.MouseEvent, voteType: boolean) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
-    // Предотвращаем множественные быстрые клики
-    if (e.currentTarget.hasAttribute('disabled')) {
-      return;
-    }
-    e.currentTarget.setAttribute('disabled', 'true');
-
-    try {
-      // Сохраняем предыдущее значение голоса
-      const previousVote = userVote;
-
-      if (userVote === voteType) {
-        // Если пользователь повторно нажимает на тот же тип голоса,
-        // то ничего не происходит (ни в БД, ни в интерфейсе)
-        return;
-      } else if (previousVote === null) {
-        // Если пользователь голосует впервые
-        await supabase
-          .from('deal_votes')
-          .insert({
-            deal_id: deal.id,
-            user_id: user.id,
-            vote_type: voteType
-          });
-
-        // Обновляем счетчик и статус голоса
-        setVoteCount(voteType ? voteCount + 1 : voteCount - 1);
-        setUserVote(voteType);
-      } else {
-        // Если пользователь меняет свой голос с одного типа на другой
-        // Обновляем существующую запись вместо удаления и создания новой
-        await supabase
-          .from('deal_votes')
-          .update({ vote_type: voteType })
-          .eq('deal_id', deal.id)
-          .eq('user_id', user.id);
-
-        // Обновляем счетчик голосов - изменение на противоположный тип
-        // При смене голоса с положительного на отрицательный счетчик должен изменяться на 0
-        if (previousVote === true && voteType === false) {
-          setVoteCount(voteCount - 1); // С положительного на отрицательный (-1)
-        } else if (previousVote === false && voteType === true) {
-          setVoteCount(voteCount + 1); // С отрицательного на положительный (+1)
-        }
-
-        setUserVote(voteType);
-      }
-
-      // Вызываем обратные функции после обновления UI
-      if (onVoteChange) onVoteChange();
-    } catch (error) {
-      console.error('Error handling vote:', error);
-      // В случае ошибки загружаем актуальные данные с сервера
-      loadVoteStatus();
-    } finally {
-      // Проверяем, существует ли элемент, прежде чем удалять атрибут
-      if (e && e.currentTarget) {
-        e.currentTarget.removeAttribute('disabled');
-      }
-    }
-  };
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -195,8 +97,8 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
     }
   };
 
-  const discountPercent = deal.originalPrice 
-    ? Math.round(((deal.originalPrice - deal.currentPrice) / deal.originalPrice) * 100) 
+  const discountPercent = deal.originalPrice
+    ? Math.round(((deal.originalPrice - deal.currentPrice) / deal.originalPrice) * 100)
     : 0;
 
   const isExpired = deal.expires_at && new Date(deal.expires_at) < new Date();
@@ -215,22 +117,8 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
         </div>
 
         <div className="ml-auto flex items-center text-sm">
-          <button
-            onClick={(e) => handleVote(e, true)}
-            className={`${userVote === true ? 'text-green-500' : 'text-gray-400'}`}
-          >
-            <ArrowUp className="h-4 w-4" />
-          </button>
-          <div className={`flex items-center mx-2 ${voteCount > 0 ? 'text-green-500' : voteCount < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-            <span className="font-medium">{voteCount > 0 ? '+' : ''}{voteCount}</span>
-          </div>
-          <button
-            onClick={(e) => handleVote(e, false)}
-            className={`${userVote === false ? 'text-red-500' : 'text-gray-400'}`}
-          >
-            <ArrowDown className="h-4 w-4" />
-          </button>
-          </div>
+          <VoteControls dealId={deal.id} onVoteChange={onVoteChange} />
+        </div>
       </div>
 
       <div className="flex mt-1.5">

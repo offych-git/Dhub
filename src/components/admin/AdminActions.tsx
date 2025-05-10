@@ -28,14 +28,14 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, createdAt
   const isLessThan24Hours = createdAt ? new Date().getTime() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000 : true;
 
   useEffect(() => {
-    console.log("AdminActions component initialized:", { 
-      type, 
-      id, 
-      userId,
-      createdAt,
-      idType: typeof id,
-      userIdType: typeof userId 
-    });
+    // console.log("AdminActions component initialized:", {
+    //   type,
+    //   id,
+    //   userId,
+    //   createdAt,
+    //   idType: typeof id,
+    //   userIdType: typeof userId
+    // });
   }, [type, id, userId, createdAt]);
 
   if (!permissions.canDeleteContent) {
