@@ -72,7 +72,10 @@ export const useAdmin = () => {
 
   return {
     role: state.admin.role,
+    isAdmin: state.admin.role === 'admin' || state.admin.role === 'super_admin' || state.admin.role === 'moderator',
+    isModerator: state.admin.role === 'moderator' || state.admin.role === 'admin' || state.admin.role === 'super_admin',
     loading: state.admin.isLoading,
+    isLoading: state.admin.isLoading,
     permissions: state.admin.permissions,
     deleteContent,
     manageUserRole,

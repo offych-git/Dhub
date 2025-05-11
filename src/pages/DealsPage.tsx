@@ -6,6 +6,7 @@ import { Deal } from '../types';
 import { supabase } from '../lib/supabase';
 import { useGlobalState } from '../contexts/GlobalStateContext';
 import { useLanguage } from '../contexts/LanguageContext'; // Added import
+import { useAuth } from '../contexts/AuthContext'; // Добавление импорта AuthContext
 
 const formatRelativeTime = (date: Date) => {
   const now = new Date();
@@ -39,6 +40,7 @@ const DealsPage: React.FC = () => {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const location = useLocation();
   const { t } = useLanguage(); // Added language context
+  const { user } = useAuth(); // Получение пользователя из контекста
 
   const { state, dispatch, refreshDeals } = useGlobalState();
   const dbDeals = state.deals.items;
@@ -115,6 +117,28 @@ const DealsPage: React.FC = () => {
         .not('type', 'eq', 'sweepstakes')  // Exclude sweepstakes
         .order('updated_at', { ascending: false })  // Сначала недавно обновленные
         .limit(100);  // Увеличиваем лимит для получения большего объема данных
+        
+      // Проверяем права пользователя
+      let isAdminOrModerator = false;
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_status')
+          .eq('id', user.id)
+          .single();
+
+        isAdminOrModerator = ['admin', 'moderator', 'super_admin'].includes(profile?.user_status);
+      }
+      
+      // Применяем фильтрацию модерации для обычных пользователей
+      if (!isAdminOrModerator && user) {
+        // Пользователи видят все не-pending сделки или свои собственные
+        query = query.or(`status.neq.pending,user_id.eq.${user?.id}`);
+      } else if (!isAdminOrModerator && !user) {
+        // Неавторизованные пользователи видят только не-pending сделки
+        query = query.not('status', 'eq', 'pending');
+      }
+      // Для админов и модераторов показываем все сделки
 
       console.log(`Загрузка данных с параметром cache_invalidator=${cacheInvalidator}`);
 

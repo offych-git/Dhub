@@ -27,6 +27,7 @@ interface PromoCode {
   votes: number;
   comments: number;
   userVote: boolean | null;
+  status: string | null; // Добавлен статус
 }
 
 const PromosPage: React.FC = () => {
@@ -97,12 +98,20 @@ const PromosPage: React.FC = () => {
   }, [page]);
 
   const fetchPromoCodes = async () => {
-    if (page === 1) {
-      setLoading(true);
-    } else {
-      setIsFetchingMore(true);
-    }
+    setLoading(true);
     try {
+      // Определяем права пользователя
+      let isAdminOrModerator = false;
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_status')
+          .eq('id', user.id)
+          .single();
+
+        isAdminOrModerator = ['admin', 'moderator', 'super_admin'].includes(profile?.user_status);
+      }
+
       let query = supabase
         .from('promo_codes')
         .select(`
@@ -125,6 +134,18 @@ const PromosPage: React.FC = () => {
           );
         }
       }
+
+      // Для всех показываем все промокоды, которые не находятся на модерации
+      // (т.е. approved или null), и для пользователя также его собственные промокоды
+      if (!isAdminOrModerator && user) {
+        // Пользователи видят все не-pending промокоды или свои собственные
+        query = query.or(`status.neq.pending,user_id.eq.${user?.id}`);
+      } else if (!isAdminOrModerator && !user) {
+        // Неавторизованные пользователи видят только не-pending промокоды
+        query = query.not('status', 'eq', 'pending');
+      }
+      // Для админов и модераторов показываем все промокоды (фильтрация не применяется)
+
 
       query = query
         .order('created_at', { ascending: false })
@@ -322,15 +343,17 @@ const PromosPage: React.FC = () => {
                   </div>
 
                   <div className="mb-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-white font-medium text-sm">{promo.title}</h3>
+                    <div className="flex items-center">
+                      <h3 className="text-white font-medium line-clamp-1">{promo.title}</h3>
+                      {promo.status === 'pending' && (
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
+                          На модерации
+                        </span>
+                      )}
                       {promo.expires_at && new Date(promo.expires_at) < new Date() && (
-                        <div className="flex items-center bg-red-500/10 px-2 py-0.5 rounded text-red-500 text-xs font-medium">
-                          <svg className="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
                           Expired
-                        </div>
+                        </span>
                       )}
                     </div>
                   </div>

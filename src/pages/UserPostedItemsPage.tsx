@@ -371,8 +371,15 @@ const UserPostedItemsPage: React.FC = () => {
                       </div>
 
                       <div className="mb-2">
-                        <h3 className="text-white font-medium text-sm">{promo.title}</h3>
+                      <div className="flex items-center">
+                        <h3 className="text-white font-medium line-clamp-1">{promo.title}</h3>
+                        {promo.status === 'pending' && (
+                          <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
+                            На модерации
+                          </span>
+                        )}
                       </div>
+                    </div>
 
                       <div className="mb-2">
                         <p className="text-gray-400 text-sm line-clamp-2">{promo.description}</p>

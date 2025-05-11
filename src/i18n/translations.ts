@@ -6,7 +6,8 @@ export const translations = {
       discussions: 'Discussions',
       categories: 'Categories',
       profile: 'My Profile',
-      sweepstakes: 'Sweepstakes'
+      sweepstakes: 'Sweepstakes',
+      moderation: 'Moderation'
     },
     filters: {
       title: 'Filters',
@@ -55,7 +56,8 @@ export const translations = {
       discussions: 'Обсуждения',
       categories: 'Категории',
       profile: 'Мой профиль',
-      sweepstakes: 'Розыгрыши'
+      sweepstakes: 'Розыгрыши',
+      moderation: 'Модерация'
     },
     filters: {
       title: 'Фильтры',
@@ -104,7 +106,8 @@ export const translations = {
       discussions: 'Discusiones',
       categories: 'Categorías',
       profile: 'Mi Perfil',
-      sweepstakes: 'Sorteos'
+      sweepstakes: 'Sorteos',
+      moderation: 'Moderación'
     },
     filters: {
       title: 'Filtros',
