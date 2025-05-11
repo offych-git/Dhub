@@ -22,7 +22,7 @@ const ProfilePage: React.FC = () => {
   const [userStatus, setUserStatus] = useState('Newcomer');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const { isAdmin, isLoading: isAdminLoading } = useAdmin();
+  const { isAdmin, isLoading: isAdminLoading, role } = useAdmin();
 
   const getUserStatusColor = (status: string) => {
     switch (status) {

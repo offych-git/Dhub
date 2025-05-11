@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useModeration } from '../contexts/ModerationContext';
 import { useAdmin } from '../hooks/useAdmin';
-import { CheckCircle, XCircle, MessageSquare, Loader, AlertCircle, Settings } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, Loader, AlertCircle, Settings, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const ModerationPage: React.FC = () => {
@@ -15,7 +15,7 @@ const ModerationPage: React.FC = () => {
     rejectModerationItem 
   } = useModeration();
   const { role } = useAdmin();
-  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedType, setSelectedType] = useState<string>('deal');
   const [rejectionComment, setRejectionComment] = useState<string>('');
   const [showCommentInput, setShowCommentInput] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('pending');
@@ -83,9 +83,12 @@ const ModerationPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto px-4 py-6 pb-20">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Модерация контента</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Модерация контента</h1>
+          <p className="text-gray-600 text-sm">Элементов в очереди: {queueCount || filteredQueue.length}</p>
+        </div>
         
         {(role === 'admin' || role === 'super_admin') && (
           <button
@@ -104,19 +107,19 @@ const ModerationPage: React.FC = () => {
             onClick={() => setSelectedType('deal')}
             className={`px-3 py-1 rounded-md ${selectedType === 'deal' ? 'bg-orange-500 text-white' : 'bg-gray-200'}`}
           >
-            Скидки
+            Скидки ({moderationQueue.filter(item => item.item_type === 'deal').length})
           </button>
           <button
             onClick={() => setSelectedType('promo')}
             className={`px-3 py-1 rounded-md ${selectedType === 'promo' ? 'bg-orange-500 text-white' : 'bg-gray-200'}`}
           >
-            Промокоды
+            Промокоды ({moderationQueue.filter(item => item.item_type === 'promo').length})
           </button>
           <button
             onClick={() => setSelectedType('sweepstake')}
             className={`px-3 py-1 rounded-md ${selectedType === 'sweepstake' ? 'bg-orange-500 text-white' : 'bg-gray-200'}`}
           >
-            Розыгрыши
+            Розыгрыши ({moderationQueue.filter(item => item.item_type === 'sweepstake').length})
           </button>
         </div>
       </div>
@@ -196,14 +199,12 @@ const ModerationPage: React.FC = () => {
 
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex-shrink-0">
-                    <img 
-                      src={item.submitted_by_profile?.avatar_url || '/default-avatar.png'} 
-                      alt=""
-                      className="w-6 h-6 rounded-full"
-                    />
+                    <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs text-gray-700">
+                      {item.submitted_by_profile?.display_name?.[0]?.toUpperCase() || 'U'}
+                    </div>
                   </div>
                   <span className="text-sm">
-                    {item.submitted_by_profile?.username || 'Пользователь'}
+                    {item.submitted_by_profile?.display_name || 'Пользователь'}
                   </span>
                 </div>
 
@@ -222,7 +223,7 @@ const ModerationPage: React.FC = () => {
                   </div>
                 ) : null}
 
-                <div className="flex gap-2 mt-4">
+                <div className="flex flex-wrap gap-2 mt-4">
                   <button
                     onClick={() => handleApprove(item.item_id, item.item_type)}
                     className="flex-1 bg-green-500 text-white py-2 rounded-md flex items-center justify-center gap-1"
@@ -246,6 +247,23 @@ const ModerationPage: React.FC = () => {
                       </>
                     )}
                   </button>
+                  {(role === 'admin' || role === 'moderator' || role === 'super_admin') && (
+                    <button
+                      onClick={() => {
+                        if (item.item_type === 'promo') {
+                          navigate(`/promos/${item.item_id}/edit`);
+                        } else if (item.item_type === 'deal') {
+                          navigate(`/deals/edit/${item.item_id}`);
+                        } else if (item.item_type === 'sweepstake') {
+                          navigate(`/sweepstakes/edit/${item.item_id}`);
+                        }
+                      }}
+                      className="w-full mt-2 bg-blue-500 text-white py-2 rounded-md flex items-center justify-center gap-1"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Изменить
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

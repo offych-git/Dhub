@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import {MessageSquare, Calendar, Heart, Share2, ExternalLink, Edit2 } from 'lucide-react';
+import {MessageSquare, Calendar, Heart, Share2, ExternalLink, Edit2, Clock } from 'lucide-react';
 import FilterBar from '../components/shared/FilterBar';
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -454,6 +454,14 @@ const PromosPage: React.FC = () => {
                         <span className="text-xs mr-1">View</span>
                         <ExternalLink className="h-3 w-3" />
                       </button>
+
+                      {/* Индикатор модерации */}
+                      {promo.status === 'pending' && (
+                        <div className="ml-3 text-yellow-500 flex items-center text-xs">
+                          <Clock className="h-3 w-3 mr-1" />
+                          На модерации
+                        </div>
+                      )}
                       {(role === 'admin' || role === 'moderator' || (user && user.id === promo.user.id)) && (
                         <div className="ml-2 border-l border-gray-700 pl-2" onClick={(e) => e.stopPropagation()}>
                           <AdminActions

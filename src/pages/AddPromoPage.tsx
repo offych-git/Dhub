@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomSheet';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { useGlobalState } from '../contexts/GlobalStateContext';
+import { useAdmin } from '../hooks/useAdmin';
 
 interface PromoData {
   id: string;
@@ -29,8 +30,10 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const { dispatch } = useGlobalState();
+  const { isAdmin, isModerator } = useAdmin();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);
   const [formData, setFormData] = useState({
     promoCode: '',
@@ -102,26 +105,30 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
           .single();
 
         if (updateError) throw updateError;
-        
+
         // Dispatch update to global state
         dispatch({ 
           type: 'UPDATE_PROMO', 
           payload: updatedPromo 
         });
-        
+
         navigate('/promos');
       } else {
-        // Проверяем, является ли пользователь админом или модератором
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('user_status')
-          .eq('id', user?.id)
+        // Используем значения из хука useAdmin
+        const isAdminOrModerator = isAdmin || isModerator;
+
+        // Проверяем настройки модерации
+        const { data: settings } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'moderation_enabled')
           .single();
 
-        if (profileError) throw profileError;
+        const moderationEnabled = settings?.value?.enabled && 
+                                 settings?.value?.types?.includes('promo');
 
-        const isAdminOrModerator = ['admin', 'moderator', 'super_admin'].includes(profile?.user_status);
-        
+        const moderationStatus = isAdminOrModerator || !moderationEnabled ? 'approved' : 'pending';
+
         // Insert new promo
         const { data: promo, error: promoError } = await supabase
           .from('promo_codes')
@@ -133,13 +140,33 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
             discount_url: formData.discountUrl,
             expires_at: formData.expiryDate || null,
             user_id: user?.id,
-            status: isAdminOrModerator ? 'approved' : 'pending' // Если не админ/модератор, статус "на модерации"
+            status: moderationStatus // Используем правильное имя поля
           })
           .select()
           .single();
 
         if (promoError) throw promoError;
-        navigate('/promos');
+
+        // Если требуется модерация, то добавляем в очередь модерации
+        if (moderationStatus === 'pending') {
+          const { error: queueError } = await supabase
+            .from('moderation_queue')
+            .insert({
+              item_id: promo.id,
+              item_type: 'promo',
+              submitted_by: user?.id,
+              submitted_at: new Date().toISOString(),
+              status: 'pending'
+            });
+
+          if (queueError) console.error('Error adding to moderation queue:', queueError);
+
+          // Показываем пользователю сообщение о модерации
+          setSuccess('Промокод отправлен на модерацию');
+          setTimeout(() => navigate('/promos'), 2000);
+        } else {
+          navigate('/promos');
+        }
       }
     } catch (err: any) {
       console.error('Error saving promo:', err);
@@ -179,6 +206,12 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
           {error && (
             <div className="bg-red-500 text-white px-4 py-3 rounded-md mb-4">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-500 text-white px-4 py-3 rounded-md mb-4">
+              {success}
             </div>
           )}
 

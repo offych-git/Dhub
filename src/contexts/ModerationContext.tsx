@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
@@ -27,6 +26,20 @@ const defaultSettings: ModerationSettings = {
   types: ['deal', 'promo', 'sweepstake']
 };
 
+interface ModerationContextType {
+  isModerationEnabled: boolean;
+  moderationSettings: ModerationSettings;
+  isLoading: boolean;
+  moderationQueue: any[];
+  queueCount: number;
+  loadModerationQueue: () => Promise<void>;
+  approveModerationItem: (itemId: string, itemType: string) => Promise<boolean>;
+  rejectModerationItem: (itemId: string, itemType: string, comment?: string) => Promise<boolean>;
+  toggleModerationSetting: (enabled: boolean) => Promise<boolean>;
+  updateModerationTypes: (types: string[]) => Promise<boolean>;
+  addToModerationQueue: (itemId: string, itemType: string) => Promise<boolean>;
+}
+
 const ModerationContext = createContext<ModerationContextType>({
   isModerationEnabled: true,
   moderationSettings: defaultSettings,
@@ -37,7 +50,8 @@ const ModerationContext = createContext<ModerationContextType>({
   approveModerationItem: async () => false,
   rejectModerationItem: async () => false,
   toggleModerationSetting: async () => false,
-  updateModerationTypes: async () => false
+  updateModerationTypes: async () => false,
+  addToModerationQueue: async () => false
 });
 
 export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -51,6 +65,67 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const isAdmin = role === 'admin' || role === 'super_admin';
   const isModerator = role === 'moderator' || isAdmin;
+
+  // Функция для добавления элемента в очередь модерации
+  const addToModerationQueue = async (itemId: string, itemType: string): Promise<boolean> => {
+    try {
+      if (!user) return false;
+
+      // Пропускаем добавление в очередь модерации для админов и модераторов
+      if (isAdmin || isModerator) {
+        console.log(`Пользователь имеет права админа/модератора, пропускаем добавление в очередь модерации`);
+
+        // Для админов и модераторов автоматически устанавливаем статус "approved"
+        let tableName = '';
+        if (itemType === 'deal' || itemType === 'sweepstake') {
+          tableName = 'deals';
+        } else if (itemType === 'promo') {
+          tableName = 'promo_codes';
+        }
+
+        if (tableName) {
+          const { error: updateError } = await supabase
+            .from(tableName)
+            .update({
+              status: 'approved',
+              moderator_id: user.id,
+              moderated_at: new Date().toISOString()
+            })
+            .eq('id', itemId);
+
+          if (updateError) {
+            console.error("Error auto-approving item:", updateError);
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      console.log(`Добавление элемента в очередь модерации: ${itemType} с ID ${itemId}`);
+
+      const { data, error } = await supabase
+        .from('moderation_queue')
+        .insert({
+          item_id: itemId,
+          item_type: itemType,
+          status: 'pending',
+          submitted_by: user.id,
+          submitted_at: new Date().toISOString()
+        });
+
+      if (error) {
+        console.error("Error adding to moderation queue:", error);
+        return false;
+      }
+
+      console.log("Item successfully added to moderation queue:", data);
+      return true;
+    } catch (error) {
+      console.error("Exception when adding to moderation queue:", error);
+      return false;
+    }
+  };
 
   // Load moderation settings
   useEffect(() => {
@@ -90,7 +165,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       setIsLoading(true);
-      
+
       // First get the count
       const { count, error: countError } = await supabase
         .from('moderation_queue')
@@ -105,7 +180,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         .from('moderation_queue')
         .select(`
           *,
-          submitted_by:profiles!moderation_queue_submitted_by_fkey(id, display_name)
+          submitted_by_profile:profiles!moderation_queue_submitted_by_fkey(id, display_name)
         `)
         .eq('status', 'pending')
         .order('submitted_at', { ascending: false })
@@ -117,7 +192,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const enrichedQueue = await Promise.all(
         (data || []).map(async (item) => {
           let contentData = null;
-          
+
           if (item.item_type === 'deal' || item.item_type === 'sweepstake') {
             const { data: dealData } = await supabase
               .from('deals')
@@ -133,7 +208,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               .single();
             contentData = promoData;
           }
-          
+
           return { ...item, content: contentData };
         })
       );
@@ -151,7 +226,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       setIsLoading(true);
-      
+
       // 1. Update the item status
       let tableName = '';
       if (itemType === 'deal' || itemType === 'sweepstake') {
@@ -163,7 +238,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const { error: updateError } = await supabase
         .from(tableName)
         .update({
-          moderation_status: 'approved',
+          status: 'approved',
           moderator_id: user?.id,
           moderated_at: new Date().toISOString()
         })
@@ -200,7 +275,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       setIsLoading(true);
-      
+
       // 1. Update the item status
       let tableName = '';
       if (itemType === 'deal' || itemType === 'sweepstake') {
@@ -209,14 +284,25 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         tableName = 'promo_codes';
       }
 
+      // Подготовка объекта обновления с обработкой возможного отсутствия поля moderated_at
+      const updateObject: any = {
+        status: 'rejected',
+        moderation_comment: comment || '',
+        moderator_id: user?.id,
+      };
+
+      // Добавляем moderated_at для всех типов элементов
+      updateObject.moderated_at = new Date().toISOString();
+      
+      // Если указан комментарий модератора, добавляем его
+      if (comment) {
+        updateObject.moderation_comment = comment;
+      }
+
+
       const { error: updateError } = await supabase
         .from(tableName)
-        .update({
-          moderation_status: 'rejected',
-          moderation_comment: comment || '',
-          moderator_id: user?.id,
-          moderated_at: new Date().toISOString()
-        })
+        .update(updateObject)
         .eq('id', itemId);
 
       if (updateError) throw updateError;
@@ -315,7 +401,8 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         approveModerationItem,
         rejectModerationItem,
         toggleModerationSetting,
-        updateModerationTypes
+        updateModerationTypes,
+        addToModerationQueue
       }}
     >
       {children}
