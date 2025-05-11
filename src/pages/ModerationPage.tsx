@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useModeration } from '../contexts/ModerationContext';
 import { useAdmin } from '../hooks/useAdmin';
@@ -20,6 +19,8 @@ const ModerationPage: React.FC = () => {
   const [showCommentInput, setShowCommentInput] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('pending');
   const navigate = useNavigate();
+  const [moderationQueueState, setModerationQueue] = useState(moderationQueue);
+  const [isRejectLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadModerationQueue();
@@ -43,7 +44,12 @@ const ModerationPage: React.FC = () => {
   }
 
   const filteredQueue = moderationQueue.filter(item => {
+    // Фильтруем по типу
     if (selectedType !== 'all' && item.item_type !== selectedType) {
+      return false;
+    }
+    // Показываем только элементы со статусом pending
+    if (item.status !== 'pending') {
       return false;
     }
     return true;
@@ -60,13 +66,28 @@ const ModerationPage: React.FC = () => {
 
   const handleReject = async (itemId: string, itemType: string) => {
     if (showCommentInput === itemId) {
-      const success = await rejectModerationItem(itemId, itemType, rejectionComment);
-      if (success) {
-        alert('Элемент отклонен');
-        setShowCommentInput(null);
-        setRejectionComment('');
-      } else {
-        alert('Произошла ошибка при отклонении элемента');
+      try {
+        setIsLoading(true);
+        const success = await rejectModerationItem(itemId, itemType, rejectionComment);
+        if (success) {
+          alert('Элемент успешно отклонен и скрыт со страницы промокодов.');
+          
+          // Скрываем элемент из локального списка для мгновенного обновления UI
+          // (основное обновление уже происходит в ModerationContext)
+          setModerationQueue(prev => 
+            prev.filter(item => !(item.item_id === itemId && item.item_type === itemType))
+          );
+          
+          setShowCommentInput(null);
+          setRejectionComment('');
+        } else {
+          alert('Произошла ошибка при отклонении элемента.');
+        }
+      } catch (error) {
+        console.error('Ошибка при отклонении элемента:', error);
+        alert('Произошла ошибка при отклонении элемента.');
+      } finally {
+        setIsLoading(false);
       }
     } else {
       setShowCommentInput(itemId);
@@ -89,7 +110,7 @@ const ModerationPage: React.FC = () => {
           <h1 className="text-2xl font-bold">Модерация контента</h1>
           <p className="text-gray-600 text-sm">Элементов в очереди: {queueCount || filteredQueue.length}</p>
         </div>
-        
+
         {(role === 'admin' || role === 'super_admin') && (
           <button
             onClick={() => navigate('/moderation/settings')}
@@ -153,7 +174,7 @@ const ModerationPage: React.FC = () => {
                 {item.content ? (
                   <>
                     <h3 className="font-bold text-lg mb-2">{item.content.title}</h3>
-                    
+
                     {item.content.image_url && (
                       <div className="mb-3">
                         <img 
@@ -163,7 +184,7 @@ const ModerationPage: React.FC = () => {
                         />
                       </div>
                     )}
-                    
+
                     <p className="text-gray-700 mb-3 text-sm line-clamp-3">
                       {item.content.description}
                     </p>

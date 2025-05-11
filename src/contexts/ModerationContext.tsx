@@ -161,8 +161,6 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const loadModerationQueue = async () => {
-    if (!isModerator) return;
-
     try {
       setIsLoading(true);
 
@@ -189,29 +187,43 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (error) throw error;
 
       // Enrich the queue items with the actual content
-      const enrichedQueue = await Promise.all(
-        (data || []).map(async (item) => {
-          let contentData = null;
+      const enrichedQueue = [];
 
+      for (const item of data || []) {
+        let contentData = null;
+
+        try {
           if (item.item_type === 'deal' || item.item_type === 'sweepstake') {
-            const { data: dealData } = await supabase
+            const { data: dealData, error: dealError } = await supabase
               .from('deals')
               .select('*')
               .eq('id', item.item_id)
               .single();
-            contentData = dealData;
+
+            if (!dealError && dealData) {
+              contentData = dealData;
+            }
           } else if (item.item_type === 'promo') {
-            const { data: promoData } = await supabase
+            const { data: promoData, error: promoError } = await supabase
               .from('promo_codes')
               .select('*')
               .eq('id', item.item_id)
               .single();
-            contentData = promoData;
+
+            if (!promoError && promoData) {
+              contentData = promoData;
+            }
           }
 
-          return { ...item, content: contentData };
-        })
-      );
+          // Добавляем только если элемент существует
+          if (contentData) {
+            enrichedQueue.push({ ...item, content: contentData });
+          }
+        } catch (itemError) {
+          console.error(`Ошибка при загрузке контента для элемента ${item.item_id}:`, itemError);
+          // Пропускаем элемент с ошибкой, чтобы не блокировать весь список
+        }
+      }
 
       setModerationQueue(enrichedQueue);
     } catch (error) {
@@ -284,21 +296,13 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         tableName = 'promo_codes';
       }
 
-      // Подготовка объекта обновления с обработкой возможного отсутствия поля moderated_at
+      // Подготовка объекта обновления
       const updateObject: any = {
         status: 'rejected',
         moderation_comment: comment || '',
         moderator_id: user?.id,
+        moderated_at: new Date().toISOString()
       };
-
-      // Добавляем moderated_at для всех типов элементов
-      updateObject.moderated_at = new Date().toISOString();
-      
-      // Если указан комментарий модератора, добавляем его
-      if (comment) {
-        updateObject.moderation_comment = comment;
-      }
-
 
       const { error: updateError } = await supabase
         .from(tableName)
@@ -321,8 +325,15 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       if (queueError) throw queueError;
 
-      // 3. Refresh the queue
-      await loadModerationQueue();
+      // 3. Обновляем локальное состояние очереди модерации без запроса к серверу
+      // Это позволит мгновенно обновить UI
+      setModerationQueue(prevQueue => 
+        prevQueue.filter(item => !(item.item_id === itemId && item.item_type === itemType))
+      );
+
+      // 4. Уменьшаем счетчик элементов в очереди
+      setQueueCount(prev => Math.max(0, prev - 1));
+
       return true;
     } catch (error) {
       console.error('Error rejecting item:', error);

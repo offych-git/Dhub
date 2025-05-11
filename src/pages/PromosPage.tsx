@@ -135,14 +135,21 @@ const PromosPage: React.FC = () => {
         }
       }
 
-      // Для всех показываем все промокоды, которые не находятся на модерации
-      // (т.е. approved или null), и для пользователя также его собственные промокоды
+      // Для всех показываем промокоды, которые одобрены или без статуса, и для пользователя также его собственные промокоды
       if (!isAdminOrModerator && user) {
-        // Пользователи видят все не-pending промокоды или свои собственные
-        query = query.or(`status.neq.pending,user_id.eq.${user?.id}`);
+        // Пользователи видят все одобренные промокоды (или без статуса) или свои собственные
+        // Для своих промокодов показываем любые (включая отклоненные)
+        query = query.or(`status.eq.approved,status.is.null,user_id.eq.${user?.id}`);
+        
+        // Исключаем отклоненные промокоды других пользователей
+        // Используем правильный синтаксис для фильтра not
+        const userId = user?.id;
+        if (userId) {
+          query = query.not('status', 'eq', 'rejected', { foreignTable: `user_id.neq.${userId}` });
+        }
       } else if (!isAdminOrModerator && !user) {
-        // Неавторизованные пользователи видят только не-pending промокоды
-        query = query.not('status', 'eq', 'pending');
+        // Неавторизованные пользователи видят только одобренные промокоды или без статуса
+        query = query.or(`status.eq.approved,status.is.null`);
       }
       // Для админов и модераторов показываем все промокоды (фильтрация не применяется)
 
@@ -348,6 +355,11 @@ const PromosPage: React.FC = () => {
                       {promo.status === 'pending' && (
                         <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
                           На модерации
+                        </span>
+                      )}
+                      {promo.status === 'rejected' && (
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
+                          Отклонено
                         </span>
                       )}
                       {promo.expires_at && new Date(promo.expires_at) < new Date() && (

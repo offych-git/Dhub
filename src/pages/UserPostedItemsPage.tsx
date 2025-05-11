@@ -194,7 +194,7 @@ const UserPostedItemsPage: React.FC = () => {
         .from('promo_codes')
         .select(`
           *,
-          profiles (
+          profiles:profiles!promo_codes_user_id_fkey (
             id,
             email,
             display_name

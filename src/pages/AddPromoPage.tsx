@@ -127,6 +127,8 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
         const moderationEnabled = settings?.value?.enabled && 
                                  settings?.value?.types?.includes('promo');
 
+        // Используем только допустимые значения: 'pending', 'approved', 'rejected'
+        // В соответствии с ограничением в базе данных
         const moderationStatus = isAdminOrModerator || !moderationEnabled ? 'approved' : 'pending';
 
         // Insert new promo
@@ -140,7 +142,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
             discount_url: formData.discountUrl,
             expires_at: formData.expiryDate || null,
             user_id: user?.id,
-            status: moderationStatus // Используем правильное имя поля
+            status: moderationStatus
           })
           .select()
           .single();
