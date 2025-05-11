@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Tag, Bell, MessageSquare, Pencil, Check, X, Settings } from 'lucide-react';
+import { Heart, Tag, Bell, MessageSquare, Pencil, Check, X, Settings, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAdmin } from '../hooks/useAdmin';
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
@@ -12,6 +13,7 @@ const ProfilePage: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [originalName, setOriginalName] = useState('');
   const [savedItemsCount, setSavedItemsCount] = useState(0);
+  const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({
     dealsCount: 0,
     promosCount: 0,
@@ -20,6 +22,7 @@ const ProfilePage: React.FC = () => {
   const [userStatus, setUserStatus] = useState('Newcomer');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const { isAdmin, isLoading: isAdminLoading } = useAdmin();
 
   const getUserStatusColor = (status: string) => {
     switch (status) {
@@ -136,15 +139,22 @@ const ProfilePage: React.FC = () => {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('display_name')
+        .select('display_name, user_status')
         .eq('id', user?.id)
         .single();
 
       if (error) throw error;
 
+      setProfile(profile);
+
       const name = profile?.display_name || user?.email?.split('@')[0] || '';
       setDisplayName(name);
       setOriginalName(name);
+
+      if (profile?.user_status === 'admin' || profile?.user_status === 'moderator' || profile?.user_status === 'super_admin') {
+        console.log('User is admin or moderator:', profile.user_status);
+        setUserStatus(profile.user_status === 'admin' ? 'Admin' : 'Moderator');
+      }
     } catch (err) {
       console.error('Error loading profile:', err);
     }
@@ -392,48 +402,59 @@ const ProfilePage: React.FC = () => {
 
         {/* Menu items */}
         <div className="bg-gray-800 rounded-lg overflow-hidden mb-6">
-          <div className="divide-y divide-gray-700">
-            <div className="px-4 py-3 flex items-center">
-              <Heart className="h-5 w-5 text-orange-500 mr-3" />
-              <button
-                onClick={() => navigate('/saved')}
-                className="text-white flex-1 text-left"
-              >
-                Saved Items
-              </button>
-              <span className="ml-auto text-gray-400">{savedItemsCount}</span>
-            </div>
-            <div className="px-4 py-3 flex items-center">
-              <Tag className="h-5 w-5 text-orange-500 mr-3" />
-              <button
-                onClick={() => navigate('/posted')}
-                className="text-white flex-1 text-left"
-              >
-                My Posted Items
-              </button>
-              <span className="ml-auto text-gray-400">{stats.dealsCount}</span>
-            </div>
-            <div className="px-4 py-3 flex items-center">
-              <Bell className="h-5 w-5 text-orange-500 mr-3" />
-              <button
-                onClick={() => navigate('/settings/notifications')}
-                className="text-white flex-1 text-left"
-              >
-                Notification Settings
-              </button>
-            </div>
-            <div className="px-4 py-3 flex items-center">
-              <MessageSquare className="h-5 w-5 text-orange-500 mr-3" />
-              <button
-                onClick={() => navigate('/comments')}
-                className="text-white flex-1 text-left"
-              >
-                My Comments
-              </button>
-              <span className="ml-auto text-gray-400">{stats.commentsCount}</span>
+            <div className="divide-y divide-gray-700">
+              <div className="px-4 py-3 flex items-center">
+                <Heart className="h-5 w-5 text-orange-500 mr-3" />
+                <button
+                  onClick={() => navigate('/saved')}
+                  className="text-white flex-1 text-left"
+                >
+                  Saved Items
+                </button>
+                <span className="ml-auto text-gray-400">{savedItemsCount}</span>
+              </div>
+              <div className="px-4 py-3 flex items-center">
+                <Tag className="h-5 w-5 text-orange-500 mr-3" />
+                <button
+                  onClick={() => navigate('/posted')}
+                  className="text-white flex-1 text-left"
+                >
+                  My Posted Items
+                </button>
+                <span className="ml-auto text-gray-400">{stats.dealsCount}</span>
+              </div>
+              <div className="px-4 py-3 flex items-center">
+                <Bell className="h-5 w-5 text-orange-500 mr-3" />
+                <button
+                  onClick={() => navigate('/settings/notifications')}
+                  className="text-white flex-1 text-left"
+                >
+                  Notification Settings
+                </button>
+              </div>
+              <div className="px-4 py-3 flex items-center">
+                <MessageSquare className="h-5 w-5 text-orange-500 mr-3" />
+                <button
+                  onClick={() => navigate('/comments')}
+                  className="text-white flex-1 text-left"
+                >
+                  My Comments
+                </button>
+                <span className="ml-auto text-gray-400">{stats.commentsCount}</span>
+              </div>
+              {(isAdmin || role === 'moderator' || role === 'admin' || role === 'super_admin') && (
+                <div className="px-4 py-3 flex items-center">
+                  <Shield className="h-5 w-5 text-orange-500 mr-3" />
+                  <button
+                    onClick={() => navigate('/moderation')}
+                    className="text-white flex-1 text-left"
+                  >
+                    Модерация
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        </div>
       </div>
     </div>
   );

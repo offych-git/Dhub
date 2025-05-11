@@ -111,6 +111,17 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
         
         navigate('/promos');
       } else {
+        // Проверяем, является ли пользователь админом или модератором
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('user_status')
+          .eq('id', user?.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        const isAdminOrModerator = ['admin', 'moderator', 'super_admin'].includes(profile?.user_status);
+        
         // Insert new promo
         const { data: promo, error: promoError } = await supabase
           .from('promo_codes')
@@ -121,7 +132,8 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
             category_id: formData.category,
             discount_url: formData.discountUrl,
             expires_at: formData.expiryDate || null,
-            user_id: user?.id
+            user_id: user?.id,
+            status: isAdminOrModerator ? 'approved' : 'pending' // Если не админ/модератор, статус "на модерации"
           })
           .select()
           .single();

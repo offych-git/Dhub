@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Deal } from '../types';
 import { supabase } from '../lib/supabase';
@@ -32,6 +31,11 @@ interface GlobalState {
       canManagePromos: boolean;
     };
   };
+  moderation: {
+    isEnabled: boolean;
+    queue: any[];
+    queueCount: number;
+  };
 }
 
 // Типы действий
@@ -47,7 +51,9 @@ type Action =
   | { type: 'UPDATE_DEAL', payload: Deal }
   | { type: 'DELETE_DEAL', payload: string }
   | { type: 'UPDATE_PROMO', payload: any }
-  | { type: 'DELETE_PROMO', payload: string };
+  | { type: 'DELETE_PROMO', payload: string }
+  | { type: 'SET_MODERATION_ENABLED', payload: boolean }
+  | { type: 'SET_MODERATION_QUEUE', payload: any[] };
 
 // Начальное состояние
 const initialState: GlobalState = {
@@ -74,6 +80,11 @@ const initialState: GlobalState = {
       canManageDeals: false,
       canManagePromos: false
     }
+  },
+  moderation: {
+    isEnabled: true,
+    queue: [],
+    queueCount: 0
   }
 };
 
@@ -113,7 +124,7 @@ const getPermissionsForRole = (role: Role) => {
       canManagePromos: true
     }
   };
-  
+
   return permissions[role];
 };
 

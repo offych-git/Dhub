@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ChevronDown, ArrowUp, ArrowDown, MessageSquare, Calendar, Heart, Share2, ExternalLink, Edit2 } from 'lucide-react';
+import {MessageSquare, Calendar, Heart, Share2, ExternalLink, Edit2 } from 'lucide-react';
 import FilterBar from '../components/shared/FilterBar';
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AdminActions from '../components/admin/AdminActions';
 import { useAdmin } from '../hooks/useAdmin';
 import { useGlobalState } from '../contexts/GlobalStateContext';
+import VoteControls from '../components/deals/VoteControls';
 
 interface PromoCode {
   id: string;
@@ -26,6 +27,7 @@ interface PromoCode {
   votes: number;
   comments: number;
   userVote: boolean | null;
+  status: string | null; // Добавлен статус
 }
 
 const PromosPage: React.FC = () => {
@@ -96,12 +98,20 @@ const PromosPage: React.FC = () => {
   }, [page]);
 
   const fetchPromoCodes = async () => {
-    if (page === 1) {
-      setLoading(true);
-    } else {
-      setIsFetchingMore(true);
-    }
+    setLoading(true);
     try {
+      // Определяем права пользователя
+      let isAdminOrModerator = false;
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_status')
+          .eq('id', user.id)
+          .single();
+
+        isAdminOrModerator = ['admin', 'moderator', 'super_admin'].includes(profile?.user_status);
+      }
+
       let query = supabase
         .from('promo_codes')
         .select(`
@@ -118,12 +128,24 @@ const PromosPage: React.FC = () => {
 
         if (searchTerms.length > 0) {
           query = query.or(
-            searchTerms.map(term => 
+            searchTerms.map(term =>
               `title.ilike.%${term}%,description.ilike.%${term}%,code.ilike.%${term}%`
             ).join(',')
           );
         }
       }
+
+      // Для всех показываем все промокоды, которые не находятся на модерации
+      // (т.е. approved или null), и для пользователя также его собственные промокоды
+      if (!isAdminOrModerator && user) {
+        // Пользователи видят все не-pending промокоды или свои собственные
+        query = query.or(`status.neq.pending,user_id.eq.${user?.id}`);
+      } else if (!isAdminOrModerator && !user) {
+        // Неавторизованные пользователи видят только не-pending промокоды
+        query = query.not('status', 'eq', 'pending');
+      }
+      // Для админов и модераторов показываем все промокоды (фильтрация не применяется)
+
 
       query = query
         .order('created_at', { ascending: false })
@@ -188,79 +210,6 @@ const PromosPage: React.FC = () => {
     }
   };
 
-  const handleVote = async (promoId: string, voteType: boolean) => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
-    try {
-      const promo = promoCodes.find(p => p.id === promoId);
-      if (!promo) return;
-
-      // Сохраняем исходное состояние голоса для логики обновления
-      const previousVote = promo.userVote;
-
-      // Если пользователь нажал на тот же тип голоса, который у него уже активен,
-      // то не выполняем никаких действий (ни в БД, ни в UI)
-      if (previousVote === voteType) {
-        // Ничего не делаем при повторном клике на тот же тип голоса
-        return;
-      } else if (previousVote === null) {
-        // Пользователь голосует впервые
-        await supabase
-          .from('promo_votes')
-          .insert({
-            promo_id: promoId,
-            user_id: user.id,
-            vote_type: voteType
-          });
-
-        // Обновляем промокоды в состоянии
-        setPromoCodes(codes => codes.map(code => {
-          if (code.id === promoId) {
-            return {
-              ...code,
-              votes: code.votes + (voteType ? 1 : -1),
-              userVote: voteType
-            };
-          }
-          return code;
-        }));
-      } else {
-        // Пользователь меняет тип голоса с одного на другой
-        await supabase
-          .from('promo_votes')
-          .update({ vote_type: voteType })
-          .eq('promo_id', promoId)
-          .eq('user_id', user.id);
-
-        // Обновляем промокоды в состоянии
-        setPromoCodes(codes => codes.map(code => {
-          if (code.id === promoId) {
-            // Вычисляем новое значение голосов
-            let newVotes = code.votes;
-
-            if (previousVote === true && voteType === false) {
-              newVotes -= 1; // С положительного на отрицательный (-1)
-            } else if (previousVote === false && voteType === true) {
-              newVotes += 1; // С отрицательного на положительный (+1)
-            }
-
-            return {
-              ...code,
-              votes: newVotes,
-              userVote: voteType
-            };
-          }
-          return code;
-        }));
-      }
-    } catch (err) {
-      console.error('Error updating vote:', err);
-      fetchPromoCodes();
-    }
-  };
 
   const handleCopyCode = (e: React.MouseEvent, code: string, promoId: string) => {
     e.preventDefault();
@@ -390,45 +339,21 @@ const PromosPage: React.FC = () => {
                     <div className="text-gray-400 text-xs">
                       {formatTimeAgo(promo.created_at)}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleVote(promo.id, true);
-                          }}
-                          className={`${promo.userVote === true ? 'text-green-500' : 'text-gray-400'}`}
-                        >
-                          <ArrowUp className="h-4 w-4" />
-                        </button>
-                        <span className={`text-sm font-medium ${promo.votes > 0 ? 'text-green-500' : promo.votes < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                          {promo.votes > 0 ? '+' : ''}{promo.votes}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleVote(promo.id, false);
-                          }}
-                          className={`${promo.userVote === false ? 'text-red-500' : 'text-gray-400'}`}
-                        >
-                          <ArrowDown className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
+                    <VoteControls dealId={promo.id} type="promo" />
                   </div>
 
                   <div className="mb-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-white font-medium text-sm">{promo.title}</h3>
+                    <div className="flex items-center">
+                      <h3 className="text-white font-medium line-clamp-1">{promo.title}</h3>
+                      {promo.status === 'pending' && (
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
+                          На модерации
+                        </span>
+                      )}
                       {promo.expires_at && new Date(promo.expires_at) < new Date() && (
-                        <div className="flex items-center bg-red-500/10 px-2 py-0.5 rounded text-red-500 text-xs font-medium">
-                          <svg className="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
                           Expired
-                        </div>
+                        </span>
                       )}
                     </div>
                   </div>

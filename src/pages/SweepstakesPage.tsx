@@ -4,6 +4,7 @@ import DealCard from '../components/deals/DealCard';
 import { Deal } from '../types';
 import { useGlobalState } from '../contexts/GlobalStateContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext'; // Добавление импорта AuthContext
 import { useSearchParams, useLocation } from 'react-router-dom';
 
 const formatRelativeTime = (date: Date) => {
@@ -30,6 +31,7 @@ const SweepstakesPage: React.FC = () => {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const location = useLocation();
   const { t } = useLanguage();
+  const { user } = useAuth(); // Получение пользователя из контекста
 
   const { state, dispatch, refreshDeals } = useGlobalState();
   const [sweepstakes, setSweepstakes] = useState<Deal[]>([]);
@@ -89,6 +91,28 @@ const SweepstakesPage: React.FC = () => {
         .order('updated_at', { ascending: false })
         .limit(100)
         .range((page - 1) * 100, page * 100 -1); //Added pagination
+        
+      // Проверяем права пользователя
+      let isAdminOrModerator = false;
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_status')
+          .eq('id', user.id)
+          .single();
+
+        isAdminOrModerator = ['admin', 'moderator', 'super_admin'].includes(profile?.user_status);
+      }
+      
+      // Применяем фильтрацию модерации
+      if (!isAdminOrModerator && user) {
+        // Пользователи видят все не-pending розыгрыши или свои собственные
+        query = query.or(`status.neq.pending,user_id.eq.${user?.id}`);
+      } else if (!isAdminOrModerator && !user) {
+        // Неавторизованные пользователи видят только не-pending розыгрыши
+        query = query.not('status', 'eq', 'pending');
+      }
+      // Для админов и модераторов показываем все розыгрыши
 
       console.log(`Загрузка розыгрышей с параметром cache_invalidator=${cacheInvalidator}`);
 

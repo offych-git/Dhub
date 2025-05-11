@@ -31,6 +31,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         return t('navigation.notificationSettings');
       case '/sweepstakes':
         return 'Sweepstakes';
+      case '/moderation':
+        return t('navigation.moderation');
+      case '/moderation/settings':
+        return t('navigation.moderation');
       default:
         return t('navigation.deals');
     }
