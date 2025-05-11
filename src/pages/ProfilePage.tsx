@@ -8,11 +8,16 @@ import { useModeration } from '../contexts/ModerationContext';
 
 // Компонент для отображения количества элементов в очереди модерации
 const ModerationCount: React.FC = () => {
-  const { queueCount } = useModeration();
-  
+  const { queueCount, isLoading, loadModerationQueue } = useModeration();
+
+  useEffect(() => {
+    // При монтировании компонента загружаем данные очереди модерации
+    loadModerationQueue();
+  }, [loadModerationQueue]);
+
   return (
     <span className="ml-auto text-gray-400">
-      {queueCount > 0 ? queueCount : 0}
+      {isLoading ? '...' : (queueCount > 0 ? queueCount : 0)}
     </span>
   );
 };
@@ -383,19 +388,22 @@ const ProfilePage: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-xs text-gray-400">
-                  {(() => {
-                    const totalContributions = stats.dealsCount + stats.commentsCount;
-                    if (userStatus === 'Admin' || userStatus === 'Moderator') {
-                      return 'Special status';
-                    } else if (userStatus === 'Deal Master') {
-                      return `${totalContributions}/1000+ contributions`;
-                    } else {
-                      const nextThreshold = totalContributions < 50 ? 50 
-                        : totalContributions < 100 ? 100
-                        : totalContributions < 150 ? 150
-                        : totalContributions < 500 ? 500
-                        : totalContributions < 1000 ? 1000
-                        : 1000;
+                      {(() => {
+                        const totalContributions = stats.dealsCount + stats.commentsCount;
+                        if (userStatus === 'Admin' || userStatus === 'Moderator') {
+                          return <>
+                            Special status 
+                            <ModerationCount />
+                          </>;
+                        } else if (userStatus === 'Deal Master') {
+                          return `${totalContributions}/1000+ contributions`;
+                        } else {
+                          const nextThreshold = totalContributions < 50 ? 50 
+                            : totalContributions < 100 ? 100
+                            : totalContributions < 150 ? 150
+                            : totalContributions < 500 ? 500
+                            : totalContributions < 1000 ? 1000
+                            : 1000;
                       const progress = Math.min(100, (totalContributions / nextThreshold) * 100);
                       return `${totalContributions}/${nextThreshold} contributions (${Math.floor(progress)}%)`;
                     }

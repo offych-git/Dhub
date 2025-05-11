@@ -16,6 +16,7 @@ import { createPortal } from 'react-dom';
 import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomSheet';
 import StoreBottomSheet from '../components/deals/StoreBottomSheet';
 import { useGlobalState } from '../contexts/GlobalStateContext'; // Import useGlobalState
+import { useModeration } from '../contexts/ModerationContext';
 
 interface ImageWithId {
   file: File;
@@ -54,6 +55,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
   const [dealImages, setDealImages] = useState<ImageWithId[]>([]);
   // В новой системе нам не нужен активный индекс, так как первое изображение всегда главное
   const [mainImageIndex, setMainImageIndex] = useState(0); // Оставляем для совместимости с существующим кодом
+  const { addToModerationQueue } = useModeration();
 
   // Загрузка существующих изображений при редактировании
   useEffect(() => {
@@ -435,6 +437,11 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
         }
 
         navigate(`/deals/${deal.id}`);
+         // Добавляем новую сделку в очередь модерации
+         if (deal && deal.id) {
+          console.log('Добавляем сделку в очередь модерации:', deal.id);
+          await addToModerationQueue(deal.id, 'deal');
+        }
       }
     } catch (error) {
       console.error('Error in handleSubmit:', error);

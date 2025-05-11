@@ -117,7 +117,15 @@ const DealsPage: React.FC = () => {
         .not('type', 'eq', 'sweepstakes')  // Exclude sweepstakes
         .order('updated_at', { ascending: false })  // Сначала недавно обновленные
         .limit(100);  // Увеличиваем лимит для получения большего объема данных
-        
+
+      // Сначала проверим, какие статусы есть в базе
+      const { data: statusCheck } = await supabase
+        .from('deals')
+        .select('status')
+        .limit(10);
+
+      console.log("Доступные статусы в базе:", statusCheck?.map(d => d.status));
+
       // Проверяем права пользователя
       let isAdminOrModerator = false;
       if (user) {
@@ -129,16 +137,25 @@ const DealsPage: React.FC = () => {
 
         isAdminOrModerator = ['admin', 'moderator', 'super_admin'].includes(profile?.user_status);
       }
-      
-      // Применяем фильтрацию модерации для обычных пользователей
-      if (!isAdminOrModerator && user) {
-        // Пользователи видят все не-pending сделки или свои собственные
-        query = query.or(`status.neq.pending,user_id.eq.${user?.id}`);
-      } else if (!isAdminOrModerator && !user) {
-        // Неавторизованные пользователи видят только не-pending сделки
-        query = query.not('status', 'eq', 'pending');
+
+      // Apply moderation filtering
+      if (user) {
+        if (isAdminOrModerator) {
+          // Для админов и модераторов показываем все сделки
+          console.log("Пользователь админ/модератор - показываем все сделки");
+        } else {
+          // Обычные пользователи видят опубликованные сделки + свои собственные на модерации
+          console.log("Обычный пользователь - показываем опубликованные сделки + свои собственные");
+          // Используем правильный статус published вместо approved
+          const publishedFilter = "status.eq.published";
+          const userOwnedFilter = `user_id.eq.${user.id}`;
+          query = query.or(`${publishedFilter},${userOwnedFilter}`);
+        }
+      } else {
+        // Неавторизованные пользователи видят опубликованные сделки
+        console.log("Неавторизованный пользователь - показываем опубликованные сделки");
+        query = query.eq('status', 'published');
       }
-      // Для админов и модераторов показываем все сделки
 
       console.log(`Загрузка данных с параметром cache_invalidator=${cacheInvalidator}`);
 
@@ -328,17 +345,17 @@ const DealsPage: React.FC = () => {
   } else if (activeTab === 'free') {
     // Фильтруем и показываем только бесплатные скидки (currentPrice = 0)
     console.log("Обработка FREE скидок, всего скидок:", dbDeals.length);
-    
+
     // Фильтруем скидки с ценой 0
     const freeDeals = dbDeals.filter(deal => deal.currentPrice === 0);
-    
+
     // Сортируем по дате создания (новые сверху)
     freeDeals.sort((a, b) => {
       const dateA = a.createdAt || new Date(0);
       const dateB = b.createdAt || new Date(0);
       return dateB.getTime() - dateA.getTime();
     });
-    
+
     displayDeals = freeDeals;
     console.log("Найдено FREE скидок:", displayDeals.length);
   }

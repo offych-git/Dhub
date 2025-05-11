@@ -29,13 +29,36 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
   const [commentCount, setCommentCount] = useState(deal.comments);
   const isOwnDeal = user && deal.postedBy.id === user.id;
   const [searchParams] = useSearchParams(); // Added useSearchParams hook
+  const [dealStatus, setDealStatus] = useState<string>(deal.status || 'approved');
 
   useEffect(() => {
     if (user) {
       loadFavoriteStatus();
     }
     loadCommentCount();
+    
+    // Получаем актуальный статус сделки
+    if (deal.id) {
+      loadDealStatus();
+    }
   }, [user, deal.id]);
+  
+  // Загрузка статуса сделки
+  const loadDealStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('status')
+        .eq('id', deal.id)
+        .single();
+        
+      if (!error && data) {
+        setDealStatus(data.status);
+      }
+    } catch (err) {
+      console.error('Error loading deal status:', err);
+    }
+  };
 
   const loadFavoriteStatus = async () => {
     try {
@@ -200,6 +223,16 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
               Expired
             </div>
           )}
+          
+          {/* Показываем плашку модерации для создателя */}
+          {isOwnDeal && dealStatus === 'pending' && (
+            <div className="flex items-center bg-yellow-500/20 px-2 py-1 rounded-md text-yellow-500 font-medium mt-1">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              На модерации
+            </div>
+          )}
         </div>
       </div>
 
@@ -240,12 +273,12 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
                 // Формируем URL для конкретного предложения
                 const dealUrl = `${window.location.origin}/deals/${deal.id}`;
                 const shareTitle = `${cleanTitle}${cleanStoreName ? ` - ${cleanStoreName}` : ''}`;
-                
+
                 try {
                   // Определяем устройство и браузер для разных стратегий sharing
                   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                   const isChrome = /Chrome/i.test(navigator.userAgent) && !/Edge|Edg/i.test(navigator.userAgent);
-                  
+
                   if (isMobile) {
                     // На мобильных используем только text без url параметра, чтобы избежать дублирования
                     navigator.share({

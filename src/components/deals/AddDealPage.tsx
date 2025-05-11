@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useModeration } from '../../contexts/ModerationContext';
 import StoreBottomSheet from './StoreBottomSheet';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -443,6 +444,9 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
 
               console.log('Отправляем данные сделки:', dealData);
 
+              // Импортируем хук модерации для использования в компоненте
+              const { addToModerationQueue } = useModeration();
+              
               let imageUrl = null;
 
               // Загрузка изображения, если оно выбрано
@@ -499,8 +503,16 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
 
               console.log('Сделка успешно сохранена!', result);
 
-              console.log('Сделка успешно сохранена, перенаправление...');
+              // Добавляем сделку в очередь модерации, если это новая сделка
+              if (!isEditing) {
+                const newDealId = result.data?.[0]?.id;
+                if (newDealId) {
+                  console.log('Добавляем сделку в очередь модерации:', newDealId);
+                  await addToModerationQueue(newDealId, 'deal');
+                }
+              }
 
+              console.log('Сделка успешно сохранена, перенаправление...');
 
             } catch (err) {
               console.error('Ошибка при сохранении:', err);

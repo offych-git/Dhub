@@ -11,6 +11,7 @@ import { useAdmin } from '../hooks/useAdmin'; // Fixed import path for useAdmin 
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 import StoreBottomSheet from '../components/deals/StoreBottomSheet';
+import { useModeration } from '../contexts/ModerationContext';
 
 interface AddSweepstakesPageProps {
   isEditing?: boolean;
@@ -35,6 +36,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
   const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
   const [sweepstakesImage, setSweepstakesImage] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(initialData?.image || null);
+  const { addToModerationQueue } = useModeration();
 
   const editor = useEditor({
     extensions: [
@@ -295,7 +297,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       };
 
       let data, error;
-      
+
       if (isEditing && sweepstakesId) {
         console.log("Обновление существующего розыгрыша:", sweepstakesId);
         // Обновляем существующий розыгрыш
@@ -305,14 +307,14 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
           .eq('id', sweepstakesId)
           .select()
           .single();
-          
+
         data = updatedData;
         error = updateError;
-        
+
         if (error) {
           throw new Error(`Failed to update sweepstakes: ${error.message}`);
         }
-        
+
         console.log("Розыгрыш успешно обновлен:", data);
       } else {
         // Создаем новый розыгрыш
@@ -321,10 +323,10 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
           .insert(sweepstakesData)
           .select()
           .single();
-          
+
         data = newData;
         error = insertError;
-        
+
         if (error) {
           throw new Error(`Failed to create sweepstakes: ${error.message}`);
         }
@@ -795,7 +797,8 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
             transform: translate(-50%, -50%);
             width: 40px;
             height: 40px;
-            background-color: #ef4444;
+            background-color: #ef4444;The code implements moderation queue addition during sweepstakes creation.
+``````text
             border-radius: 50%;
             display: flex;
             align-items: center;

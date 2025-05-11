@@ -242,9 +242,11 @@ const ModerationPage: React.FC = () => {
                       </div>
                     )}
 
-                    <p className="text-gray-700 mb-3 text-sm line-clamp-3">
-                      {item.content.description}
-                    </p>
+                    <div className="text-gray-700 mb-3 text-sm line-clamp-3 overflow-hidden">
+                      {typeof item.content.description === 'string' 
+                        ? item.content.description.replace(/<[^>]*>/g, '') 
+                        : ''}
+                    </div>
 
                     {item.item_type === 'deal' && (
                       <div className="flex items-baseline gap-2 mb-3">

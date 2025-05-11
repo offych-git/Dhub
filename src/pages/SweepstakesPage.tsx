@@ -91,7 +91,7 @@ const SweepstakesPage: React.FC = () => {
         .order('updated_at', { ascending: false })
         .limit(100)
         .range((page - 1) * 100, page * 100 -1); //Added pagination
-        
+
       // Проверяем права пользователя
       let isAdminOrModerator = false;
       if (user) {
@@ -103,16 +103,25 @@ const SweepstakesPage: React.FC = () => {
 
         isAdminOrModerator = ['admin', 'moderator', 'super_admin'].includes(profile?.user_status);
       }
-      
-      // Применяем фильтрацию модерации
-      if (!isAdminOrModerator && user) {
-        // Пользователи видят все не-pending розыгрыши или свои собственные
-        query = query.or(`status.neq.pending,user_id.eq.${user?.id}`);
-      } else if (!isAdminOrModerator && !user) {
-        // Неавторизованные пользователи видят только не-pending розыгрыши
-        query = query.not('status', 'eq', 'pending');
+
+      // Apply moderation filtering
+      if (user) {
+        if (isAdminOrModerator) {
+          // Show all sweepstakes to admins and moderators
+          console.log("User is admin/moderator - showing all sweepstakes");
+        } else {
+          // Обычные пользователи видят опубликованные розыгрыши + свои собственные, находящиеся на модерации
+          console.log("Обычный пользователь - показываем опубликованные розыгрыши + свои собственные");
+          // Используем правильный статус published вместо approved
+          const publishedFilter = "status.eq.published";
+          const userOwnedFilter = `user_id.eq.${user.id}`;
+          query = query.or(`${publishedFilter},${userOwnedFilter}`);
+        }
+      } else {
+        // Неавторизованные пользователи видят только опубликованные розыгрыши
+        console.log("Неавторизованный пользователь - показываем опубликованные розыгрыши");
+        query = query.eq('status', 'published');
       }
-      // Для админов и модераторов показываем все розыгрыши
 
       console.log(`Загрузка розыгрышей с параметром cache_invalidator=${cacheInvalidator}`);
 
