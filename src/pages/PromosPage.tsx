@@ -8,6 +8,7 @@ import AdminActions from '../components/admin/AdminActions';
 import { useAdmin } from '../hooks/useAdmin';
 import { useGlobalState } from '../contexts/GlobalStateContext';
 import VoteControls from '../components/deals/VoteControls';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface PromoCode {
   id: string;
@@ -34,6 +35,7 @@ const PromosPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { role } = useAdmin();
+  const { t } = useLanguage();
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -354,12 +356,12 @@ const PromosPage: React.FC = () => {
                       <h3 className="text-white font-medium line-clamp-1">{promo.title}</h3>
                       {promo.status === 'pending' && (
                         <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
-                          На модерации
+                          {t('common.statusPending')}
                         </span>
                       )}
                       {promo.status === 'rejected' && (
                         <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
-                          Отклонено
+                          {t('common.statusRejected')}
                         </span>
                       )}
                       {promo.expires_at && new Date(promo.expires_at) < new Date() && (
@@ -471,7 +473,7 @@ const PromosPage: React.FC = () => {
                       {promo.status === 'pending' && (
                         <div className="ml-3 text-yellow-500 flex items-center text-xs">
                           <Clock className="h-3 w-3 mr-1" />
-                          На модерации
+                          {t('common.statusPending')}
                         </div>
                       )}
                       {(role === 'admin' || role === 'moderator' || (user && user.id === promo.user.id)) && (

@@ -3,6 +3,7 @@ import { useModeration } from '../contexts/ModerationContext';
 import { useAdmin } from '../hooks/useAdmin';
 import { CheckCircle, XCircle, MessageSquare, Loader, AlertCircle, Settings, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 const ModerationPage: React.FC = () => {
   const { 
@@ -52,6 +53,10 @@ const ModerationPage: React.FC = () => {
     if (item.status !== 'pending') {
       return false;
     }
+    // Проверяем статус в контенте, если он доступен
+    if (item.content && (item.content.status === 'rejected' || item.content.status === 'deleted')) {
+      return false;
+    }
     return true;
   });
 
@@ -67,20 +72,72 @@ const ModerationPage: React.FC = () => {
   const handleReject = async (itemId: string, itemType: string) => {
     if (showCommentInput === itemId) {
       try {
+        // Проверяем, если кнопка уже в процессе загрузки, не делаем повторный запрос
+        if (isRejectLoading) return;
+        
         setIsLoading(true);
-        const success = await rejectModerationItem(itemId, itemType, rejectionComment);
-        if (success) {
-          alert('Элемент успешно отклонен и скрыт со страницы промокодов.');
+        console.log(`Отклонение элемента ID: ${itemId}, тип: ${itemType}`);
+        
+        // Отладочная информация для проверки правильности данных
+        if (itemType === 'promo') {
+          console.log('Отклонение промокода. Проверяем наличие записи в promo_codes:');
+          const { data, error } = await supabase
+            .from('promo_codes')
+            .select('*')
+            .eq('id', itemId)
+            .single();
+            
+          if (error) {
+            console.error('Ошибка при проверке промокода:', error);
+          } else {
+            console.log('Найденный промокод в базе:', data);
+            
+            // Если статус уже rejected, не делаем повторный запрос
+            if (data.status === 'rejected') {
+              console.log('Промокод уже отклонен, пропускаем обновление');
+              
+              // Обновляем UI
+              setModerationQueue(prev => 
+                prev.filter(item => !(item.item_id === itemId && item.item_type === itemType))
+              );
+              
+              setShowCommentInput(null);
+              setRejectionComment('');
+              
+              alert('Элемент уже был отклонен.');
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
+        
+        try {
+          // Запомним isLoading, чтобы не показывать сообщение об ошибке при повторном отклонении
+          const wasLoading = isRejectLoading;
+          const success = await rejectModerationItem(itemId, itemType, rejectionComment);
           
-          // Скрываем элемент из локального списка для мгновенного обновления UI
-          // (основное обновление уже происходит в ModerationContext)
-          setModerationQueue(prev => 
-            prev.filter(item => !(item.item_id === itemId && item.item_type === itemType))
-          );
-          
-          setShowCommentInput(null);
-          setRejectionComment('');
-        } else {
+          if (success) {
+            console.log(`Успешно отклонен элемент ${itemId} типа ${itemType}`);
+            
+            // Скрываем элемент из локального списка для мгновенного обновления UI
+            setModerationQueue(prev => 
+              prev.filter(item => !(item.item_id === itemId && item.item_type === itemType))
+            );
+            
+            // Сбрасываем состояние ввода
+            setShowCommentInput(null);
+            setRejectionComment('');
+            
+            // Показываем сообщение об успешном отклонении, только если это не был повторный запрос
+            if (!wasLoading) {
+              alert('Элемент успешно отклонен и скрыт со страницы.');
+            }
+          } else {
+            alert('Произошла ошибка при отклонении элемента.');
+          }
+        } catch (rejectError) {
+          console.error('Ошибка при выполнении rejectModerationItem:', rejectError);
+          // Скрываем технические детали ошибки от пользователя
           alert('Произошла ошибка при отклонении элемента.');
         }
       } catch (error) {
@@ -108,7 +165,7 @@ const ModerationPage: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Модерация контента</h1>
-          <p className="text-gray-600 text-sm">Элементов в очереди: {queueCount || filteredQueue.length}</p>
+          <p className="text-gray-600 text-sm">Элементов в очереди: {filteredQueue.length}</p>
         </div>
 
         {(role === 'admin' || role === 'super_admin') && (

@@ -28,7 +28,9 @@ export const translations = {
       deal: 'Deal',
       promoCode: 'Promo Code',
       items: 'items',
-      no_items_in_category: 'No items in selected category'
+      no_items_in_category: 'No items in selected category',
+      statusPending: 'Pending Review',
+      statusRejected: 'Rejected'
     },
     auth: {
       signIn: 'Sign In',
@@ -78,7 +80,9 @@ export const translations = {
       deal: 'Скидку',
       promoCode: 'Промокод',
       items: 'товаров',
-      no_items_in_category: 'Нет элементов в выбранной категории'
+      no_items_in_category: 'Нет элементов в выбранной категории',
+      statusPending: 'На модерации',
+      statusRejected: 'Отклонен'
     },
     auth: {
       signIn: 'Войти',
@@ -128,7 +132,9 @@ export const translations = {
       deal: 'Oferta',
       promoCode: 'Código Promo',
       items: 'items',
-      no_items_in_category: 'No hay elementos en la categoría seleccionada'
+      no_items_in_category: 'No hay elementos en la categoría seleccionada',
+      statusPending: 'Pendiente de revisión',
+      statusRejected: 'Rechazado'
     },
     auth: {
       signIn: 'Iniciar Sesión',

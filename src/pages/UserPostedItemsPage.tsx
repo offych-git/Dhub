@@ -194,7 +194,7 @@ const UserPostedItemsPage: React.FC = () => {
         .from('promo_codes')
         .select(`
           *,
-          profiles:profiles!promo_codes_user_id_fkey (
+          profiles!promo_codes_user_id_fkey (
             id,
             email,
             display_name
@@ -376,6 +376,11 @@ const UserPostedItemsPage: React.FC = () => {
                         {promo.status === 'pending' && (
                           <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
                             На модерации
+                          </span>
+                        )}
+                        {promo.status === 'rejected' && (
+                          <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
+                            Отклонен
                           </span>
                         )}
                       </div>

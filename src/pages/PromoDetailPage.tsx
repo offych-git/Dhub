@@ -91,7 +91,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
         .from('promo_codes')
         .select(`
           *,
-          profiles (
+          profiles!promo_codes_user_id_fkey (
             id,
             email,
             display_name
@@ -130,7 +130,7 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
       .from('promo_comments')
       .select(`
         *,
-        profiles (
+        profiles!promo_comments_user_id_fkey (
           id,
           email,
           display_name

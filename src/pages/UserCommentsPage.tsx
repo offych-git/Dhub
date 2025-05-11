@@ -261,7 +261,7 @@ const UserCommentsPage: React.FC = () => {
           *,
           promo_codes (
             *,
-            profiles (
+            profiles!promo_codes_user_id_fkey (
               id,
               email,
               display_name

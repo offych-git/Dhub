@@ -4,6 +4,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAdmin } from '../hooks/useAdmin';
+import { useModeration } from '../contexts/ModerationContext';
+
+// Компонент для отображения количества элементов в очереди модерации
+const ModerationCount: React.FC = () => {
+  const { queueCount } = useModeration();
+  
+  return (
+    <span className="ml-auto text-gray-400">
+      {queueCount > 0 ? queueCount : 0}
+    </span>
+  );
+};
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
@@ -451,6 +463,7 @@ const ProfilePage: React.FC = () => {
                   >
                     Модерация
                   </button>
+                  <ModerationCount />
                 </div>
               )}
             </div>

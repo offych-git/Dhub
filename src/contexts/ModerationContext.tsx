@@ -215,9 +215,26 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
           }
 
-          // Добавляем только если элемент существует
-          if (contentData) {
+          // Добавляем только если элемент существует и его статус не rejected или deleted
+          if (contentData && contentData.status !== 'rejected' && contentData.status !== 'deleted') {
             enrichedQueue.push({ ...item, content: contentData });
+          } else if (contentData && (contentData.status === 'rejected' || contentData.status === 'deleted')) {
+            console.log(`Элемент ${item.item_id} типа ${item.item_type} уже имеет статус ${contentData.status}, автоматически обновляем очередь модерации`);
+            
+            // Обновляем статус в moderation_queue, чтобы он соответствовал статусу в основной таблице
+            const { error: queueError } = await supabase
+              .from('moderation_queue')
+              .update({
+                status: contentData.status,
+                moderator_id: contentData.moderator_id || user?.id,
+                moderated_at: contentData.moderated_at || new Date().toISOString()
+              })
+              .eq('item_id', item.item_id)
+              .eq('item_type', item.item_type);
+              
+            if (queueError) {
+              console.error(`Ошибка при обновлении статуса в очереди модерации:`, queueError);
+            }
           }
         } catch (itemError) {
           console.error(`Ошибка при загрузке контента для элемента ${item.item_id}:`, itemError);
@@ -288,13 +305,38 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       setIsLoading(true);
 
-      // 1. Update the item status
+      // 1. Update the item status in the appropriate table
       let tableName = '';
       if (itemType === 'deal' || itemType === 'sweepstake') {
         tableName = 'deals';
       } else if (itemType === 'promo') {
         tableName = 'promo_codes';
+        
+        // Дополнительная проверка существования записи перед обновлением
+        const { data: checkData, error: checkError } = await supabase
+          .from('promo_codes')
+          .select('id, status')
+          .eq('id', itemId)
+          .single();
+          
+        if (checkError) {
+          console.error('Ошибка при проверке существования промокода:', checkError);
+          throw new Error(`Промокод с ID ${itemId} не найден`);
+        }
+        
+        // Если промокод уже отклонен, просто обновим UI и вернем true
+        if (checkData && checkData.status === 'rejected') {
+          console.log(`Промокод ${itemId} уже имеет статус rejected, обновляем только UI`);
+          
+          // Обновляем очередь модерации
+          await loadModerationQueue();
+          return true;
+        }
+        
+        console.log('Текущее состояние промокода перед обновлением:', checkData);
       }
+      
+      console.log(`rejectModerationItem - таблица для обновления: ${tableName} для типа: ${itemType}`);
 
       // Подготовка объекта обновления
       const updateObject: any = {
@@ -304,14 +346,52 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         moderated_at: new Date().toISOString()
       };
 
-      const { error: updateError } = await supabase
+      console.log(`Updating ${tableName} with ID ${itemId} to status rejected`);
+      
+      // Обновляем запись с измененным запросом
+      const { data: updateData, error: updateError } = await supabase
         .from(tableName)
         .update(updateObject)
-        .eq('id', itemId);
+        .match({ id: itemId })  // Используем match вместо eq для более точного соответствия
+        .select();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error(`Error updating ${tableName}:`, updateError);
+        throw updateError;
+      }
+      
+      console.log(`Результат обновления ${tableName}:`, updateData);
+      
+      // Если обновление не затронуло ни одной записи, попробуем принудительное обновление
+      if (!updateData || updateData.length === 0) {
+        console.error(`Запись не найдена в таблице ${tableName} с id=${itemId}, пробуем альтернативный метод`);
+        
+        // Пробуем альтернативный метод обновления
+        const { data: altUpdateData, error: altUpdateError } = await supabase.rpc(
+          'update_promo_status', 
+          { 
+            promo_id: itemId,
+            new_status: 'rejected',
+            moderator_user_id: user?.id || null,
+            mod_comment: comment || ''
+          }
+        );
+        
+        if (altUpdateError) {
+          console.error(`Ошибка альтернативного обновления:`, altUpdateError);
+          throw altUpdateError;
+        }
+        
+        console.log(`Результат альтернативного обновления:`, altUpdateData);
+        
+        if (!altUpdateData) {
+          throw new Error(`Невозможно обновить запись в таблице ${tableName}`);
+        }
+      }
 
       // 2. Update the queue item
+      console.log(`Updating moderation_queue for item ${itemId} of type ${itemType} to status rejected`);
+      
       const { error: queueError } = await supabase
         .from('moderation_queue')
         .update({
@@ -323,7 +403,10 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         .eq('item_id', itemId)
         .eq('item_type', itemType);
 
-      if (queueError) throw queueError;
+      if (queueError) {
+        console.error('Error updating moderation_queue:', queueError);
+        throw queueError;
+      }
 
       // 3. Обновляем локальное состояние очереди модерации без запроса к серверу
       // Это позволит мгновенно обновить UI
@@ -334,6 +417,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 4. Уменьшаем счетчик элементов в очереди
       setQueueCount(prev => Math.max(0, prev - 1));
 
+      console.log(`Successfully rejected item ${itemId} of type ${itemType}`);
       return true;
     } catch (error) {
       console.error('Error rejecting item:', error);
