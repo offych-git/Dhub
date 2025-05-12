@@ -61,11 +61,50 @@ const ModerationPage: React.FC = () => {
   });
 
   const handleApprove = async (itemId: string, itemType: string) => {
-    const success = await approveModerationItem(itemId, itemType);
-    if (success) {
-      alert('Элемент успешно одобрен и опубликован!');
-    } else {
-      alert('Произошла ошибка при одобрении элемента');
+    try {
+      console.log(`Начало процесса одобрения элемента ID: ${itemId}, тип: ${itemType}`);
+      
+      // Проверка существования элемента перед одобрением
+      let tableName = '';
+      if (itemType === 'deal' || itemType === 'sweepstake') {
+        tableName = 'deals';
+      } else if (itemType === 'promo') {
+        tableName = 'promo_codes';
+      }
+      
+      if (tableName) {
+        const { data, error } = await supabase
+          .from(tableName)
+          .select('id, status')
+          .eq('id', itemId)
+          .single();
+          
+        if (error) {
+          console.error(`Ошибка при проверке элемента перед одобрением:`, error);
+        } else {
+          console.log(`Текущее состояние элемента: ${data?.status}`);
+        }
+      }
+      
+      // Вызов функции одобрения из контекста
+      const success = await approveModerationItem(itemId, itemType);
+      
+      if (success) {
+        console.log(`Элемент успешно одобрен, обновляем UI`);
+        
+        // Удаляем элемент из локального состояния для мгновенного обновления UI
+        setModerationQueue(prev => 
+          prev.filter(item => !(item.item_id === itemId && item.item_type === itemType))
+        );
+        
+        alert('Элемент успешно одобрен и опубликован!');
+      } else {
+        console.error(`Ошибка при одобрении элемента ${itemId}`);
+        alert('Произошла ошибка при одобрении элемента');
+      }
+    } catch (error) {
+      console.error('Ошибка в handleApprove:', error);
+      alert('Произошла неожиданная ошибка при одобрении элемента');
     }
   };
 

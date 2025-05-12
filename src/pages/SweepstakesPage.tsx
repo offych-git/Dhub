@@ -81,7 +81,7 @@ const SweepstakesPage: React.FC = () => {
         .from('deals')
         .select(`
           *,
-          profiles (
+          profiles:user_id (
             id,
             email,
             display_name
