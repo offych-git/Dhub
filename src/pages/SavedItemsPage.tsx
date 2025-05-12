@@ -70,7 +70,7 @@ const SavedItemsPage: React.FC = () => {
                     .from('deals')
                     .select(`
             *,
-            profiles (
+            profiles!deals_user_id_fkey (
               id,
               email,
               display_name

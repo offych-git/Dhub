@@ -108,7 +108,7 @@ const DealsPage: React.FC = () => {
         .from('deals')
         .select(`
           *,
-          profiles:user_id (
+          profiles!deals_user_id_fkey (
             id,
             email,
             display_name

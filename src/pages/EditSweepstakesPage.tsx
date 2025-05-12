@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import AddSweepstakesPage from './AddSweepstakesPage';
@@ -44,7 +43,7 @@ const EditSweepstakesPage: React.FC = () => {
           .from('deals')
           .select(`
             *,
-            profiles(id, email, display_name)
+            profiles:user_id(id, email, display_name)
           `)
           .eq('id', id)
           .eq('type', 'sweepstakes') // Уточняем, что нужен розыгрыш

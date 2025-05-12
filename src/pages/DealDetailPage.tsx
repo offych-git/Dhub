@@ -162,7 +162,7 @@ const DealDetailPage: React.FC = () => {
                 .from('deals')
                 .select(`
           *,
-          profiles(id, email)
+          profiles:user_id(id, email)
         `)
                 .eq('id', id)
                 .maybeSingle();

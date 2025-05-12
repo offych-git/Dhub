@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import VoteControls from '../components/deals/VoteControls';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -102,7 +101,7 @@ const CategoryItemsPage: React.FC = () => {
         .from('deals')
         .select(`
           *,
-          profiles (
+          profiles!deals_user_id_fkey (
             id,
             email,
             display_name

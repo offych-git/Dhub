@@ -133,7 +133,7 @@ const SweepstakesDetailPage: React.FC = () => {
                 .from('deals')
                 .select(`
           *,
-          profiles(id, email, display_name)
+          profiles:user_id(id, email, display_name)
         `)
                 .eq('id', id)
                 .eq('type', 'sweepstakes')
@@ -184,7 +184,7 @@ const SweepstakesDetailPage: React.FC = () => {
             .from('deal_comments')
             .select(`
         *,
-        profiles(id, email, display_name)
+        profiles:user_id(id, email, display_name)
       `)
             .eq('deal_id', id);
 
