@@ -162,7 +162,7 @@ const DealDetailPage: React.FC = () => {
                 .from('deals')
                 .select(`
           *,
-          profiles:user_id(id, email)
+          profiles:profiles!deals_user_id_fkey(id, email, display_name)
         `)
                 .eq('id', id)
                 .maybeSingle();
@@ -190,6 +190,7 @@ const DealDetailPage: React.FC = () => {
                 additional_images: data.additional_images || [], // Явно передаем дополнительные изображения
                 description: data.description,
                 url: data.deal_url,
+                expires_at: data.expires_at,
                 postedAt: new Date(data.created_at).toLocaleDateString(),
                 postedBy: {
                     id: data.profiles?.id || 'anonymous',
@@ -760,27 +761,38 @@ const DealDetailPage: React.FC = () => {
                     </div>
                 )}
 
-                <div className="mt-3 flex items-center">
-          <span className="text-orange-500 font-bold text-2xl">
-            {deal.currentPrice === 0 ? (
-                <span
-                    className="px-4 py-1.5 bg-orange-500/20 text-orange-500 rounded-md text-xl font-semibold">FREE</span>
-            ) : (
-                `$${deal.currentPrice.toFixed(2)}`
-            )}
-          </span>
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="text-orange-500 font-bold text-2xl">
+                      {deal.currentPrice === 0 ? (
+                          <span
+                              className="px-4 py-1.5 bg-orange-500/20 text-orange-500 rounded-md text-xl font-semibold">FREE</span>
+                      ) : (
+                          `$${deal.currentPrice.toFixed(2)}`
+                      )}
+                    </span>
 
                     {deal.originalPrice && (
                         <span className="ml-3 text-gray-400 line-through text-base">
-              ${deal.originalPrice.toFixed(2)}
-            </span>
+                          ${deal.originalPrice.toFixed(2)}
+                        </span>
                     )}
 
                     {discountPercent > 0 && (
                         <span className="ml-2 text-green-500 text-base">
-              (-{discountPercent}%)
-            </span>
+                          (-{discountPercent}%)
+                        </span>
                     )}
+                  </div>
+
+                  {deal.expires_at && (
+                    <div className={`flex items-center ${isExpired ? 'text-red-500' : 'text-gray-400'} font-medium`}>
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {isExpired ? 'Expired' : `Expires: ${new Date(deal.expires_at).toLocaleDateString()}`}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-2 flex items-center justify-between">
@@ -790,6 +802,8 @@ const DealDetailPage: React.FC = () => {
 
                     <VoteControls dealId={deal.id}/>
                 </div>
+
+
 
                 {user ? (
                     <a

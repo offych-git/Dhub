@@ -125,6 +125,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
     : 0;
 
   const isExpired = deal.expires_at && new Date(deal.expires_at) < new Date();
+  const expiryDate = deal.expires_at ? new Date(deal.expires_at).toLocaleDateString() : null;
 
   return (
     <div className="block border-b border-gray-800 px-4 py-2.5">
@@ -159,29 +160,40 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
             {searchParams.get('q') ? highlightText(deal.title, searchParams.get('q') || '') : deal.title}
           </h3>
 
-          <div className="mt-1 flex items-center">
-            {!hideFreeLabel && (
-              <>
-                <span className="text-orange-500 font-bold text-base">
-                  {deal.currentPrice === 0 ? (
-                    <span className="px-2.5 py-1 bg-orange-500/20 text-orange-500 rounded-md text-sm font-semibold">FREE</span>
-                  ) : (
-                    `$${deal.currentPrice.toFixed(2)}`
+          <div className="mt-1 flex items-center justify-between">
+            <div className="flex items-center">
+              {!hideFreeLabel && (
+                <>
+                  <span className="text-orange-500 font-bold text-base">
+                    {deal.currentPrice === 0 ? (
+                      <span className="px-2.5 py-1 bg-orange-500/20 text-orange-500 rounded-md text-sm font-semibold">FREE</span>
+                    ) : (
+                      `$${deal.currentPrice.toFixed(2)}`
+                    )}
+                  </span>
+
+                  {deal.originalPrice && (
+                    <span className="ml-2 text-gray-400 line-through text-xs">
+                      ${deal.originalPrice.toFixed(2)}
+                    </span>
                   )}
-                </span>
 
-                {deal.originalPrice && (
-                  <span className="ml-2 text-gray-400 line-through text-xs">
-                    ${deal.originalPrice.toFixed(2)}
-                  </span>
-                )}
-
-                {discountPercent > 0 && (
-                  <span className="ml-2 text-green-500 text-xs">
-                    (-{discountPercent}%)
-                  </span>
-                )}
-              </>
+                  {discountPercent > 0 && (
+                    <span className="ml-2 text-green-500 text-xs">
+                      (-{discountPercent}%)
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+            
+            {expiryDate && (
+              <div className={`flex items-center ${isExpired ? 'text-red-500' : 'text-gray-400'} text-xs font-medium`}>
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {isExpired ? 'Expired' : `Expires: ${expiryDate}`}
+              </div>
             )}
           </div>
 
@@ -213,14 +225,6 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
                   ? highlightText(cleanDescription, searchParams.get('q') || '') 
                   : cleanDescription;
               })()}
-            </div>
-          )}
-          {isExpired && (
-            <div className="flex items-center bg-red-500/10 px-2 py-1 rounded-md text-red-500 font-medium mt-1">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Expired
             </div>
           )}
           

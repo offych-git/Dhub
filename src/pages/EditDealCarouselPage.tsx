@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AddDealPageNew from './AddDealPageNew';
@@ -32,11 +31,7 @@ const EditDealCarouselPage: React.FC = () => {
         .from('deals')
         .select(`
           *,
-          profiles (
-            id,
-            display_name,
-            email
-          )
+          profiles!deals_user_id_fkey(id, email, display_name)
         `)
         .eq('id', id)
         .single();
@@ -60,7 +55,8 @@ const EditDealCarouselPage: React.FC = () => {
           original_price: data.original_price !== null ? data.original_price.toString() : '',
           category: data.category_id || '',
           deal_url: data.deal_url || '',
-          expiry_date: data.expires_at || '',
+          expiry_date: data.expires_at ? data.expires_at.split('T')[0] : '', // Форматируем дату для поля input type="date"
+          expires_at: data.expires_at ? data.expires_at.split('T')[0] : '', // Форматируем дублирующее поле
           is_hot: !!data.is_hot,
           store_id: data.store_id || null,
           dealImages: [] // Будет заполнено ниже
@@ -68,13 +64,13 @@ const EditDealCarouselPage: React.FC = () => {
 
         // Извлекаем карусель изображений из описания
         let imageUrls: string[] = [];
-        
+
         // Всегда добавляем основное изображение первым элементом массива
         if (data.image_url) {
           imageUrls.push(data.image_url);
           console.log('Added main image URL:', data.image_url);
         }
-        
+
         // Далее пытаемся извлечь дополнительные изображения из комментария в описании
         if (data.description) {
           const match = data.description.match(/<!-- DEAL_IMAGES: (.*?) -->/);
@@ -82,7 +78,7 @@ const EditDealCarouselPage: React.FC = () => {
             try {
               const parsedImages = JSON.parse(match[1]);
               console.log('Found carousel images in description:', parsedImages.length);
-              
+
               // Проверяем, есть ли основное изображение в массиве из описания
               // Если есть и оно совпадает с первым элементом, берем только остальные
               if (parsedImages.length > 0 && parsedImages[0] === data.image_url) {
@@ -91,7 +87,7 @@ const EditDealCarouselPage: React.FC = () => {
                 // Если не совпадает, добавляем все дополнительные изображения
                 imageUrls = imageUrls.concat(parsedImages);
               }
-              
+
               // Очищаем описание от JSON с изображениями
               transformedData.description = data.description.replace(/<!-- DEAL_IMAGES: .*? -->/, '').trim();
             } catch (e) {
@@ -99,7 +95,7 @@ const EditDealCarouselPage: React.FC = () => {
             }
           }
         }
-        
+
         console.log('Final image URLs array:', imageUrls);
 
         console.log('Transformed carousel data:', transformedData);

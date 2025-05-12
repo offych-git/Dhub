@@ -133,7 +133,7 @@ const SweepstakesDetailPage: React.FC = () => {
                 .from('deals')
                 .select(`
           *,
-          profiles:user_id(id, email, display_name)
+          profiles!deals_user_id_fkey(id, email, display_name)
         `)
                 .eq('id', id)
                 .eq('type', 'sweepstakes')
@@ -571,7 +571,7 @@ const SweepstakesDetailPage: React.FC = () => {
                             sweepstakesImages.forEach((_, index) => {
                                 const dot = document.createElement('button');
                                 dot.className = `nav-dot h-2 w-2 rounded-full ${
-                                    index === currentFullscreenIndex ? 'bg-orange-500' : 'bg-gray-400'
+                                    i === index ? 'bg-orange-500' : 'bg-gray-400'
                                 }`;
 
                                 // При клике на точку меняем изображение
@@ -729,8 +729,11 @@ const SweepstakesDetailPage: React.FC = () => {
                 )}
 
                 {sweepstakes.expiresAt && (
-                    <div className="mt-3 text-gray-300">
-                        <span className="font-medium">Окончание розыгрыша:</span> {sweepstakes.expiresAt}
+                    <div className={`mt-3 flex items-center ${isExpired ? 'text-red-500' : 'text-gray-300'}`}>
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {isExpired ? 'Expired' : `Expires: ${sweepstakes.expiresAt}`}
                     </div>
                 )}
 
@@ -780,7 +783,7 @@ const SweepstakesDetailPage: React.FC = () => {
                                         // Если URL не заканчивается специальным символом из списка, создаем ссылку как обычно
                                         return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
                                     })
-                                    // Обрабатываем двойные переносы строк (пустые строки)
+                                    //    // Обрабатываем двойные переносы строк (пустые строки)
                                     .replace(/\n\n/g, '<br><br>')
                                     // Затем обрабатываем обычные переносы строк
                                     .replace(/\n/g, '<br>');

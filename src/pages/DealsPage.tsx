@@ -222,7 +222,8 @@ const DealsPage: React.FC = () => {
           description: deal.description,
           url: deal.deal_url,
           createdAt: new Date(deal.created_at),
-          is_hot: deal.is_hot
+          is_hot: deal.is_hot,
+          expires_at: deal.expires_at
         };
       }));
 

@@ -3,9 +3,14 @@ export interface Deal {
   title: string;
   currentPrice: number;
   originalPrice?: number;
-  discount?: number;
-  store: Store;
-  category: Category;
+  category: {
+    id: string;
+    name: string;
+  };
+  store: {
+    id: string;
+    name: string;
+  };
   image: string;
   postedAt: {
     relative: string;
@@ -14,20 +19,21 @@ export interface Deal {
   popularity: number;
   positiveVotes?: number;
   comments: number;
-  postedBy: User;
-  description?: string;
-  url?: string;
-  createdAt?: Date;
-  is_hot: boolean;
-  hot_at?: Date;
-  userComment?: {
-    content: string;
-    createdAt: string;
-    replies?: {
-      content: string;
-      createdAt: string;
-    }[];
+  postedBy: {
+    id: string;
+    name: string;
+    avatar: string;
   };
+  description: string;
+  url: string;
+  createdAt?: Date;
+  status?: string;
+  is_hot?: boolean;
+  type?: string;
+  deal_votes?: any[];
+  imageUrls?: string[];
+  updated_at?: string;
+  expires_at?: string | null;
 }
 
 export interface Store {

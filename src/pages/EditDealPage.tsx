@@ -20,7 +20,7 @@ const EditDealPage: React.FC = () => {
     dispatch({ type: 'SET_DEALS', payload: [] });
     dispatch({ type: 'MARK_DEALS_STALE' });
     console.log("EditDealPage: полная очистка кеша сделок для обеспечения актуальности");
-    
+
     const fetchDeal = async () => {
       if (!id) {
         navigate('/');
@@ -31,11 +31,7 @@ const EditDealPage: React.FC = () => {
         .from('deals')
         .select(`
           *,
-          profiles (
-            id,
-            display_name,
-            email
-          )
+          profiles!deals_user_id_fkey(id, email, display_name)
         `)
         .eq('id', id)
         .single();
