@@ -376,7 +376,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
         category_id: formData.category,
         image_url: mainImageUrl,
         deal_url: formData.dealUrl,
-        expires_at: formData.expiryDate ? new Date(formData.expiryDate).toISOString() : null,
+        expires_at: formData.expiryDate ? `${formData.expiryDate}T12:00:00.000Z` : null,
         is_hot: formData.isHot
       };
 

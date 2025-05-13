@@ -36,13 +36,13 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
       loadFavoriteStatus();
     }
     loadCommentCount();
-    
+
     // Получаем актуальный статус сделки
     if (deal.id) {
       loadDealStatus();
     }
   }, [user, deal.id]);
-  
+
   // Загрузка статуса сделки
   const loadDealStatus = async () => {
     try {
@@ -51,7 +51,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
         .select('status')
         .eq('id', deal.id)
         .single();
-        
+
       if (!error && data) {
         setDealStatus(data.status);
       }
@@ -186,14 +186,25 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
                 </>
               )}
             </div>
-            
+
             {expiryDate && (
-              <div className={`flex items-center ${isExpired ? 'text-red-500' : 'text-gray-400'} text-xs font-medium`}>
-                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {isExpired ? 'Expired' : `Expires: ${expiryDate}`}
-              </div>
+              isExpired ? (
+                <div className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
+                  Expired
+                </div>
+              ) : (
+                <div className="flex items-center text-gray-400 text-xs font-medium">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                    <path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5" />
+                    <path d="M16 2v4" />
+                    <path d="M8 2v4" />
+                    <path d="M3 10h18" />
+                    <circle cx="18" cy="18" r="4" />
+                    <path d="M18 16.5v1.5h1.5" />
+                  </svg>
+                  {deal.expires_at ? new Date(deal.expires_at).toLocaleDateString() : expiryDate}
+                </div>
+              )
             )}
           </div>
 
@@ -227,7 +238,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
               })()}
             </div>
           )}
-          
+
           {/* Показываем плашку модерации для создателя */}
           {isOwnDeal && dealStatus === 'pending' && (
             <div className="flex items-center bg-yellow-500/20 px-2 py-1 rounded-md text-yellow-500 font-medium mt-1">
@@ -349,12 +360,13 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
               </button>
             )
           }
-          {user && (user.id === deal.postedBy.id || role === 'admin' || role === 'moderator' || role === 'super_admin') && (
+          {user && (
             <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
               <AdminActions
-                type="deal"
+                type={deal.type === 'sweepstakes' ? 'sweepstakes' : 'deal'}
                 id={deal.id}
                 userId={deal.postedBy.id}
+                createdAt={deal.createdAt}
                 onAction={onDelete || (() => {})}
               />
             </div>

@@ -80,7 +80,8 @@ const SavedItemsPage: React.FC = () => {
             )
           `)
                     .in('id', dealIds)
-                    .eq('type', 'deal');
+                    .eq('type', 'deal')
+                    .or('status.eq.published,status.eq.approved');
 
                 let sweepstakesQuery = supabase
                     .from('deals')
@@ -96,7 +97,8 @@ const SavedItemsPage: React.FC = () => {
             )
           `)
                     .in('id', dealIds)
-                    .eq('type', 'sweepstakes');
+                    .eq('type', 'sweepstakes')
+                    .or('status.eq.published,status.eq.approved');
 
                 // Apply sorting
                 switch (sortBy) {

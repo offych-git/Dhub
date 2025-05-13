@@ -191,6 +191,7 @@ const DealDetailPage: React.FC = () => {
                 description: data.description,
                 url: data.deal_url,
                 expires_at: data.expires_at,
+                created_at: data.created_at, // Добавляем оригинальное поле created_at
                 postedAt: new Date(data.created_at).toLocaleDateString(),
                 postedBy: {
                     id: data.profiles?.id || 'anonymous',
@@ -738,7 +739,7 @@ const DealDetailPage: React.FC = () => {
                             <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'}/>
                         </button>
                         {user && user.id === deal.postedBy.id &&
-                            new Date().getTime() - new Date(deal.postedAt).getTime() < 24 * 60 * 60 * 1000 && (
+                            new Date().getTime() - new Date(deal.created_at || deal.postedAt).getTime() < 24 * 60 * 60 * 1000 && (
                                 <button
                                     onClick={() => navigate(`/deals/${deal.id}/edit`)}
                                     className="ml-3 text-orange-500 flex items-center"
@@ -780,13 +781,35 @@ const DealDetailPage: React.FC = () => {
                     <div className={`flex items-center ${isExpired 
                         ? 'text-red-600 bg-red-600/20 px-2 py-0.5 rounded border border-red-600/30 font-semibold' 
                         : 'text-gray-400'} font-medium`}>
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {isExpired ? 'Expired' : `Expires: ${new Date(deal.expires_at).toLocaleDateString()}`}
+                        {isExpired ? (
+                          <>
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Expired
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                              <path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5" />
+                              <path d="M16 2v4" />
+                              <path d="M8 2v4" />
+                              <path d="M3 10h18" />
+                              <circle cx="18" cy="18" r="4" />
+                              <path d="M18 16.5v1.5h1.5" />
+                            </svg>
+                            {new Date(`${deal.expires_at.split('T')[0]}T12:00:00.000Z`).toLocaleDateString()}
+                          </>
+                        )}
                     </div>
                   )}
                 </div>
+
+                {isExpired && (
+                  <div className="bg-red-500/20 px-2 py-0.5 text-xs text-red-500 rounded-full w-fit mt-2">
+                    Expired
+                  </div>
+                )}
 
                 <div className="mt-2 flex items-center justify-between">
                     <div className="bg-gray-800 px-3 py-1 rounded-md text-white">

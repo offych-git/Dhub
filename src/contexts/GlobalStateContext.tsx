@@ -290,13 +290,13 @@ export const GlobalStateProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
-  // Функция для загрузки сделок
+  // Функция для загрузки сделок с использованием утилитарных функций
   const refreshDeals = async () => {
     if (state.deals.isLoading) return;
     dispatch({ type: 'SET_DEALS_LOADING', payload: true });
 
     try {
-      // Здесь должен быть код для загрузки сделок аналогично fetchDeals из DealsPage
+      // Используем утилитарную функцию для загрузки с повторными попытками
       const { data: deals, error } = await supabase
         .from('deals')
         .select(`
@@ -307,6 +307,7 @@ export const GlobalStateProvider: React.FC<{ children: React.ReactNode }> = ({ c
             display_name
           )
         `)
+        .or('status.eq.published,status.eq.approved')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

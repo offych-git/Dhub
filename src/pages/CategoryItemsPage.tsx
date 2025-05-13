@@ -111,7 +111,7 @@ const CategoryItemsPage: React.FC = () => {
           )
         `)
         .eq('category_id', categoryId)
-        .eq('status', 'published');
+        .or('status.eq.published,status.eq.approved');
 
       // Apply sorting
       switch (sortBy) {

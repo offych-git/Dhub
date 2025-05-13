@@ -305,19 +305,15 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
               <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'} />
             </button>
             {user && user.id === promo.user.id &&
-                new Date().getTime() - new Date(promo.created_at).getTime() < 24 * 60 * 60 * 1000 && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      navigate(`/promos/${promo.id}/edit`);
-                    }}
-                    className="ml-3 text-orange-500 flex items-center"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                )
-              }
+                            new Date().getTime() - new Date(promo.created_at || promo.postedAt).getTime() < 24 * 60 * 60 * 1000 && (
+                                <button
+                                    onClick={() => navigate(`/promos/${promo.id}/edit`)}
+                                    className="ml-3 text-orange-500 flex items-center"
+                                >
+                                    <Edit2 className="h-4 w-4" />
+                                </button>
+                            )
+                          }
           </div>
         </div>
 

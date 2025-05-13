@@ -38,7 +38,14 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, createdAt
     // });
   }, [type, id, userId, createdAt]);
 
-  if (!permissions.canDeleteContent) {
+  // Check if user has permission to see delete button
+  const canSeeDeleteButton = 
+    // Admin/moderator can always delete
+    (role === 'admin' || role === 'moderator' || role === 'super_admin') || 
+    // Owner can delete their own content
+    (isOwner && isLessThan24Hours);
+
+  if (!permissions.canDeleteContent || !canSeeDeleteButton) {
     return null;
   }
 

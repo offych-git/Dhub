@@ -55,8 +55,12 @@ const EditDealCarouselPage: React.FC = () => {
           original_price: data.original_price !== null ? data.original_price.toString() : '',
           category: data.category_id || '',
           deal_url: data.deal_url || '',
-          expiry_date: data.expires_at ? data.expires_at.split('T')[0] : '', // Форматируем дату для поля input type="date"
-          expires_at: data.expires_at ? data.expires_at.split('T')[0] : '', // Форматируем дублирующее поле
+          expiry_date: data.expires_at ? (typeof data.expires_at === 'string' && !data.expires_at.includes('T') 
+            ? data.expires_at 
+            : new Date(data.expires_at).toISOString().split('T')[0]) : '',
+          expires_at: data.expires_at ? (typeof data.expires_at === 'string' && !data.expires_at.includes('T') 
+            ? data.expires_at 
+            : new Date(data.expires_at).toISOString().split('T')[0]) : '',
           is_hot: !!data.is_hot,
           store_id: data.store_id || null,
           dealImages: [] // Будет заполнено ниже

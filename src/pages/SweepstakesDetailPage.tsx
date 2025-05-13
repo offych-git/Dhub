@@ -718,22 +718,33 @@ const SweepstakesDetailPage: React.FC = () => {
                 </div>
 
                 {isExpired && (
-                    <div
-                        className="flex items-center bg-red-500/10 px-2 py-1 rounded-md text-red-500 font-medium mt-2 w-fit">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Expired
-                    </div>
-                )}
+          <div className="bg-red-500/20 px-2 py-0.5 text-xs text-red-500 rounded-full w-fit mt-2">
+            Expired
+          </div>
+        )}
 
                 {sweepstakes.expiresAt && (
                     <div className={`mt-3 flex items-center ${isExpired ? 'text-red-500' : 'text-gray-300'}`}>
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {isExpired ? 'Expired' : `Expires: ${sweepstakes.expiresAt}`}
+                        {isExpired ? (
+                          <>
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Expired
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                              <path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5" />
+                              <path d="M16 2v4" />
+                              <path d="M8 2v4" />
+                              <path d="M3 10h18" />
+                              <circle cx="18" cy="18" r="4" />
+                              <path d="M18 16.5v1.5h1.5" />
+                            </svg>
+                            {new Date(sweepstakes.expiresAt).toLocaleDateString()}
+                          </>
+                        )}
                     </div>
                 )}
 
@@ -775,7 +786,7 @@ const SweepstakesDetailPage: React.FC = () => {
                                     .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
                                         // Проверяем, заканчивается ли URL специальным символом
                                         const lastChar = match.charAt(match.length - 1);
-                                        // Проверяем специальные символы на конце URL
+                                        // Проверяем специальные символы наконце URL
                                         if ([',', '.', ':', ';', '!', '?', ')', ']', '}'].includes(lastChar)) {
                                             // Исключаем последний символ из ссылки (href и текста) и добавляем его после тега </a>
                                             return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;

@@ -152,9 +152,9 @@ const DealsPage: React.FC = () => {
           query = query.or(`${publishedFilter},${userOwnedFilter}`);
         }
       } else {
-        // Неавторизованные пользователи видят опубликованные сделки
-        console.log("Неавторизованный пользователь - показываем опубликованные сделки");
-        query = query.eq('status', 'published');
+        // Неавторизованные пользователи видят опубликованные и одобренные сделки
+        console.log("Неавторизованный пользователь - показываем опубликованные и одобренные сделки");
+        query = query.or('status.eq.published,status.eq.approved');
       }
 
       console.log(`Загрузка данных с параметром cache_invalidator=${cacheInvalidator}`);

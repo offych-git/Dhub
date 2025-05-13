@@ -102,7 +102,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
     title: initialData?.title || '',
     description: initialData?.description || '',
     dealUrl: initialData?.dealUrl || '',
-    expiryDate: initialData?.expiryDate || ''
+    expiryDate: initialData?.expiryDate ? initialData.expiryDate.split('T')[0] : ''
   });
 
   // Отслеживаем состояние валидации каждого поля отдельно
