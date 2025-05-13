@@ -77,7 +77,7 @@ const DealsPage: React.FC = () => {
 
     // Запускаем загрузку
     fetchDeals();
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, user?.id]); // Добавляем зависимость от ID пользователя
 
   const handleScroll = () => {
     if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || 
@@ -144,17 +144,22 @@ const DealsPage: React.FC = () => {
           // Для админов и модераторов показываем все сделки
           console.log("Пользователь админ/модератор - показываем все сделки");
         } else {
-          // Обычные пользователи видят опубликованные сделки + свои собственные на модерации
-          console.log("Обычный пользователь - показываем опубликованные сделки + свои собственные");
-          // Используем правильный статус published вместо approved
-          const publishedFilter = "status.eq.published";
+          // Обычные пользователи видят опубликованные и одобренные сделки + свои собственные на модерации
+          console.log("Обычный пользователь - показываем опубликованные, одобренные сделки + свои собственные");
+          
+          // Создаем единый запрос для одновременной загрузки
+          const combinedFilter = "status.in.(published,approved)";
           const userOwnedFilter = `user_id.eq.${user.id}`;
-          query = query.or(`${publishedFilter},${userOwnedFilter}`);
+          query = query.or(`${combinedFilter},${userOwnedFilter}`);
+          
+          // Устанавливаем дополнительный лог для отладки
+          console.log("Применен оптимизированный фильтр для статусов: published,approved + собственные сделки");
         }
       } else {
         // Неавторизованные пользователи видят опубликованные и одобренные сделки
         console.log("Неавторизованный пользователь - показываем опубликованные и одобренные сделки");
-        query = query.or('status.eq.published,status.eq.approved');
+        // Используем in оператор для эффективной выборки обоих статусов одновременно
+        query = query.in('status', ['published', 'approved']);
       }
 
       console.log(`Загрузка данных с параметром cache_invalidator=${cacheInvalidator}`);

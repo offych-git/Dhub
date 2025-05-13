@@ -12,9 +12,10 @@ interface AdminActionsProps {
   userId: string;
   createdAt?: Date | string | null; // Обновление типа createdAt с поддержкой необязательности
   onAction?: () => void;
+  className?: string;
 }
 
-const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, createdAt, onAction }) => {
+const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, createdAt, onAction, className }) => {
   const { permissions, role } = useAdmin();
   const [isDeleting, setIsDeleting] = useState(false);
   const { dispatch } = useGlobalState();
@@ -187,7 +188,7 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, createdAt
   };
 
   return (
-    <div className="flex gap-2">
+    <div className={`flex gap-2 ${className || ''}`}>
       <button
         onClick={(e) => {
           e.preventDefault();

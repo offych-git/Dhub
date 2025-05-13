@@ -21,8 +21,8 @@ interface DealCardProps {
 
 const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideFreeLabel = false }) => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { role } = useAdmin();
+  const navigate = useNavigate();
   // Determine if this is a sweepstakes based on deal type or other properties
   const isSweepstakes = deal.type === 'sweepstakes';
   const [isFavorite, setIsFavorite] = useState(false);
@@ -360,16 +360,15 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
               </button>
             )
           }
-          {user && (
-            <div className="ml-3 border-l border-gray-700 pl-3" onClick={(e) => e.stopPropagation()}>
-              <AdminActions
-                type={deal.type === 'sweepstakes' ? 'sweepstakes' : 'deal'}
-                id={deal.id}
-                userId={deal.postedBy.id}
-                createdAt={deal.createdAt}
-                onAction={onDelete || (() => {})}
-              />
-            </div>
+          {user && (role === 'admin' || role === 'moderator' || user.id === deal.postedBy.id) && (
+            <AdminActions
+              type={deal.type === 'sweepstakes' ? 'sweepstakes' : 'deal'}
+              id={deal.id}
+              userId={deal.postedBy.id}
+              createdAt={deal.createdAt}
+              onAction={onDelete || (() => {})}
+              className="ml-3 border-l border-gray-700 pl-3"
+            />
           )}
         </div>
       </div>
