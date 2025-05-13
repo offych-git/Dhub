@@ -674,16 +674,6 @@ const SweepstakesDetailPage: React.FC = () => {
                         }
                     </h2>
                     <div className="flex items-center space-x-2">
-                        {/* Проверяем, что текущий пользователь - владелец розыгрыша и прошло менее 24 часов */}
-                        {user && user.id === sweepstakes.postedBy.id &&
-                            new Date().getTime() - new Date(sweepstakes.createdAtISO).getTime() < 24 * 60 * 60 * 1000 && (
-                                <button
-                                    onClick={() => navigate(`/edit-sweepstakes/${sweepstakes.id}`)}
-                                    className="p-2 rounded-full text-orange-500 hover:text-orange-700"
-                                >
-                                    <Edit2 className="h-6 w-6"/>
-                                </button>
-                            )}
                         <button
                             onClick={() => {
                                 if (navigator.share) {
@@ -714,6 +704,16 @@ const SweepstakesDetailPage: React.FC = () => {
                         >
                             <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'}/>
                         </button>
+                        {/* Переместили кнопку редактирования сюда, в конец блока */}
+                        {user && user.id === sweepstakes.postedBy.id &&
+                            new Date().getTime() - new Date(sweepstakes.createdAtISO).getTime() < 24 * 60 * 60 * 1000 && (
+                                <button
+                                    onClick={() => navigate(`/edit-sweepstakes/${sweepstakes.id}`)}
+                                    className="ml-1 text-orange-500 hover:text-orange-700"
+                                >
+                                    <Edit2 className="h-5 w-5"/>
+                                </button>
+                            )}
                     </div>
                 </div>
 
