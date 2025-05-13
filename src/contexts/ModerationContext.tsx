@@ -621,7 +621,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 3. Подготовка объекта обновления
       const updateObject: any = {
         status: 'rejected',
-        moderation_comment: comment || '',
+        moderation_note: comment || '',
         moderator_id: user?.id,
         moderated_at: new Date().toISOString()
       };
@@ -657,7 +657,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               promo_id: itemId,
               new_status: 'rejected',
               moderator_user_id: user?.id || null,
-              mod_comment: comment || ''
+              new_moderation_note: comment || ''
             }
           );
 
@@ -678,7 +678,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 item_id: itemId,
                 new_status: 'rejected',
                 moderator_user_id: user?.id || null,
-                mod_comment: comment || ''
+                new_moderation_note: comment || ''
               }
             );
 
@@ -718,7 +718,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         .from('moderation_queue')
         .update({
           status: 'rejected',
-          moderation_comment: comment || '',
+          moderation_note: comment || '',
           moderator_id: user?.id,
           moderated_at: new Date().toISOString()
         })
