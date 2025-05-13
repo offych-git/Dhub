@@ -213,7 +213,7 @@ const DealDetailPage: React.FC = () => {
             .from('deal_comments')
             .select(`
         *,
-        profiles(id, email, display_name)
+        profiles!deal_comments_user_id_fkey(id, email, display_name)
       `)
             .eq('deal_id', id);
 
@@ -750,16 +750,7 @@ const DealDetailPage: React.FC = () => {
                     </div>
                 </div>
 
-                {isExpired && (
-                    <div
-                        className="flex items-center bg-red-500/10 px-2 py-1 rounded-md text-red-500 font-medium mt-2 w-fit">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Expired
-                    </div>
-                )}
+
 
                 <div className="mt-3 flex items-center justify-between">
                   <div className="flex items-center">
@@ -786,7 +777,9 @@ const DealDetailPage: React.FC = () => {
                   </div>
 
                   {deal.expires_at && (
-                    <div className={`flex items-center ${isExpired ? 'text-red-500' : 'text-gray-400'} font-medium`}>
+                    <div className={`flex items-center ${isExpired 
+                        ? 'text-red-600 bg-red-600/20 px-2 py-0.5 rounded border border-red-600/30 font-semibold' 
+                        : 'text-gray-400'} font-medium`}>
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>

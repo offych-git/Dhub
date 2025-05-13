@@ -293,7 +293,8 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         user_id: user?.id,
         expires_at: formData.expiryDate || null,
         is_hot: allowHotToggle ? formData.isHot : false,
-        type: 'sweepstakes'
+        type: 'sweepstakes',
+        status: 'pending' // Устанавливаем начальный статус 'pending' для модерации
       };
 
       let data, error;
@@ -330,6 +331,15 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         if (error) {
           throw new Error(`Failed to create sweepstakes: ${error.message}`);
         }
+      }
+
+      try {
+        // Отправляем розыгрыш на модерацию
+        const moderationResult = await addToModerationQueue(data.id, 'sweepstake');
+        console.log('Розыгрыш отправлен на модерацию:', moderationResult);
+      } catch (moderationError) {
+        console.error('Ошибка при отправке розыгрыша на модерацию:', moderationError);
+        // Продолжаем выполнение даже при ошибке модерации
       }
 
       // Перенаправляем на страницу просмотра розыгрыша
@@ -797,8 +807,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
             transform: translate(-50%, -50%);
             width: 40px;
             height: 40px;
-            background-color: #ef4444;The code implements moderation queue addition during sweepstakes creation.
-``````text
+            background-color: #ef4444;
             border-radius: 50%;
             display: flex;
             align-items: center;

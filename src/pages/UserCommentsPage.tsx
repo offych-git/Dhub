@@ -142,7 +142,7 @@ const UserCommentsPage: React.FC = () => {
           *,
           deals (
             *,
-            profiles (
+            profiles!deals_user_id_fkey (
               id,
               email,
               display_name
@@ -506,6 +506,7 @@ const UserCommentsPage: React.FC = () => {
                                           <div key={i} className="relative">
                                             <img
                                               src={image}
+                                              src={image}
                                               alt={`Reply image ${i + 1}`}
                                               className="w-16 h-16 object-cover rounded cursor-pointer"
                                               onClick={() => {
@@ -749,7 +750,7 @@ const UserCommentsPage: React.FC = () => {
                                       className="w-16 h-16 object-cover rounded cursor-pointer"
                                       onClick={() => {
                                         const modal = document.createElement('div');
-                                        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                                        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center bg-opacity-75 flex items-center justify-center z-50';
                                         modal.onclick = () => document.body.removeChild(modal);
 
                                         const content = document.createElement('div');

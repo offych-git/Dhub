@@ -110,18 +110,19 @@ const SweepstakesPage: React.FC = () => {
           // Show all sweepstakes to admins and moderators
           console.log("User is admin/moderator - showing all sweepstakes");
         } else {
-          // Обычные пользователи видят опубликованные розыгрыши + свои собственные, находящиеся на модерации
-          console.log("Обычный пользователь - показываем опубликованные розыгрыши + свои собственные");
-          // Используем правильный статус published вместо approved
-          const publishedFilter = "status.eq.published";
-          const userOwnedFilter = `user_id.eq.${user.id}`;
-          query = query.or(`${publishedFilter},${userOwnedFilter}`);
-        }
-      } else {
-        // Неавторизованные пользователи видят только опубликованные розыгрыши
-        console.log("Неавторизованный пользователь - показываем опубликованные розыгрыши");
-        query = query.eq('status', 'published');
+        // Обычные пользователи видят розыгрыши со статусом published/approved + свои собственные, включая находящиеся на модерации
+        console.log("Обычный пользователь - показываем опубликованные/одобренные розыгрыши + свои собственные");
+        // Используем фильтр для статусов published и approved
+        const approvedFilter = "status.eq.approved";
+        const publishedFilter = "status.eq.published";
+        const userOwnedFilter = `user_id.eq.${user.id}`;
+        query = query.or(`${publishedFilter},${approvedFilter},${userOwnedFilter}`);
       }
+    } else {
+      // Неавторизованные пользователи видят только розыгрыши со статусом published или approved
+      console.log("Неавторизованный пользователь - показываем опубликованные/одобренные розыгрыши");
+      query = query.or(`status.eq.published,status.eq.approved`);
+    }
 
       console.log(`Загрузка розыгрышей с параметром cache_invalidator=${cacheInvalidator}`);
 
