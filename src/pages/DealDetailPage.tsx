@@ -798,7 +798,7 @@ const DealDetailPage: React.FC = () => {
                               <circle cx="18" cy="18" r="4" />
                               <path d="M18 16.5v1.5h1.5" />
                             </svg>
-                            {new Date(`${deal.expires_at.split('T')[0]}T12:00:00.000Z`).toLocaleDateString()}
+                            {new Date(deal.expires_at).toLocaleDateString()}
                           </>
                         )}
                     </div>

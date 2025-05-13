@@ -202,7 +202,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
                     <circle cx="18" cy="18" r="4" />
                     <path d="M18 16.5v1.5h1.5" />
                   </svg>
-                  {deal.expires_at ? new Date(deal.expires_at).toLocaleDateString() : expiryDate}
+                  {new Date(deal.expires_at || expiryDate).toLocaleDateString()}
                 </div>
               )
             )}
