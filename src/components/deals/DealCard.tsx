@@ -185,7 +185,8 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
                   )}
                 </>
               )}
-            </div>
+              
+              </div>
 
             {deal.status === 'rejected' && (
               <div className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
@@ -193,6 +194,12 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
               </div>
             )}
             
+            {isOwnDeal && dealStatus === 'pending' && (
+              <div className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
+                Pending Review
+              </div>
+            )}
+
             {expiryDate && deal.status !== 'rejected' && (
               isExpired ? (
                 <div className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
@@ -242,16 +249,6 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
                   ? highlightText(cleanDescription, searchParams.get('q') || '') 
                   : cleanDescription;
               })()}
-            </div>
-          )}
-
-          {/* Показываем плашку модерации для создателя */}
-          {isOwnDeal && dealStatus === 'pending' && (
-            <div className="flex items-center bg-yellow-500/20 px-2 py-1 rounded-md text-yellow-500 font-medium mt-1">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              На модерации
             </div>
           )}
         </div>
