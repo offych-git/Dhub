@@ -372,9 +372,9 @@ const ModerationPage: React.FC = () => {
                         if (item.item_type === 'promo') {
                           navigate(`/promos/${item.item_id}/edit`);
                         } else if (item.item_type === 'deal') {
-                          navigate(`/deals/edit/${item.item_id}`);
+                          navigate(`/deals/${item.item_id}/edit`);
                         } else if (item.item_type === 'sweepstake') {
-                          navigate(`/sweepstakes/edit/${item.item_id}`);
+                          navigate(`/sweepstakes/${item.item_id}/edit`);
                         }
                       }}
                       className="w-full mt-2 bg-blue-500 text-white py-2 rounded-md flex items-center justify-center gap-1"

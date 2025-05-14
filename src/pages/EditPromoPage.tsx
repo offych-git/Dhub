@@ -5,6 +5,7 @@ import { ArrowLeft, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AddPromoPage from './AddPromoPage';
 import { useAuth } from '../contexts/AuthContext';
+import {useAdmin} from "../hooks/useAdmin";
 
 const EditPromoPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +14,7 @@ const EditPromoPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [promo, setPromo] = useState<any>(null);
+  const { isAdmin, isModerator } = useAdmin();
 
   useEffect(() => {
     const fetchPromo = async () => {
@@ -31,7 +33,7 @@ const EditPromoPage: React.FC = () => {
         if (!data) throw new Error('Promo not found');
 
         // Check if the user is allowed to edit this promo
-        if (user?.id !== data.user_id) {
+        if (user?.id !== data.user_id && !isAdmin && !isModerator) {
           throw new Error('You do not have permission to edit this promo');
         }
 

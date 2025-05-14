@@ -121,8 +121,8 @@ const DealsPage: React.FC = () => {
             relative: formatRelativeTime(new Date(deal.created_at)),
             exact: new Date(deal.created_at).toLocaleString()
           },
-          popularity: 56,//deal.popularity || 0,
-          positiveVotes: 57,//deal.positive_votes || 0,
+          popularity: deal.popularity || 0,
+          positiveVotes: deal.positive_votes || 0,
           comments: deal.comment_count || 0,
           postedBy: {
             id: deal.profile_id || 'anonymous',
