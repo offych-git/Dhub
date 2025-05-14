@@ -228,7 +228,8 @@ const DealsPage: React.FC = () => {
           url: deal.deal_url,
           createdAt: new Date(deal.created_at),
           is_hot: deal.is_hot,
-          expires_at: deal.expires_at
+          expires_at: deal.expires_at,
+          status: deal.status // Добавляем статус из БД
         };
       }));
 

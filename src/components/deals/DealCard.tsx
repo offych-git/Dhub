@@ -187,7 +187,13 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
               )}
             </div>
 
-            {expiryDate && (
+            {deal.status === 'rejected' && (
+              <div className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
+                Rejected
+              </div>
+            )}
+            
+            {expiryDate && deal.status !== 'rejected' && (
               isExpired ? (
                 <div className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
                   Expired
