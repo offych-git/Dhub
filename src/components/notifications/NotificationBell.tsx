@@ -48,8 +48,10 @@ const NotificationBell: React.FC = () => {
   };
 
   const loadNotifications = async () => {
+    if (!user) return;
+
     try {
-      const { data: notifs, error } = await supabase
+      const { data, error } = await supabase
         .from('notifications')
         .select(`
           *,
@@ -60,13 +62,14 @@ const NotificationBell: React.FC = () => {
           )
         `)
         .eq('user_id', user?.id)
+        .in('type', ['mention', 'reply'])
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
 
-      setNotifications(notifs || []);
-      
+      setNotifications(data || []);
+
       const { count } = await supabase
         .from('notifications')
         .select('id', { count: 'exact' })
@@ -74,8 +77,8 @@ const NotificationBell: React.FC = () => {
         .eq('read', false);
 
       setUnreadCount(count || 0);
-    } catch (error) {
-      console.error('Error loading notifications:', error);
+    } catch (err) {
+      console.error('Error loading notifications:', err);
     }
   };
 
@@ -104,7 +107,7 @@ const NotificationBell: React.FC = () => {
 
   const formatTimeAgo = (date: string) => {
     const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-    
+
     if (seconds < 60) return 'just now';
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
@@ -124,10 +127,6 @@ const NotificationBell: React.FC = () => {
         return `${actorName} mentioned you in a comment`;
       case 'reply':
         return `${actorName} replied to your comment`;
-      case 'vote':
-        return `${actorName} voted on your ${notification.source_type === 'deal' ? 'deal' : 'promo'}`;
-      case 'favorite':
-        return `${actorName} favorited your ${notification.source_type === 'deal' ? 'deal' : 'promo'}`;
       default:
         return notification.content;
     }

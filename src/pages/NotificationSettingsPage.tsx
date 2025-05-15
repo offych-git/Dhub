@@ -13,8 +13,6 @@ const NotificationSettingsPage: React.FC = () => {
   const [preferences, setPreferences] = useState({
     mentions: true,
     replies: true,
-    votes: true,
-    favorites: true,
     email_notifications: true
   });
 
@@ -157,49 +155,7 @@ const NotificationSettingsPage: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-white">Votes</h3>
-                    <p className="text-gray-400 text-sm">
-                      When someone votes on your deals or promos
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleToggle('votes')}
-                    disabled={saving}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-                      preferences.votes ? 'bg-orange-500' : 'bg-gray-700'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        preferences.votes ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <div className="p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-white">Favorites</h3>
-                    <p className="text-gray-400 text-sm">
-                      When someone favorites your deals or promos
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleToggle('favorites')}
-                    disabled={saving}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-                      preferences.favorites ? 'bg-orange-500' : 'bg-gray-700'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        preferences.favorites ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
+                
               </div>
             </div>
 
