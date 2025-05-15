@@ -81,6 +81,19 @@ const DealsPage: React.FC = () => {
           .order('updated_at', { ascending: false })
           .limit(100);
 
+        let favoriteIds: Set<string> = new Set();
+        if (user) {
+          const { data: favoritesData, error: favoritesError } = await supabase
+            .from('deal_favorites')
+            .select('deal_id')
+            .eq('user_id', user.id);
+
+          if (!favoritesError && favoritesData) {
+            favoriteIds = new Set(favoritesData.map(fav => fav.deal_id));
+          }
+        }
+
+
         const { data: profile } = user
           ? await supabase.from('profiles').select('user_status').eq('id', user.id).single()
           : { data: null };
@@ -124,6 +137,7 @@ const DealsPage: React.FC = () => {
           popularity: deal.popularity || 0,
           positiveVotes: deal.positive_votes || 0,
           comments: deal.comment_count || 0,
+          is_favorite: favoriteIds.has(deal.id),
           postedBy: {
             id: deal.profile_id || 'anonymous',
             name: deal.display_name || deal.email?.split('@')[0] || 'Anonymous',

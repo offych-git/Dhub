@@ -25,69 +25,13 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
   const navigate = useNavigate();
   // Determine if this is a sweepstakes based on deal type or other properties
   const isSweepstakes = deal.type === 'sweepstakes';
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(deal.is_favorite);
+  // const [isFavorite, setIsFavorite] = useState(false);
   const [commentCount, setCommentCount] = useState(deal.comments);
   const isOwnDeal = user && deal.postedBy.id === user.id;
   const [searchParams] = useSearchParams(); // Added useSearchParams hook
-  const [dealStatus, setDealStatus] = useState<string>(deal.status || 'approved');
-
-  useEffect(() => {
-    if (user) {
-      loadFavoriteStatus();
-    }
-    loadCommentCount();
-
-    // Получаем актуальный статус сделки
-    if (deal.id) {
-      loadDealStatus();
-    }
-  }, [user, deal.id]);
-
-  // Загрузка статуса сделки
-  const loadDealStatus = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('deals')
-        .select('status')
-        .eq('id', deal.id)
-        .single();
-
-      if (!error && data) {
-        setDealStatus(data.status);
-      }
-    } catch (err) {
-      console.error('Error loading deal status:', err);
-    }
-  };
-
-  const loadFavoriteStatus = async () => {
-    try {
-      const { data: favorite } = await supabase
-        .from('deal_favorites')
-        .select('id')
-        .eq('deal_id', deal.id)
-        .eq('user_id', user!.id)
-        .maybeSingle();
-
-      setIsFavorite(!!favorite);
-    } catch (error) {
-      console.error('Error loading favorite status:', error);
-    }
-  };
-
-  const loadCommentCount = async () => {
-    try {
-      const { count } = await supabase
-        .from('deal_comments')
-        .select('id', { count: 'exact' })
-        .eq('deal_id', deal.id);
-
-      setCommentCount(count || 0);
-    } catch (error) {
-      console.error('Error loading comment count:', error);
-    }
-  };
-
+  // const [dealStatus, setDealStatus] = useState<string>(deal.status || 'approved');
+  const [dealStatus, setDealStatus] = useState(deal.status || 'approved'); // если он будет меняться
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -147,9 +91,9 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
 
       <div className="flex mt-1.5">
         <div className="w-16 h-16 bg-gray-800 rounded-md overflow-hidden mr-3 flex-shrink-0">
-          <img 
-            src={getValidImageUrl(deal.image)} 
-            alt={deal.title} 
+          <img
+            src={getValidImageUrl(deal.image)}
+            alt={deal.title}
             className="w-full h-full object-contain"
             onError={handleImageError}
           />
@@ -185,7 +129,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
                   )}
                 </>
               )}
-              
+
               </div>
 
             {deal.status === 'rejected' && (
@@ -193,7 +137,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
                 Rejected
               </div>
             )}
-            
+
             {isOwnDeal && dealStatus === 'pending' && (
               <div className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
                 Pending Review
@@ -225,7 +169,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
             {deal.store.name}
           </div>
           {deal.description && (
-            <div 
+            <div
               className="mt-1 text-gray-400 text-xs description-preview line-clamp-2 overflow-hidden"
               style={{ pointerEvents: 'none' }}
             >
@@ -245,8 +189,8 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
                   .trim();
 
                 // Затем применяем подсветку, если есть поисковый запрос
-                return searchParams.get('q') 
-                  ? highlightText(cleanDescription, searchParams.get('q') || '') 
+                return searchParams.get('q')
+                  ? highlightText(cleanDescription, searchParams.get('q') || '')
                   : cleanDescription;
               })()}
             </div>
@@ -256,7 +200,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
 
       <div className="mt-1.5 flex items-center">
         <div className="w-5 h-5 rounded-full overflow-hidden mr-1.5">
-          <img 
+          <img
             src={`https://ui-avatars.com/api/?name=${encodeURIComponent(deal.postedBy.name)}&background=random`}
             alt={deal.postedBy.name}
             className="w-full h-full object-cover"
@@ -279,7 +223,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
           </div>
 
           {/* Share button - always visible */}
-          <button 
+          <button
             className="ml-3 text-orange-500 flex items-center"
             onClick={(e) => {
               e.preventDefault();
@@ -326,7 +270,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
           </button>
 
           {/* View button - always visible */}
-          <button 
+          <button
             className="ml-3 text-orange-500 flex items-center"
             onClick={(e) => {
               e.preventDefault();
@@ -343,7 +287,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
           </button>
 
           {/* User-specific actions */}
-          {user && user.id === deal.postedBy.id && 
+          {user && user.id === deal.postedBy.id &&
             new Date().getTime() - new Date(deal.createdAt).getTime() < 24 * 60 * 60 * 1000 && (
               <button
                 onClick={(e) => {
