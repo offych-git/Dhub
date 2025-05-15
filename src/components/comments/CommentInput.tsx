@@ -176,7 +176,8 @@ const CommentInput: React.FC<CommentInputProps> = ({
         throw new Error('User not authenticated');
       }
 
-      const { error } = await supabase
+      // Insert the comment first
+      const { data: commentData, error } = await supabase
         .from(table)
         .insert({
           [sourceType === 'deal_comment' ? 'deal_id' : 'promo_id']: sourceId,
@@ -184,17 +185,25 @@ const CommentInput: React.FC<CommentInputProps> = ({
           content: comment.trim(),
           parent_id: parentId,
           images: imageUrls
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      await createMentionNotification(
-        supabase,
-        sourceType,
-        sourceId,
-        comment.trim(),
-        user.id
-      );
+      // Process mentions and create notifications
+      try {
+        await createMentionNotification(
+          supabase,
+          sourceType,
+          sourceId,
+          comment.trim(),
+          user.id
+        );
+      } catch (mentionError) {
+        console.error('Error creating mention notifications:', mentionError);
+        // We don't want to block comment submission if mentions fail
+      }
 
       onSubmit(comment, images);
       setComment('');
@@ -285,7 +294,8 @@ const CommentInput: React.FC<CommentInputProps> = ({
       {showMentions && mentionUsers.length > 0 && (
         <div
           ref={mentionsRef}
-          className="absolute left-0 right-0 mt-1 bg-gray-800 rounded-md shadow-lg overflow-hidden z-10"
+          className="absolute left-0 right-0 mt-1 bg-gray-800 rounded-md shadow-lg overflow-hidden z-10 max-h-60 overflow-y-auto"
+          style={{ maxWidth: '100%', position: 'absolute' }}
         >
           {mentionUsers.map(user => (
             <button
