@@ -190,15 +190,27 @@ const CommentInput: React.FC<CommentInputProps> = ({
         .single();
 
       if (error) throw error;
+      
+      // Логирование для отладки ID комментария
+      console.log('Создан новый комментарий с ID:', commentData?.id);
+      console.log('Данные комментария:', commentData);
 
       // Process mentions and create notifications
       try {
+        // Логирование параметров перед вызовом функции
+        console.log('--- Передача параметров в createMentionNotification ---');
+        console.log('Параметр sourceType:', sourceType);
+        console.log('Параметр sourceId (Deal/Promo ID):', sourceId);
+        console.log('Параметр commentId (Новый ID комментария):', commentData?.id);
+        console.log('--- Конец параметров ---');
+        
         await createMentionNotification(
           supabase,
           sourceType,
           sourceId,
           comment.trim(),
-          user.id
+          user.id,
+          commentData?.id // Передаем ID нового комментария
         );
       } catch (mentionError) {
         console.error('Error creating mention notifications:', mentionError);

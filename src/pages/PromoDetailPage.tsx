@@ -102,10 +102,11 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => {
       const timer = setTimeout(() => {
         const commentElement = document.getElementById(`comment-${highlightedCommentId}`);
         if (commentElement) {
-          // Прокручиваем к комментарию
+          // Прокручиваем к комментарию один раз
           commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
           
-          // Добавляем эффект подсветки
+          // Добавляем эффект подсветки (упрощаем анимацию)
+          // Используем последовательные классы без лишних удалений
           commentElement.classList.add('bg-orange-500/20');
           setTimeout(() => {
             commentElement.classList.remove('bg-orange-500/20');

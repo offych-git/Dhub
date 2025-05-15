@@ -194,23 +194,19 @@ const DealDetailPage: React.FC = () => {
         console.log('Найден элемент комментария:', !!commentElement, commentId);
 
         if (commentElement) {
-          // Сначала прокрутим до начала секции комментариев для контекста
-          const commentsSection = document.getElementById('comments-section');
-          if (commentsSection) {
-            commentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
+          // Прокручиваем сразу к комментарию без промежуточных прокруток
+          commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          commentElement.classList.add('highlight-comment');
 
-          // Затем через небольшую задержку прокрутим к конкретному комментарию
-          setTimeout(() => {
-            commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            commentElement.classList.add('highlight-comment');
-
-            // Добавим более заметное выделение комментария
-            commentElement.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.7)';
-            commentElement.style.backgroundColor = 'rgba(249, 115, 22, 0.15)';
-            commentElement.style.borderRadius = '8px';
-            commentElement.style.padding = '4px';
-            commentElement.style.transition = 'all 0.5s ease-in-out';
+            // Добавляем более заметное выделение комментария с корректной анимацией без дерганий
+            commentElement.classList.add('bg-orange-500/20');
+            setTimeout(() => {
+              commentElement.classList.remove('bg-orange-500/20');
+              commentElement.classList.add('bg-orange-500/10');
+              setTimeout(() => {
+                commentElement.classList.remove('bg-orange-500/10');
+              }, 1000);
+            }, 1000);
 
             // Для всех элементов с классом highlighted-comment также применим подсветку
             if (commentId === highlightedCommentId) {
@@ -227,15 +223,10 @@ const DealDetailPage: React.FC = () => {
               });
             }
 
+            // Снимаем дополнительное выделение после анимации
             setTimeout(() => {
               commentElement.classList.remove('highlight-comment');
-              setTimeout(() => {
-                commentElement.style.boxShadow = '';
-                commentElement.style.backgroundColor = '';
-                commentElement.style.padding = '';
-              }, 2000);
             }, 3000);
-          }, 500);
 
           return true;
         }

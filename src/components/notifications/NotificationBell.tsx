@@ -34,6 +34,8 @@ const NotificationBell: React.FC = () => {
   }, []);
 
   const subscribeToNotifications = () => {
+    console.log('Подписываемся на обновления уведомлений...');
+    
     const subscription = supabase
       .channel('notifications')
       .on('postgres_changes', {
@@ -42,12 +44,33 @@ const NotificationBell: React.FC = () => {
         table: 'notifications',
         filter: `user_id=eq.${user?.id}`
       }, (payload) => {
+        console.log('Получено новое уведомление:', payload.new);
         setNotifications(prev => [payload.new, ...prev]);
         setUnreadCount(prev => prev + 1);
       })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user?.id}`
+      }, (payload) => {
+        console.log('Уведомление удалено из базы:', payload.old);
+        // При удалении через другие устройства обновляем локальное состояние
+        if (payload.old && payload.old.id) {
+          setNotifications(prev => prev.filter(notification => notification.id !== payload.old.id));
+          
+          // Если удаленное уведомление было непрочитанным, обновляем счетчик
+          if (payload.old.read === false) {
+            setUnreadCount(prev => Math.max(0, prev - 1));
+          }
+        }
+      })
       .subscribe();
+    
+    console.log('Подписка на уведомления активирована');
 
     return () => {
+      console.log('Отписка от канала уведомлений');
       subscription.unsubscribe();
     };
   };
@@ -56,6 +79,8 @@ const NotificationBell: React.FC = () => {
     if (!user) return;
 
     try {
+      console.log('Загружаем список уведомлений из базы данных...');
+      
       const { data, error } = await supabase
         .from('notifications')
         .select(`
@@ -73,17 +98,22 @@ const NotificationBell: React.FC = () => {
 
       if (error) throw error;
 
+      console.log('Получены уведомления из базы:', data?.length || 0);
       setNotifications(data || []);
 
-      const { count } = await supabase
+      const { count, error: countError } = await supabase
         .from('notifications')
         .select('id', { count: 'exact' })
         .eq('user_id', user?.id)
         .eq('read', false);
 
+      if (countError) throw countError;
+      
+      console.log('Количество непрочитанных уведомлений:', count || 0);
       setUnreadCount(count || 0);
     } catch (err) {
       console.error('Error loading notifications:', err);
+      console.error('Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
     }
   };
 
@@ -115,23 +145,38 @@ const NotificationBell: React.FC = () => {
     event.stopPropagation(); // Предотвращаем всплытие события
     
     try {
-      await supabase
-        .from('notifications')
-        .delete()
-        .eq('id', notificationId);
-        
-      // Обновляем состояние после удаления
+      // Получаем уведомление перед удалением (для проверки статуса)
+      const deletedNotification = notifications.find(notification => notification.id === notificationId);
+      
+      // Сначала обновляем локальное состояние перед запросом к API
       setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
       
       // Если удаляем непрочитанное уведомление, уменьшаем счетчик
-      const deletedNotification = notifications.find(notification => notification.id === notificationId);
       if (deletedNotification && !deletedNotification.read) {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
       
-      console.log("Уведомление успешно удалено:", notificationId);
+      // Удаляем уведомление из базы данных
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId);
+        
+      if (error) {
+        throw error;
+      }
+
+      console.log("Уведомление успешно удалено из базы данных:", notificationId);
+      
+      // Не вызываем loadNotifications() после успешного удаления, 
+      // так как мы уже обновили локальное состояние выше
+      console.log("Локальное состояние уведомлений обновлено");
     } catch (error) {
       console.error("Ошибка при удалении уведомления:", error);
+      console.error("Детали ошибки:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      
+      // В случае ошибки обновляем весь список из базы
+      await loadNotifications();
     }
   };
 
