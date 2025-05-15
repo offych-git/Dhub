@@ -212,9 +212,66 @@ const CommentInput: React.FC<CommentInputProps> = ({
           user.id,
           commentData?.id // Передаем ID нового комментария
         );
+        
+        // Если это ответ на комментарий, создаем уведомление о ответе
+        if (parentId) {
+          console.log('Создаем уведомление о ответе на комментарий с ID:', parentId);
+          
+          // Получаем информацию о родительском комментарии, чтобы узнать автора
+          const parentTable = sourceType === 'deal_comment' ? 'deal_comments' : 'promo_comments';
+          const { data: parentComment, error: parentError } = await supabase
+            .from(parentTable)
+            .select('user_id')
+            .eq('id', parentId)
+            .maybeSingle();
+            
+          if (parentError) {
+            console.error('Ошибка при получении данных о родительском комментарии:', parentError);
+          } else if (parentComment && parentComment.user_id && parentComment.user_id !== user.id) {
+            console.log('Автор родительского комментария:', parentComment.user_id);
+            
+            // Проверяем настройки пользователя (разрешены ли уведомления о ответах)
+            const { data: userPrefs, error: prefsError } = await supabase
+              .from('profiles')
+              .select('notification_preferences')
+              .eq('id', parentComment.user_id)
+              .maybeSingle();
+              
+            // Создаем уведомление, только если пользователь разрешил или если у него нет настроек
+            if (!prefsError && 
+                (!userPrefs?.notification_preferences || 
+                 userPrefs.notification_preferences.replies !== false)) {
+              
+              // Создаем уведомление о ответе на комментарий
+              const { error: notifError } = await supabase
+                .from('notifications')
+                .insert({
+                  user_id: parentComment.user_id,
+                  type: 'reply',
+                  content: comment.trim().substring(0, 100) + (comment.trim().length > 100 ? '...' : ''),
+                  source_type: sourceType,
+                  source_id: commentData?.id,
+                  entity_id: sourceId, // Здесь сохраняем ID сделки/промо
+                  actor_id: user.id
+                });
+                
+              if (notifError) {
+                console.error('Ошибка при создании уведомления о ответе:', notifError);
+              } else {
+                console.log('Уведомление о ответе успешно создано');
+              }
+            } else if (prefsError) {
+              console.error('Ошибка при получении настроек пользователя:', prefsError);
+            } else {
+              console.log('Пользователь отключил уведомления о ответах в настройках');
+            }
+          } else {
+            console.log('Пользователь отвечает на свой собственный комментарий, уведомление не создается');
+          }
+        }
       } catch (mentionError) {
-        console.error('Error creating mention notifications:', mentionError);
-        // We don't want to block comment submission if mentions fail
+        console.error('Error creating notifications:', mentionError);
+        // We don't want to block comment submission if notifications fail
       }
 
       onSubmit(comment, images);
