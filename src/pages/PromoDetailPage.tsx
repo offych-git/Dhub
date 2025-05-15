@@ -11,9 +11,10 @@ import { highlightText } from '../utils/highlightText';
 
 const PromoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const highlightedCommentId = searchParams.get('comment');
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
   const { user } = useAuth();
   const [promo, setPromo] = useState<any>(null);
@@ -38,33 +39,42 @@ type CommentTreeNode = {
   replies?: CommentTreeNode[];
 };
 
-const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
-  <div key={comment.id} style={{ marginLeft: depth * 24 }}>
-    <Comment
-      id={comment.id}
-      content={comment.content}
-      createdAt={comment.created_at}
-      user={{
-        id: comment.profiles?.id,
-        name: comment.profiles?.display_name || comment.profiles?.email?.split('@')[0] || 'Anonymous',
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.display_name || comment.profiles?.email || 'Anonymous')}&background=random`
-      }}
-      replyCount={typeof comment.reply_count === 'number' ? comment.reply_count : 0}
-      likeCount={typeof comment.like_count === 'number' ? comment.like_count : 0}
-      images={comment.images || []}
-      replies={undefined}
-      sourceType="promo_comment"
-      sourceId={promo && promo.id ? String(promo.id) : ''}
-      onReply={loadComments}
-      depth={depth || 0}
-    />
-    {comment.replies && comment.replies.length > 0 && (
-      <div>
-        {comment.replies.map((reply: CommentTreeNode) => renderCommentTree(reply, (depth || 0) + 1))}
-      </div>
-    )}
-  </div>
-);
+const renderCommentTree = (comment: CommentTreeNode, depth = 0) => {
+        const isHighlighted = highlightedCommentId === comment.id;
+
+        return (
+            <div 
+                key={comment.id} 
+                style={{marginLeft: depth * 24}}
+                id={`comment-${comment.id}`}
+                className={`transition-colors duration-300 ${isHighlighted ? 'bg-orange-500/20 rounded-lg' : ''}`}
+            >
+                <Comment
+                    id={comment.id}
+                    content={comment.content}
+                    createdAt={comment.created_at}
+                    images={comment.images || []}
+                    user={{
+                        id: comment.profiles?.id,
+                        name: comment.profiles?.display_name || comment.profiles?.email?.split('@')[0] || 'Anonymous',
+                        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.display_name || comment.profiles?.email || 'Anonymous')}&background=random`
+                    }}
+                    replyCount={comment.reply_count || 0}
+                    likeCount={comment.like_count || 0}
+                    replies={undefined}
+                    sourceType="promo_comment"
+                    sourceId={promo && promo.id ? String(promo.id) : ''}
+                    onReply={loadComments}
+                    depth={depth}
+                />
+                {comment.replies && comment.replies.length > 0 && (
+                    <div>
+                        {comment.replies.map(reply => renderCommentTree(reply, depth + 1))}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +94,33 @@ const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
       }
     }
   }, [id, user, sortBy]);
+  
+  // Отдельный эффект для прокрутки к комментарию, если указан ID комментария в URL
+  useEffect(() => {
+    if (highlightedCommentId) {
+      // Для DOM-элементов используем небольшую задержку, чтобы убедиться, что комментарии загружены
+      const timer = setTimeout(() => {
+        const commentElement = document.getElementById(`comment-${highlightedCommentId}`);
+        if (commentElement) {
+          // Прокручиваем к комментарию один раз
+          commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Добавляем эффект подсветки (упрощаем анимацию)
+          // Используем последовательные классы без лишних удалений
+          commentElement.classList.add('bg-orange-500/20');
+          setTimeout(() => {
+            commentElement.classList.remove('bg-orange-500/20');
+            commentElement.classList.add('bg-orange-500/10');
+            setTimeout(() => {
+              commentElement.classList.remove('bg-orange-500/10');
+            }, 1000);
+          }, 1000);
+        }
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedCommentId, comments.length]);
 
   const loadPromo = async () => {
     try {

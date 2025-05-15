@@ -683,7 +683,7 @@ const UserCommentsPage: React.FC = () => {
                                                 content.appendChild(closeBtn);
                                                 content.appendChild(img);
                                                 modal.appendChild(content);
-                                                document.body.appendChild(modal);
+                                                document.body.removeChild(modal);
                                               }}
                                             />
                                           </div>
@@ -709,189 +709,157 @@ const UserCommentsPage: React.FC = () => {
                 <h2 className="text-white font-medium mb-4">Promo Comments</h2>
                 <div className="space-y-4">
                   {filteredPromos.map((promo, index) => (
-                    <div key={`promo-${promo.id}-${index}`} className="bg-gray-800 rounded-lg overflow-hidden">
-                      <div className="p-4">
-                        <h3 className="text-white font-medium">{promo.title}</h3>
-                        <div className="mt-2 flex items-center space-x-2">
-                          <div className="bg-gray-700 px-3 py-1 rounded border border-gray-600">
-                            <span className="text-orange-500 font-mono">{promo.code}</span>
-                          </div>
-                        </div>
-                        {promo.userComment && (
-                          <div className="space-y-2">
-                        <div className="mt-4 bg-gray-700 rounded-md p-3 border-l-2 border-orange-500">
-                          <div className="flex justify-between items-start">
-                            <div className="text-gray-400 text-sm mb-1 flex items-center">
-                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                              {promo.userComment.createdAt}
+                    <div key={`promo-${promo.id}-${index}`} className="space-y-2">
+                      <div className="bg-gray-800 rounded-lg overflow-hidden">
+                        <div className="p-4">
+                          <h3 className="text-white font-medium">{promo.title}</h3>
+                          <div className="mt-2 flex items-center space-x-2">
+                            <div className="bg-gray-700 px-3 py-1 rounded border border-gray-600">
+                              <span className="text-orange-500 font-mono">{promo.code}</span>
                             </div>
-                            <>
-                            {console.log("Отладка промо:", promo)}
-                            <AdminActions 
-                              type="promo_comments"
-                              id={promo.userComment.id}
-                              userId={user?.id || ''}
-                              onAction={loadUserComments}
-                            />
-                            </>
                           </div>
-                          <div className="text-white">
-                            {promo.userComment.content}
-                            {promo.userComment.images && promo.userComment.images.length > 0 && (
-                              <div className="flex gap-2 mt-2">
-                                {promo.userComment.images.map((image, index) => (
-                                  <div key={index} className="relative">
-                                    <img
-                                      src={image}
-                                      alt={`Comment image ${index + 1}`}
-                                      className="w-16 h-16 object-cover rounded cursor-pointer"
-                                      onClick={() => {
-                                        const modal = document.createElement('div');
-                                        modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center bg-opacity-75 flex items-center justify-center z-50';
-                                        modal.onclick = () => document.body.removeChild(modal);
-
-                                        const content = document.createElement('div');
-                                        content.className = 'relative max-w-4xl max-h-[90vh]';
-                                        content.onclick = e => e.stopPropagation();
-
-                                        const closeBtn = document.createElement('button');
-                                        closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
-                                        closeBtn.textContent = '×';
-                                        closeBtn.onclick = () => document.body.removeChild(modal);
-
-                                        const img = document.createElement('img');
-                                        img.src = image;
-                                        img.className = 'max-w-full max-h-[90vh] object-contain';
-
-                                        content.appendChild(closeBtn);
-                                        content.appendChild(img);
-                                        modal.appendChild(content);
-                                        document.body.appendChild(modal);
-                                      }}
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                          
+                          <div className="mt-3">
+                            <a
+                              href={promo.discount_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block bg-orange-500 text-center text-white py-2 rounded-md"
+                            >
+                              Use Code
+                            </a>
                           </div>
                         </div>
-                            {/* Display replies */}
-                            {promo.userComment.replies && promo.userComment.replies.length > 0 && (
-                              <div className="ml-8 space-y-2">
-                                {promo.userComment.replies.map((reply, index) => (
-                                  <div key={index} className="bg-gray-600 rounded-md p-3 border-l-2 border-orange-400">
-                                    <div className="flex justify-between items-start">
-                                      <div className="text-gray-400 text-sm mb-1 flex items-center">
-                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                          <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                          <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                        {reply.createdAt}
-                                      </div>
-                                      {reply.id && (
-                                        <AdminActions 
-                                          type="promo_comment"
-                                          id={reply.id}
-                                          userId={user?.id || ''}
-                                          onAction={loadUserComments}
-                                        />
-                                      )}
-                                    </div>
-                                    <div className="text-white">
-                                      {reply.content}
-                                      {reply.images && reply.images.length > 0 && (
-                                        <div className="flex gap-2 mt-2">
-                                          {reply.images.map((image, i) => (
-                                            <div key={i} className="relative">
-                                              <img
-                                                src={image}
-                                                alt={`Reply image ${i + 1}`}
-                                                className="w-16 h-16 object-cover rounded cursor-pointer"
-                                                onClick={() => {
-                                                  const modal = document.createElement('div');
-                                                  modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
-                                                  modal.onclick = () => document.body.removeChild(modal);
-
-                                                  const content = document.createElement('div');
-                                                  content.className = 'relative max-w-4xl max-h-[90vh]';
-                                                  content.onclick = e => e.stopPropagation();
-
-                                                  const closeBtn = document.createElement('button');
-                                                  closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
-                                                  closeBtn.textContent = '×';
-                                                  closeBtn.onclick = () => document.body.removeChild(modal);
-
-                                                  const img = document.createElement('img');
-                                                  img.src = image;
-                                                  img.className = 'max-w-full max-h-[90vh] object-contain';
-
-                                                  content.appendChild(closeBtn);
-                                                  content.appendChild(img);
-                                                  modal.appendChild(content);
-                                                  document.body.appendChild(modal);
-                                                }}
-                                              />
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
-                      <a
-                        href={promo.discount_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block bg-orange-500 text-center text-white py-2"
-                      >
-                        Use Code
-                      </a>
-                        <button
-                          onClick={() => {
-                              // Формируем правильный URL для конкретного промокода
-                              const promoUrl = `${window.location.origin}/promos/${promo.id}`;
+                      
+                      {promo.userComment && (
+                        <div className="space-y-2">
+                          <div className="bg-gray-800 rounded-md p-3 ml-4 border-l-2 border-orange-500">
+                            <div className="flex justify-between items-start">
+                              <div className="text-gray-400 text-sm mb-1 flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                  <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                                {promo.userComment.createdAt}
+                              </div>
+                              <>
+                              {console.log("Отладка промо:", promo)}
+                              <AdminActions 
+                                type="promo_comments"
+                                id={promo.userComment.id}
+                                userId={user?.id || ''}
+                                onAction={loadUserComments}
+                              />
+                              </>
+                            </div>
+                            <div className="text-white">
+                              {promo.userComment.content}
+                              {promo.userComment.images && promo.userComment.images.length > 0 && (
+                                <div className="flex gap-2 mt-2">
+                                  {promo.userComment.images.map((image, index) => (
+                                    <div key={index} className="relative">
+                                      <img
+                                        src={image}
+                                        alt={`Comment image ${index + 1}`}
+                                        className="w-16 h-16 object-cover rounded cursor-pointer"
+                                        onClick={() => {
+                                          const modal = document.createElement('div');
+                                          modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                                          modal.onclick = () => document.body.removeChild(modal);
 
-                              // Очищаем HTML-теги из заголовка
-                              const cleanTitle = promo.title ? promo.title.replace(/<[^>]*>/g, '') : '';
+                                          const content = document.createElement('div');
+                                          content.className = 'relative max-w-4xl max-h-[90vh]';
+                                          content.onclick = e => e.stopPropagation();
 
-                              // Для мобильных устройств используем только текст для лучшей совместимости
-                              const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                                          const closeBtn = document.createElement('button');
+                                          closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
+                                          closeBtn.textContent = '×';
+                                          closeBtn.onclick = () => document.body.removeChild(modal);
 
-                              try {
-                                if (navigator.share) {
-                                  if (isMobile) {
-                                    // На мобильных только text для максимальной совместимости
-                                    navigator.share({
-                                      text: `${cleanTitle}\n${promoUrl}`
-                                    });
-                                  } else {
-                                    // На десктопе используем полный набор параметров
-                                    navigator.share({
-                                      title: cleanTitle,
-                                      text: `${cleanTitle}\n${promoUrl}`,
-                                      url: promoUrl
-                                    });
-                                  }
-                                } else {
-                                  navigator.clipboard.writeText(`${cleanTitle}\n${promoUrl}`);
-                                  alert('Link copied to clipboard!');
-                                }
-                              } catch (error) {
-                                console.error('Error sharing:', error);
-                              }
-                          }}
-                          className="block bg-blue-500 text-center text-white py-2"
-                        >
-                          Share
-                        </button>
+                                          const img = document.createElement('img');
+                                          img.src = image;
+                                          img.className = 'max-w-full max-h-[90vh] object-contain';
+
+                                          content.appendChild(closeBtn);
+                                          content.appendChild(img);
+                                          modal.appendChild(content);
+                                          document.body.removeChild(modal);
+                                        }}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {/* Display replies */}
+                          {promo.userComment.replies && promo.userComment.replies.length > 0 && (
+                            <div className="ml-8 space-y-2">
+                              {promo.userComment.replies.map((reply, index) => (
+                                <div key={index} className="bg-gray-700 rounded-md p-3 border-l-2 border-orange-400">
+                                  <div className="flex justify-between items-start">
+                                    <div className="text-gray-400 text-sm mb-1 flex items-center">
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="12" cy="12" r="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                      {reply.createdAt}
+                                    </div>
+                                    {reply.id && (
+                                      <AdminActions 
+                                        type="promo_comment"
+                                        id={reply.id}
+                                        userId={user?.id || ''}
+                                        onAction={loadUserComments}
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="text-white">
+                                    {reply.content}
+                                    {reply.images && reply.images.length > 0 && (
+                                      <div className="flex gap-2 mt-2">
+                                        {reply.images.map((image, i) => (
+                                          <div key={i} className="relative">
+                                            <img
+                                              src={image}
+                                              alt={`Reply image ${i + 1}`}
+                                              className="w-16 h-16 object-cover rounded cursor-pointer"
+                                              onClick={() => {
+                                                const modal = document.createElement('div');
+                                                modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                                                modal.onclick = () => document.body.removeChild(modal);
+
+                                                const content = document.createElement('div');
+                                                content.className = 'relative max-w-4xl max-h-[90vh]';
+                                                content.onclick = e => e.stopPropagation();
+
+                                                const closeBtn = document.createElement('button');
+                                                closeBtn.className = 'absolute -top-10 right-0 text-white text-2xl font-bold p-2';
+                                                closeBtn.textContent = '×';
+                                                closeBtn.onclick = () => document.body.removeChild(modal);
+
+                                                const img = document.createElement('img');
+                                                img.src = image;
+                                                img.className = 'max-w-full max-h-[90vh] object-contain';
+
+                                                content.appendChild(closeBtn);
+                                                content.appendChild(img);
+                                                modal.appendChild(content);
+                                                document.body.removeChild(modal);
+                                              }}
+                                            />
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -176,7 +176,8 @@ const CommentInput: React.FC<CommentInputProps> = ({
         throw new Error('User not authenticated');
       }
 
-      const { error } = await supabase
+      // Insert the comment first
+      const { data: commentData, error } = await supabase
         .from(table)
         .insert({
           [sourceType === 'deal_comment' ? 'deal_id' : 'promo_id']: sourceId,
@@ -184,17 +185,94 @@ const CommentInput: React.FC<CommentInputProps> = ({
           content: comment.trim(),
           parent_id: parentId,
           images: imageUrls
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      // Логирование для отладки ID комментария
+      console.log('Создан новый комментарий с ID:', commentData?.id);
+      console.log('Данные комментария:', commentData);
 
-      await createMentionNotification(
-        supabase,
-        sourceType,
-        sourceId,
-        comment.trim(),
-        user.id
-      );
+      // Process mentions and create notifications
+      try {
+        // Логирование параметров перед вызовом функции
+        console.log('--- Передача параметров в createMentionNotification ---');
+        console.log('Параметр sourceType:', sourceType);
+        console.log('Параметр sourceId (Deal/Promo ID):', sourceId);
+        console.log('Параметр commentId (Новый ID комментария):', commentData?.id);
+        console.log('--- Конец параметров ---');
+        
+        await createMentionNotification(
+          supabase,
+          sourceType,
+          sourceId,
+          comment.trim(),
+          user.id,
+          commentData?.id // Передаем ID нового комментария
+        );
+        
+        // Если это ответ на комментарий, создаем уведомление о ответе
+        if (parentId) {
+          console.log('Создаем уведомление о ответе на комментарий с ID:', parentId);
+          
+          // Получаем информацию о родительском комментарии, чтобы узнать автора
+          const parentTable = sourceType === 'deal_comment' ? 'deal_comments' : 'promo_comments';
+          const { data: parentComment, error: parentError } = await supabase
+            .from(parentTable)
+            .select('user_id')
+            .eq('id', parentId)
+            .maybeSingle();
+            
+          if (parentError) {
+            console.error('Ошибка при получении данных о родительском комментарии:', parentError);
+          } else if (parentComment && parentComment.user_id && parentComment.user_id !== user.id) {
+            console.log('Автор родительского комментария:', parentComment.user_id);
+            
+            // Проверяем настройки пользователя (разрешены ли уведомления о ответах)
+            const { data: userPrefs, error: prefsError } = await supabase
+              .from('profiles')
+              .select('notification_preferences')
+              .eq('id', parentComment.user_id)
+              .maybeSingle();
+              
+            // Создаем уведомление, только если пользователь разрешил или если у него нет настроек
+            if (!prefsError && 
+                (!userPrefs?.notification_preferences || 
+                 userPrefs.notification_preferences.replies !== false)) {
+              
+              // Создаем уведомление о ответе на комментарий
+              const { error: notifError } = await supabase
+                .from('notifications')
+                .insert({
+                  user_id: parentComment.user_id,
+                  type: 'reply',
+                  content: comment.trim().substring(0, 100) + (comment.trim().length > 100 ? '...' : ''),
+                  source_type: sourceType,
+                  source_id: commentData?.id,
+                  entity_id: sourceId, // Здесь сохраняем ID сделки/промо
+                  actor_id: user.id
+                });
+                
+              if (notifError) {
+                console.error('Ошибка при создании уведомления о ответе:', notifError);
+              } else {
+                console.log('Уведомление о ответе успешно создано');
+              }
+            } else if (prefsError) {
+              console.error('Ошибка при получении настроек пользователя:', prefsError);
+            } else {
+              console.log('Пользователь отключил уведомления о ответах в настройках');
+            }
+          } else {
+            console.log('Пользователь отвечает на свой собственный комментарий, уведомление не создается');
+          }
+        }
+      } catch (mentionError) {
+        console.error('Error creating notifications:', mentionError);
+        // We don't want to block comment submission if notifications fail
+      }
 
       onSubmit(comment, images);
       setComment('');
@@ -285,7 +363,8 @@ const CommentInput: React.FC<CommentInputProps> = ({
       {showMentions && mentionUsers.length > 0 && (
         <div
           ref={mentionsRef}
-          className="absolute left-0 right-0 mt-1 bg-gray-800 rounded-md shadow-lg overflow-hidden z-10"
+          className="absolute left-0 right-0 mt-1 bg-gray-800 rounded-md shadow-lg overflow-hidden z-10 max-h-60 overflow-y-auto"
+          style={{ maxWidth: '100%', position: 'absolute' }}
         >
           {mentionUsers.map(user => (
             <button

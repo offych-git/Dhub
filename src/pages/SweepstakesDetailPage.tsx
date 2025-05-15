@@ -343,6 +343,32 @@ const SweepstakesDetailPage: React.FC = () => {
         </div>
     );
 
+    useEffect(() => {
+        const highlightedCommentId = location.hash ? location.hash.substring(1) : null;
+
+        if (highlightedCommentId) {
+            const timer = setTimeout(() => {
+        const commentElement = document.getElementById(`comment-${highlightedCommentId}`);
+        if (commentElement) {
+          // Прокручиваем к комментарию
+          commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+          // Добавляем эффект подсветки с плавным переходом
+          commentElement.classList.add('bg-orange-500/20');
+          setTimeout(() => {
+            commentElement.classList.remove('bg-orange-500/20');
+            commentElement.classList.add('bg-orange-500/10');
+            setTimeout(() => {
+              commentElement.classList.remove('bg-orange-500/10');
+            }, 1000);
+          }, 1000);
+        }
+      }, 800);
+
+            return () => clearTimeout(timer);
+        }
+    }, [location.hash]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-900">
@@ -781,7 +807,7 @@ const SweepstakesDetailPage: React.FC = () => {
                                 // Сначала подготавливаем описание
                                 let processedDescription = sweepstakes.description
                                     // Сначала удаляем технический блок с JSON изображений
-                                    .replace(/<!-- DEAL_IMAGES: .*? -->/g, '')
+                                    .replace(/!-- DEAL_IMAGES: .*? -->/g, '')
                                     // Обрабатываем URL в тексте с улучшенным регулярным выражением
                                     .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
                                         // Проверяем, заканчивается ли URL специальным символом

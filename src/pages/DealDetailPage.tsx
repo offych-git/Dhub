@@ -16,6 +16,7 @@ const DealDetailPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams] = useSearchParams();
+    const highlightedCommentId = searchParams.get('comment');
     const searchQuery = searchParams.get('q') || '';
     const {user} = useAuth();
     const [comments, setComments] = useState<any[]>([]);
@@ -127,15 +128,132 @@ const DealDetailPage: React.FC = () => {
     // Функция генерации ценовой истории удалена
 
     useEffect(() => {
-        // Прокручиваем страницу вверх при открытии деталей сделки
-        window.scrollTo(0, 0);
+    // Прокручиваем страницу вверх при открытии деталей сделки
+    window.scrollTo(0, 0);
 
-        if (id) {
-            loadDeal();
-            loadComments();
-            loadFavoriteStatus();
+    if (id) {
+      loadDeal();
+      loadComments();
+      loadFavoriteStatus();
+    }
+  }, [id, sortBy]);
+
+  // Прокрутка к комментарию если есть параметр comment в URL
+  useEffect(() => {
+    const commentId = searchParams.get('comment');
+    if (commentId && deal) {
+      console.log('Ищем комментарий для прокрутки:', commentId, 'в сделке:', deal.id);
+
+      // Сначала убедимся, что комментарии загружены
+      const checkCommentsLoaded = () => {
+        if (comments.length === 0) {
+          console.log('Комментарии еще не загружены, повторная попытка загрузки...');
+          loadComments();
+          return false;
         }
-    }, [id, sortBy]);
+        return true;
+      };
+
+      // Функция для проверки, принадлежит ли комментарий текущей сделке
+      const checkCommentBelongsToDeal = () => {
+        // Рекурсивная функция для поиска комментария в дереве
+        const findCommentInTree = (commentsList) => {
+          for (const comment of commentsList) {
+            if (comment.id === commentId) {
+              return true; // Комментарий найден
+            }
+            if (comment.replies && comment.replies.length > 0) {
+              if (findCommentInTree(comment.replies)) {
+                return true;
+              }
+            }
+          }
+          return false; // Комментарий не найден
+        };
+        
+        const found = findCommentInTree(comments);
+        if (!found) {
+          console.warn(`Комментарий ${commentId} не принадлежит сделке ${deal.id}. Возможно неправильная ссылка.`);
+        }
+        return found;
+      };
+
+      // Функция для поиска и прокрутки
+      const findAndScrollToComment = () => {
+        if (!checkCommentsLoaded()) {
+          return false;
+        }
+
+        // Проверка принадлежности комментария текущей сделке
+        if (!checkCommentBelongsToDeal()) {
+          console.log(`Комментарий ${commentId} не найден в текущей сделке ${deal.id}`);
+          return false;
+        }
+        
+        const commentElement = document.getElementById(`comment-${commentId}`);
+        console.log('Найден элемент комментария:', !!commentElement, commentId);
+
+        if (commentElement) {
+          // Прокручиваем сразу к комментарию без промежуточных прокруток
+          commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          commentElement.classList.add('highlight-comment');
+
+            // Добавляем более заметное выделение комментария с корректной анимацией без дерганий
+            commentElement.classList.add('bg-orange-500/20');
+            setTimeout(() => {
+              commentElement.classList.remove('bg-orange-500/20');
+              commentElement.classList.add('bg-orange-500/10');
+              setTimeout(() => {
+                commentElement.classList.remove('bg-orange-500/10');
+              }, 1000);
+            }, 1000);
+
+            // Для всех элементов с классом highlighted-comment также применим подсветку
+            if (commentId === highlightedCommentId) {
+              const allHighlighted = document.querySelectorAll('.highlighted-comment');
+              allHighlighted.forEach(element => {
+                element.classList.add('bg-orange-500/20');
+                setTimeout(() => {
+                  element.classList.remove('bg-orange-500/20');
+                  element.classList.add('bg-orange-500/10');
+                  setTimeout(() => {
+                    element.classList.remove('bg-orange-500/10');
+                  }, 1000);
+                }, 1000);
+              });
+            }
+
+            // Снимаем дополнительное выделение после анимации
+            setTimeout(() => {
+              commentElement.classList.remove('highlight-comment');
+            }, 3000);
+
+          return true;
+        }
+        return false;
+      };
+
+      // Попробуем найти комментарий несколько раз с интервалом
+      let attempts = 0;
+      const maxAttempts = 15; // Увеличиваем количество попыток для более надежного поиска
+
+      const attemptToFind = () => {
+        if (findAndScrollToComment() || attempts >= maxAttempts) {
+          if (attempts >= maxAttempts) {
+            console.warn(`Не удалось найти комментарий ${commentId} после ${maxAttempts} попыток`);
+          }
+          return;
+        }
+
+        attempts++;
+        console.log(`Попытка найти комментарий ${attempts}/${maxAttempts} для ID: ${commentId}`);
+        setTimeout(attemptToFind, 1000); // Увеличиваем интервал между попытками
+      };
+
+      // Начинаем поиск с задержкой, чтобы дать время на рендеринг и загрузку комментариев
+      setTimeout(attemptToFind, 1500);
+    }
+  }, [searchParams, deal, comments, highlightedCommentId, id]); // Добавляем id сделки в зависимости
 
     const loadDeal = async () => {
         try {
@@ -346,33 +464,46 @@ const DealDetailPage: React.FC = () => {
         replies?: CommentTreeNode[];
     };
 
-    const renderCommentTree = (comment: CommentTreeNode, depth = 0) => (
-        <div key={comment.id} style={{marginLeft: depth * 24}}>
-            <Comment
-                id={comment.id}
-                content={comment.content}
-                createdAt={comment.created_at}
-                images={comment.images || []}
-                user={{
-                    id: comment.profiles?.id,
-                    name: comment.profiles?.display_name || comment.profiles?.email?.split('@')[0] || 'Anonymous',
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.display_name || comment.profiles?.email || 'Anonymous')}&background=random`
-                }}
-                replyCount={typeof comment.reply_count === 'number' ? comment.reply_count : 0}
-                likeCount={typeof comment.like_count === 'number' ? comment.like_count : 0}
-                replies={undefined}
-                sourceType="deal_comment"
-                sourceId={deal && deal.id ? String(deal.id) : ''}
-                onReply={loadComments}
-                depth={depth || 0}
-            />
-            {comment.replies && comment.replies.length > 0 && (
-                <div>
-                    {comment.replies.map((reply: CommentTreeNode) => renderCommentTree(reply, (depth || 0) + 1))}
-                </div>
-            )}
-        </div>
-    );
+    const renderCommentTree = (comment: CommentTreeNode, depth = 0) => {
+        const isHighlighted = highlightedCommentId === comment.id;
+
+        // ВАЖНО: Не используем useEffect внутри функции рендеринга!
+        // Вместо этого определяем класс на основе isHighlighted
+        const commentClass = `transition-colors duration-300 ${isHighlighted ? 'bg-orange-500/20 rounded-lg highlighted-comment' : ''}`;
+
+        return (
+            <div 
+                key={comment.id} 
+                style={{marginLeft: depth * 24}}
+                id={`comment-${comment.id}`}
+                className={commentClass}
+            >
+                <Comment
+                    id={comment.id}
+                    content={comment.content}
+                    createdAt={comment.created_at}
+                    images={comment.images || []}
+                    user={{
+                        id: comment.profiles?.id,
+                        name: comment.profiles?.display_name || comment.profiles?.email?.split('@')[0] || 'Anonymous',
+                        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.display_name || comment.profiles?.email || 'Anonymous')}&background=random`
+                    }}
+                    replyCount={typeof comment.reply_count === 'number' ? comment.reply_count : 0}
+                    likeCount={typeof comment.like_count === 'number' ? comment.like_count : 0}
+                    replies={undefined}
+                    sourceType="deal_comment"
+                    sourceId={deal && deal.id ? String(deal.id) : ''}
+                    onReply={loadComments}
+                    depth={depth || 0}
+                />
+                {comment.replies && comment.replies.length > 0 && (
+                    <div>
+                        {comment.replies.map((reply: CommentTreeNode) => renderCommentTree(reply, (depth || 0) + 1))}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     if (loading) {
         return (
@@ -605,7 +736,7 @@ const DealDetailPage: React.FC = () => {
                             dealImages.forEach((_, index) => {
                                 const dot = document.createElement('button');
                                 dot.className = `nav-dot h-2 w-2 rounded-full ${
-                                    index === currentFullscreenIndex ? 'bg-orange-500' : 'bg-gray-400'
+                                    i === index ? 'bg-orange-500' : 'bg-gray-400'
                                 }`;
 
                                 // При клике на точку меняем изображение
@@ -894,7 +1025,7 @@ const DealDetailPage: React.FC = () => {
 
                 {/* Блок с ценовой историей был удалён */}
 
-                <div className="mt-6">
+                <div className="mt-6" id="comments-section">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-white font-medium">Comments ({commentCount})</h3>
                         <select
