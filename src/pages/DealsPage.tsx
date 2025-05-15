@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useGlobalState } from '../contexts/GlobalStateContext';
 import { supabase } from '../lib/supabase';
-import { Deal } from '../types';
 import Tabs from '../components/deals/Tabs';
 import FilterBar from '../components/shared/FilterBar';
 import DealCard from '../components/deals/DealCard';
@@ -93,6 +92,17 @@ const DealsPage: React.FC = () => {
           }
         }
 
+        let votedIds: Map<string, boolean> = new Map();
+        if (user) {
+          const { data: votesData, error: votesError } = await supabase
+            .from('deal_votes')
+            .select('deal_id, vote_type')
+            .eq('user_id', user.id);
+
+          if (!votesError && votesData) {
+            votedIds = new Map(votesData.map(vote => [vote.deal_id, vote.vote_type]));
+          }
+        }
 
         const { data: profile } = user
           ? await supabase.from('profiles').select('user_status').eq('id', user.id).single()
@@ -125,6 +135,7 @@ const DealsPage: React.FC = () => {
         const enrichedDeals = (data || []).map(deal => ({
           id: deal.id,
           title: deal.title,
+          type: deal.type,
           currentPrice: parseFloat(deal.current_price),
           originalPrice: deal.original_price ? parseFloat(deal.original_price) : undefined,
           store: { id: deal.store_id, name: deal.store_id },
@@ -135,9 +146,9 @@ const DealsPage: React.FC = () => {
             exact: new Date(deal.created_at).toLocaleString()
           },
           popularity: deal.popularity || 0,
-          positiveVotes: deal.positive_votes || 0,
+          userVoteType: votedIds.get(deal.id),
           comments: deal.comment_count || 0,
-          is_favorite: favoriteIds.has(deal.id),
+          isFavorite: favoriteIds.has(deal.id),
           postedBy: {
             id: deal.profile_id || 'anonymous',
             name: deal.display_name || deal.email?.split('@')[0] || 'Anonymous',

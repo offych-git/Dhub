@@ -6,16 +6,24 @@ import { useNavigate } from 'react-router-dom';
 
 interface VoteControlsProps {
     dealId: string;
-    type?: 'deal' | 'promo';
+    popularity: bigint;
+    userVoteType: boolean;
+    // type?: 'deal' | 'promo';
+    type: string
 }
 
-const VoteControls: React.FC<VoteControlsProps> = ({ dealId, type }) => {
+const VoteControls: React.FC<VoteControlsProps> = ({ dealId, type, popularity, userVoteType }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const [voteCount, setVoteCount] = useState<number>(0);
-    const [userVote, setUserVote] = useState<boolean | null>(null);
+    const [voteCount, setVoteCount] = useState(popularity || 0);
+    const [userVote, setUserVote] = useState(userVoteType === true ? true : userVoteType === false ? false : null);
 
     const table = type === 'promo' ? 'promo_votes' : 'deal_votes';
+    if (type !== 'deal') {
+        useEffect(() => {
+            loadVoteStatus();
+        }, [dealId, user]);
+    }
 
     const loadVoteStatus = async () => {
         const idKey = type === 'promo' ? 'promo_id' : 'deal_id';
@@ -41,10 +49,6 @@ const VoteControls: React.FC<VoteControlsProps> = ({ dealId, type }) => {
             setUserVote(null);
         }
     };
-
-    useEffect(() => {
-        loadVoteStatus();
-    }, [dealId, user]);
 
     const handleVote = async (voteType: boolean) => {
         if (!user) {

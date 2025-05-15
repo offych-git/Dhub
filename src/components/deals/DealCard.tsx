@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Deal } from '../../types';
 import { MessageSquare, ExternalLink, Heart, Share2, Edit2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -25,13 +25,11 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
   const navigate = useNavigate();
   // Determine if this is a sweepstakes based on deal type or other properties
   const isSweepstakes = deal.type === 'sweepstakes';
-  const [isFavorite, setIsFavorite] = useState(deal.is_favorite);
-  // const [isFavorite, setIsFavorite] = useState(false);
-  const [commentCount, setCommentCount] = useState(deal.comments);
+  const [isFavorite, setIsFavorite] = useState(deal.isFavorite);
+  const [commentCount] = useState(deal.comments);
   const isOwnDeal = user && deal.postedBy.id === user.id;
-  const [searchParams] = useSearchParams(); // Added useSearchParams hook
-  // const [dealStatus, setDealStatus] = useState<string>(deal.status || 'approved');
-  const [dealStatus, setDealStatus] = useState(deal.status || 'approved'); // если он будет меняться
+  const [searchParams] = useSearchParams();
+  const [dealStatus] = useState(deal.status || 'approved');
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -85,7 +83,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onDelete, onVoteChange, hideF
         </div>
 
         <div className="ml-auto flex items-center text-sm">
-          <VoteControls dealId={deal.id} onVoteChange={onVoteChange} />
+          <VoteControls dealId={deal.id} popularity={deal.popularity} userVoteType={deal.userVoteType} type={deal.type} onVoteChange={onVoteChange} />
         </div>
       </div>
 
