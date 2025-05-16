@@ -236,6 +236,14 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         .eq('status', 'pending')
         .order('submitted_at', { ascending: false })
         .limit(50);
+      
+      // Если нет элементов в очереди модерации, выходим
+      if (!data || data.length === 0) {
+        setModerationQueue([]);
+        setQueueCount(0);
+        setIsLoading(false);
+        return;
+      }
 
       if (error) throw error;
 
@@ -355,11 +363,39 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       // Формируем итоговый список элементов для отображения
-      const enrichedQueue = Array.from(queueItemsMap.values()).map(item => {
-        const key = `${item.item_type}:${item.item_id}`;
-        const contentData = contentMap.get(key);
-        return { ...item, content: contentData };
-      });
+      const enrichedQueue = Array.from(queueItemsMap.values())
+        .map(item => {
+          const key = `${item.item_type}:${item.item_id}`;
+          const contentData = contentMap.get(key);
+          return { ...item, content: contentData };
+        })
+        // Фильтруем элементы, которые были удалены (для них contentData будет undefined)
+        .filter(item => {
+          if (!item.content) {
+            // Автоматически удаляем из очереди модерации записи, для которых не найдены соответствующие элементы
+            try {
+              console.log(`Удаление из очереди модерации элемента с ID ${item.item_id}, тип: ${item.item_type}, так как соответствующий элемент не найден`);
+              
+              supabase
+                .from('moderation_queue')
+                .delete()
+                .eq('item_id', item.item_id)
+                .eq('item_type', item.item_type)
+                .then(() => {
+                  console.log(`Элемент успешно удален из очереди модерации: ${item.item_id}`);
+                })
+                .catch(err => {
+                  console.error(`Ошибка при удалении из очереди модерации: ${err}`);
+                });
+              
+              return false;
+            } catch (e) {
+              console.error('Ошибка при удалении из очереди модерации:', e);
+              return false;
+            }
+          }
+          return true;
+        });
 
       setModerationQueue(enrichedQueue);
     } catch (error) {
