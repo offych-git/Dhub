@@ -736,7 +736,7 @@ const DealDetailPage: React.FC = () => {
                             dealImages.forEach((_, index) => {
                                 const dot = document.createElement('button');
                                 dot.className = `nav-dot h-2 w-2 rounded-full ${
-                                    i === index ? 'bg-orange-500' : 'bg-gray-400'
+                                    currentFullscreenIndex === index ? 'bg-orange-500' : 'bg-gray-400'
                                 }`;
 
                                 // При клике на точку меняем изображение
@@ -935,12 +935,6 @@ const DealDetailPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-
-                {isExpired && (
-                  <div className="bg-red-500/20 px-2 py-0.5 text-xs text-red-500 rounded-full w-fit mt-2">
-                    Expired
-                  </div>
-                )}
 
                 <div className="mt-2 flex items-center justify-between">
                     <div className="bg-gray-800 px-3 py-1 rounded-md text-white">

@@ -597,7 +597,7 @@ const SweepstakesDetailPage: React.FC = () => {
                             sweepstakesImages.forEach((_, index) => {
                                 const dot = document.createElement('button');
                                 dot.className = `nav-dot h-2 w-2 rounded-full ${
-                                    i === index ? 'bg-orange-500' : 'bg-gray-400'
+                                    currentFullscreenIndex === index ? 'bg-orange-500' : 'bg-gray-400'
                                 }`;
 
                                 // При клике на точку меняем изображение
@@ -743,14 +743,8 @@ const SweepstakesDetailPage: React.FC = () => {
                     </div>
                 </div>
 
-                {isExpired && (
-          <div className="bg-red-500/20 px-2 py-0.5 text-xs text-red-500 rounded-full w-fit mt-2">
-            Expired
-          </div>
-        )}
-
                 {sweepstakes.expiresAt && (
-                    <div className={`mt-3 flex items-center ${isExpired ? 'text-red-500' : 'text-gray-300'}`}>
+                    <div className={`mt-3 flex items-center ${isExpired ? 'text-red-500 bg-red-500/20 px-2 py-0.5 rounded-full' : 'text-gray-300'}`}>
                         {isExpired ? (
                           <>
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
