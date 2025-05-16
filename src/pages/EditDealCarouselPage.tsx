@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import AddDealPageNew from './AddDealPageNew';
 import { supabase } from '../lib/supabase';
 import { ArrowLeft } from 'lucide-react';
@@ -11,9 +11,12 @@ const EditDealCarouselPage: React.FC = () => {
   const { role } = useAdmin();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [dealData, setDealData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { dispatch } = useGlobalState();
+  const isFromModeration = location.search.includes('from=moderation');
+  console.log('EditDealCarouselPage - isFromModeration:', isFromModeration, 'Search params:', location.search);
 
   useEffect(() => {
     // Очищаем кеш сделок при монтировании компонента
@@ -133,6 +136,8 @@ const EditDealCarouselPage: React.FC = () => {
       initialData={dealData}
       // Передаем информацию о возможности пометки как HOT только для админов и модераторов
       allowHotToggle={role === 'admin' || role === 'moderator'}
+      // Передаем autoApprove=true если пришли из модерации и роль подходящая
+      autoApprove={isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin')}
       labelOverrides={{
         expiryDate: "Expired date"
       }}

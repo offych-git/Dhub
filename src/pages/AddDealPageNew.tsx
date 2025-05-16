@@ -30,12 +30,13 @@ interface AddDealPageNewProps {
   initialData?: any;
   customHeaderComponent?: React.ReactNode; // Added custom header prop
   allowHotToggle?: boolean;
+  autoApprove?: boolean; // Add autoApprove prop
   labelOverrides?: {
     expiryDate?: string;
   };
 }
 
-const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, dealId, initialData, customHeaderComponent, allowHotToggle, labelOverrides = {} }) => {
+const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, dealId, initialData, customHeaderComponent, allowHotToggle, autoApprove, labelOverrides = {} }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { dispatch } = useGlobalState(); // Added dispatch
@@ -335,6 +336,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log('Значение autoApprove при handleSubmit:', autoApprove);
     e.preventDefault();
     setError(null);
 
@@ -396,9 +398,33 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
           console.error('Error dispatching MARK_DEALS_STALE:', dispatchError);
         }
 
+        // Подготовьте объект данных для обновления
+        const dealDataToUpdate = {
+          // Включите сюда все поля из формы, которые нужно обновить
+          title: formData.title,
+          description: enhancedDescription,
+          current_price: Number(formData.currentPrice),
+          original_price: formData.originalPrice ? Number(formData.originalPrice) : null,
+          store_id: selectedStoreId,
+          category_id: formData.category,
+          image_url: mainImageUrl,
+          deal_url: formData.dealUrl,
+          expires_at: formData.expiryDate ? `${formData.expiryDate}T12:00:00.000Z` : null,
+          is_hot: formData.isHot,
+
+          // --- ЛОГИКА ПУБЛИКАЦИИ ПРИ РЕДАКТИРОВАНИИ ИЗ МОДЕРАЦИИ ---
+          // Если autoApprove = true (редактирование из модерации), устанавливаем статус 'approved' и данные модератора
+          ...(autoApprove ? { 
+            status: 'approved',
+            moderator_id: user?.id,
+            moderated_at: new Date().toISOString() 
+          } : {}),
+        };
+
+        // 1. Обновление данных сделки в таблице 'deals'
         const { error: updateError } = await supabase
           .from('deals')
-          .update(dealData)
+          .update(dealDataToUpdate) // Используйте объект с условным статусом
           .eq('id', dealId);
 
         if (updateError) {
@@ -406,8 +432,33 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
           throw new Error('Failed to update deal');
         }
 
-        // Перенаправляем на страницу деталей
-        navigate(`/deals/${dealId}`);
+        // --- ЛОГИКА УДАЛЕНИЯ ИЗ ОЧЕРЕДИ МОДЕРАЦИИ ---
+        // 2. Если это обновление из модерации (autoApprove = true), удаляем из очереди модерации
+        if (autoApprove) {
+          console.log('Updating deal from moderation, auto-approving and removing from queue');
+          const { error: deleteQueueError } = await supabase
+            .from('moderation_queue')
+            .delete()
+            .eq('item_id', dealId)
+            .eq('item_type', 'deal'); // Убедитесь, что item_type = 'deal'
+
+          if (deleteQueueError) {
+            console.error('Error removing from moderation queue:', deleteQueueError);
+            // Возможно, не выбрасывать ошибку, чтобы не отменять обновление сделки
+          }
+        }
+
+        // Если редактирование из модерации, перенаправляем обратно на страницу модерации,
+        // в противном случае - на страницу деталей
+        if (autoApprove) {
+          console.log('AddDealPageNew - Redirecting to moderation page after successful auto-approval');
+          navigate('/moderation');
+          // Показываем уведомление об успешном одобрении
+          alert('Сделка успешно отредактирована и одобрена');
+        } else {
+          console.log('AddDealPageNew - Redirecting to deal detail page');
+          navigate(`/deals/${dealId}`);
+        }
       } else {
         // Создание новой скидки
         // Добавляем ID пользователя только при создании
@@ -707,7 +758,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
                                   index === 0 ? 'opacity-30' : 'bg-gray-700 hover:bg-gray-600'
                                 }`}
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg xmlns="http://www.w3.org/2000svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="M15 18l-6-6 6-6" />
                                 </svg>
                               </button>

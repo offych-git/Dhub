@@ -27,7 +27,14 @@ interface ImageWithId {
   publicUrl: string;
 }
 
-const AddDealPage: React.FC = () => {
+interface AddDealPageProps {
+  isEditing?: boolean;
+  dealId?: string;
+  initialData?: any;
+  autoApprove?: boolean;
+}
+
+const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, initialData, autoApprove }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { role } = useAdmin();
@@ -305,6 +312,9 @@ useEffect(() => {
   }, [formData, mainImage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log('AddDealPage - Значение autoApprove при handleSubmit:', autoApprove);
+    console.log('AddDealPage - isEditing:', isEditing, 'dealId:', dealId);
+    console.log('AddDealPage - user role:', role);
     e.preventDefault();
     setError(null);
 
@@ -315,54 +325,171 @@ useEffect(() => {
     setLoading(true);
 
     try {
-      if (!mainImage) throw new Error('Main image is required');
+      // Проверяем режим - создание или редактирование
+      if (isEditing && dealId) {
+        // Обновление существующей скидки
+        console.log('Updating existing deal:', dealId);
 
-      const fileExt = mainImage.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${user?.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('deal-images')
-        .upload(filePath, mainImage, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error('Error uploading main image:', uploadError);
-        throw new Error('Failed to upload main image');
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('deal-images')
-        .getPublicUrl(filePath);
-
-
-      const { data: deal, error: dealError } = await supabase
-        .from('deals')
-        .insert({
+        // Подготовьте объект данных для обновления
+        const dealDataToUpdate = {
+          // Включите сюда все поля из формы, которые нужно обновить
           title: formData.title,
           description: formData.description,
           current_price: Number(formData.currentPrice),
           original_price: formData.originalPrice ? Number(formData.originalPrice) : null,
           store_id: selectedStoreId,
           category_id: formData.category,
-          subcategories: [], // Subcategories are removed
-          image_url: publicUrl,
           deal_url: formData.dealUrl,
-          user_id: user?.id,
-          expires_at: formData.expiryDate || null,
-          is_hot: formData.isHot 
-        })
-        .select()
-        .single();
+          expires_at: formData.expiryDate ? `${formData.expiryDate}T12:00:00.000Z` : null,
+          is_hot: formData.isHot,
 
-      if (dealError) {
-        console.error('Error creating deal:', dealError);
-        throw new Error('Failed to create deal');
+          // --- ЛОГИКА ПУБЛИКАЦИИ ПРИ РЕДАКТИРОВАНИИ ИЗ МОДЕРАЦИИ ---
+          // Если autoApprove = true (редактирование из модерации), устанавливаем статус 'approved'
+          ...(autoApprove ? { 
+            status: 'approved',
+            moderator_id: user?.id,
+            moderated_at: new Date().toISOString() 
+          } : {}),
+          // --- КОНЕЦ ЛОГИКИ ПУБЛИКАЦИИ ---
+        };
+
+        // Если загружено новое главное изображение, обновляем его
+        if (mainImage) {
+          const fileExt = mainImage.name.split('.').pop();
+          const fileName = `${Math.random()}.${fileExt}`;
+          const filePath = `${user?.id}/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('deal-images')
+            .upload(filePath, mainImage, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (uploadError) {
+            console.error('Error uploading main image:', uploadError);
+            throw new Error('Failed to upload main image');
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('deal-images')
+            .getPublicUrl(filePath);
+
+          dealDataToUpdate.image_url = publicUrl;
+        }
+
+        // 1. Обновление данных сделки в таблице 'deals'
+        const { error: updateError } = await supabase
+          .from('deals')
+          .update(dealDataToUpdate) // Используйте объект с условным статусом
+          .eq('id', dealId);
+
+        if (updateError) {
+          console.error('Error updating deal:', updateError);
+          throw new Error('Failed to update deal');
+        }
+
+        // --- ЛОГИКА УДАЛЕНИЯ ИЗ ОЧЕРЕДИ МОДЕРАЦИИ ---
+        // 2. Если это обновление из модерации (autoApprove = true), удаляем из очереди модерации
+        if (autoApprove) {
+          console.log('AddDealPage - Updating deal from moderation, auto-approving and removing from queue');
+          
+          // Проверяем, какая запись была до обновления
+          const { data: beforeQueue, error: beforeQueueError } = await supabase
+            .from('moderation_queue')
+            .select('*')
+            .eq('item_id', dealId)
+            .eq('item_type', 'deal');
+            
+          console.log('AddDealPage - Queue before deletion:', beforeQueue, 'Error:', beforeQueueError);
+          
+          // Удаляем запись из очереди модерации
+          const { data: deleteQueueData, error: deleteQueueError } = await supabase
+            .from('moderation_queue')
+            .delete()
+            .eq('item_id', dealId)
+            .eq('item_type', 'deal')
+            .select(); // Добавляем select() для получения удаленных данных
+
+          console.log('AddDealPage - Deletion result:', deleteQueueData, 'Error:', deleteQueueError);
+
+          if (deleteQueueError) {
+            console.error('AddDealPage - Error removing from moderation queue:', deleteQueueError);
+            // Возможно, не выбрасывать ошибку, чтобы не отменять обновление сделки
+          }
+          
+          // Проверяем статус сделки после обновления
+          const { data: dealAfterUpdate, error: dealUpdateCheckError } = await supabase
+            .from('deals')
+            .select('id, status, moderator_id, moderated_at')
+            .eq('id', dealId)
+            .single();
+            
+          console.log('AddDealPage - Deal status after update:', dealAfterUpdate, 'Error:', dealUpdateCheckError);
+        }
+
+        // Если редактирование из модерации, перенаправляем обратно на страницу модерации,
+        // в противном случае - на страницу деталей
+        if (autoApprove) {
+          console.log('AddDealPage - Redirecting to moderation page after successful auto-approval');
+          navigate('/moderation');
+          // Показываем уведомление об успешном одобрении
+          alert('Сделка успешно отредактирована и одобрена');
+        } else {
+          console.log('AddDealPage - Redirecting to deal detail page');
+          navigate(`/deals/${dealId}`);
+        }
+      } else {
+        // Создание новой скидки
+        if (!mainImage) throw new Error('Main image is required');
+
+        const fileExt = mainImage.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${user?.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('deal-images')
+          .upload(filePath, mainImage, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Error uploading main image:', uploadError);
+          throw new Error('Failed to upload main image');
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('deal-images')
+          .getPublicUrl(filePath);
+
+
+        const { data: deal, error: dealError } = await supabase
+          .from('deals')
+          .insert({
+            title: formData.title,
+            description: formData.description,
+            current_price: Number(formData.currentPrice),
+            original_price: formData.originalPrice ? Number(formData.originalPrice) : null,
+            store_id: selectedStoreId,
+            category_id: formData.category,
+            subcategories: [], // Subcategories are removed
+            image_url: publicUrl,
+            deal_url: formData.dealUrl,
+            user_id: user?.id,
+            expires_at: formData.expiryDate || null,
+            is_hot: formData.isHot 
+          })
+          .select()
+          .single();
+
+        if (dealError) {
+          console.error('Error creating deal:', dealError);
+          throw new Error('Failed to create deal');
+        }
+
+        navigate(`/deals/${deal.id}`);
       }
-
-      navigate(`/deals/${deal.id}`);
     } catch (error) {
       console.error('Error in handleSubmit:', error);
       setError(error instanceof Error ? error.message : 'Failed to create deal');
