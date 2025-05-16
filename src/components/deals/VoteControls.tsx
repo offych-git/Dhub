@@ -8,7 +8,6 @@ interface VoteControlsProps {
     dealId: string;
     popularity: bigint;
     userVoteType: boolean;
-    // type?: 'deal' | 'promo';
     type: string
 }
 
@@ -16,7 +15,13 @@ const VoteControls: React.FC<VoteControlsProps> = ({ dealId, type, popularity, u
     const { user } = useAuth();
     const navigate = useNavigate();
     const [voteCount, setVoteCount] = useState(popularity || 0);
-    const [userVote, setUserVote] = useState(userVoteType === true ? true : userVoteType === false ? false : null);
+    const [userVote, setUserVote] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        if (typeof userVoteType === 'boolean') {
+            setUserVote(userVoteType);
+        }
+    }, [userVoteType]);
 
     const table = type === 'promo' ? 'promo_votes' : 'deal_votes';
     if (type !== 'deal') {
