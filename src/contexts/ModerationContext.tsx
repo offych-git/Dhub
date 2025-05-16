@@ -40,7 +40,7 @@ interface ModerationContextType {
   addToModerationQueue: (itemId: string, itemType: string) => Promise<boolean>;
 }
 
-const ModerationContext = createContext<ModerationContextType>({
+export const ModerationContext = createContext<ModerationContextType>({
   isModerationEnabled: true,
   moderationSettings: defaultSettings,
   isLoading: true,

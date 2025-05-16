@@ -1,21 +1,38 @@
-
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Info } from 'lucide-react';
+import React, { useEffect, useState, useContext } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AddPromoPage from './AddPromoPage';
 import { useAuth } from '../contexts/AuthContext';
-import {useAdmin} from "../hooks/useAdmin";
+import { useAdmin } from "../hooks/useAdmin";
+import { ModerationContext } from '../contexts/ModerationContext';
 
 const EditPromoPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [promo, setPromo] = useState<any>(null);
-  const { isAdmin, isModerator } = useAdmin();
-
+  const { isAdmin, isModerator, role } = useAdmin();
+  const moderationContext = useContext(ModerationContext);
+  const isFromModeration = location.pathname.includes('moderation') || location.search.includes('from=moderation');
+  
+  useEffect(() => {
+    // Если мы пришли из модерации, принудительно устанавливаем элемент в контекст модерации
+    if (isFromModeration && id && moderationContext && moderationContext.setCurrentItem) {
+      console.log("EditPromoPage: Устанавливаем текущий элемент модерации из EditPromoPage:", id);
+      moderationContext.setCurrentItem({
+        id,
+        type: 'promo'
+      });
+    }
+  }, [isFromModeration, id, moderationContext]);
+  
+  // Check if we need to auto-approve the promo
+  const autoApprove = isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin');
+  
   useEffect(() => {
     const fetchPromo = async () => {
       try {
@@ -27,7 +44,7 @@ const EditPromoPage: React.FC = () => {
           .from('promo_codes')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
         if (!data) throw new Error('Promo not found');
@@ -47,7 +64,20 @@ const EditPromoPage: React.FC = () => {
     };
 
     fetchPromo();
-  }, [id, user]);
+  }, [id, user, isAdmin, isModerator]);
+
+  // After the page loads, if coming from moderation, update the moderation item
+  useEffect(() => {
+    if (isFromModeration && id && (role === 'admin' || role === 'moderator' || role === 'super_admin')) {
+      console.log("Setting current moderation item to:", id);
+      if (moderationContext && moderationContext.setCurrentItem) {
+        moderationContext.setCurrentItem({
+          id: id,
+          type: 'promo'
+        });
+      }
+    }
+  }, [isFromModeration, id, role, moderationContext]);
 
   if (loading) {
     return (
@@ -78,7 +108,11 @@ const EditPromoPage: React.FC = () => {
   }
 
   if (promo) {
-    return <AddPromoPage isEditing={true} promoData={promo} />;
+    return <AddPromoPage 
+      isEditing={true} 
+      promoData={promo} 
+      autoApprove={autoApprove}
+    />;
   }
 
   return null;

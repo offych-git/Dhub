@@ -22,9 +22,10 @@ interface PromoData {
 interface AddPromoPageProps {
   isEditing?: boolean;
   promoData?: PromoData;
+  autoApprove?: boolean;
 }
 
-const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoData }) => {
+const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoData, autoApprove = false }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -89,22 +90,146 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
     try {
       if (isEditing && promoData) {
         // Update existing promo
-        const { data: updatedPromo, error: updateError } = await supabase
-          .from('promo_codes')
-          .update({
-            code: formData.promoCode,
-            title: formData.title,
-            description: formData.description,
-            category_id: formData.category,
-            discount_url: formData.discountUrl,
-            expires_at: formData.expiryDate || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', promoData.id)
-          .select()
-          .single();
+        const updateData: any = {
+          code: formData.promoCode,
+          title: formData.title,
+          description: formData.description,
+          category_id: formData.category,
+          discount_url: formData.discountUrl,
+          expires_at: formData.expiryDate || null,
+          updated_at: new Date().toISOString()
+        };
 
-        if (updateError) throw updateError;
+        console.log("Updating promo with autoApprove:", autoApprove);
+        console.log("Promo ID для обновления:", promoData.id);
+        console.log("Данные для обновления:", updateData);
+        
+        // If autoApprove is true, update the status to approved and add moderator info
+        if (autoApprove) {
+          updateData.status = 'approved';
+          updateData.moderator_id = user.id;
+          updateData.moderated_at = new Date().toISOString();
+          
+          // Also update the moderation queue if coming from moderation
+          const { error: queueError } = await supabase
+            .from('moderation_queue')
+            .update({
+              status: 'approved',
+              moderator_id: user.id,
+              moderated_at: new Date().toISOString()
+            })
+            .eq('item_id', promoData.id)
+            .eq('item_type', 'promo');
+            
+          if (queueError) {
+            console.error('Error updating moderation queue:', queueError);
+          }
+        }
+
+        // Импортируем функцию executeWithRetry
+        // Импорт не нужен, так как это в рамках одного компонента
+        console.log("Обновляем промокод через RPC для обхода ограничений политик безопасности");
+        
+        // Сначала обновляем данные промокода напрямую
+        console.log("Выполняем прямое обновление данных промокода");
+        const { data: updatedData, error } = await supabase
+          .from('promo_codes')
+          .update(updateData)
+          .eq('id', promoData.id)
+          .select('*');  // Явно запрашиваем все поля
+
+        if (error) {
+          console.error("Ошибка при прямом обновлении промокода:", error);
+          throw error;
+        }
+        
+        console.log("Результат прямого обновления промокода:", updatedData);
+        
+        // Если требуется автоматическое одобрение, используем существующую RPC-функцию
+        if (autoApprove) {
+          console.log("Обновляем статус промокода через RPC-функцию update_promo_status");
+          try {
+            const { data: statusResult, error: statusError } = await supabase.rpc(
+              'update_promo_status',
+              { 
+                promo_id: promoData.id,
+                new_status: 'approved',
+                moderator_user_id: user.id,
+                new_moderation_note: 'Approved from moderation page'
+              }
+            );
+            
+            console.log("Результат обновления статуса через RPC:", statusResult);
+            
+            if (statusError) {
+              console.error("Ошибка RPC вызова update_promo_status:", statusError);
+              console.error("Параметры вызова:", {
+                promo_id: promoData.id,
+                new_status: 'approved',
+                moderator_user_id: user.id
+              });
+              // Продолжаем выполнение, так как основные данные уже обновлены
+            } else {
+              console.log("Успешное обновление статуса через RPC-функцию");
+            }
+          } catch (rpcErr) {
+            console.error("Ошибка при вызове RPC-функции update_promo_status:", rpcErr);
+            // Попробуем обновить статус напрямую
+          
+          console.log("Дополнительное обновление статуса промокода на approved напрямую");
+            try {
+              const { error: statusError } = await supabase
+                .from('promo_codes')
+                .update({ 
+                  status: 'approved',
+                  moderator_id: user.id,
+                  moderated_at: new Date().toISOString() 
+                })
+                .eq('id', promoData.id);
+                
+              if (statusError) {
+                console.error("Ошибка при обновлении статуса промокода:", statusError);
+              } else {
+                console.log("Статус промокода успешно обновлен на approved");
+              }
+            } catch (statusErr) {
+              console.error("Исключение при обновлении статуса:", statusErr);
+            }
+          }
+        }
+
+        // Также обновляем статус модерации в очереди независимо от результата
+        if (autoApprove) {
+          try {
+            console.log("Обновляем статус в очереди модерации");
+            const { error: queueUpdateError } = await supabase
+              .from('moderation_queue')
+              .update({
+                status: 'approved',
+                moderator_id: user.id,
+                moderated_at: new Date().toISOString()
+              })
+              .eq('item_id', promoData.id)
+              .eq('item_type', 'promo');
+              
+            if (queueUpdateError) {
+              console.error("Ошибка при обновлении статуса в очереди модерации:", queueUpdateError);
+            } else {
+              console.log("Статус в очереди модерации успешно обновлен");
+            }
+          } catch (queueErr) {
+            console.error("Исключение при обновлении очереди модерации:", queueErr);
+          }
+        }
+
+        // Fetch the updated record separately
+        const { data: updatedPromo, error: fetchError } = await supabase
+          .from('promo_codes')
+          .select('*')
+          .eq('id', promoData.id)
+          .maybeSingle();
+
+        if (fetchError) throw fetchError;
 
         // Dispatch update to global state
         dispatch({ 
@@ -112,7 +237,13 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
           payload: updatedPromo 
         });
 
-        navigate('/promos');
+        // If we came from moderation, go back to moderation queue
+        if (autoApprove) {
+          setSuccess('Promo code updated and approved successfully');
+          setTimeout(() => navigate('/moderation'), 1000);
+        } else {
+          navigate('/promos');
+        }
       } else {
         // Используем значения из хука useAdmin
         const isAdminOrModerator = isAdmin || isModerator;
@@ -131,21 +262,20 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
         // В соответствии с ограничением в базе данных
         const moderationStatus = isAdminOrModerator || !moderationEnabled ? 'approved' : 'pending';
 
-        // Insert new promo
         const { data: promo, error: promoError } = await supabase
-          .from('promo_codes')
-          .insert({
-            code: formData.promoCode,
-            title: formData.title,
-            description: formData.description,
-            category_id: formData.category,
-            discount_url: formData.discountUrl,
-            expires_at: formData.expiryDate || null,
-            user_id: user?.id,
-            status: moderationStatus
-          })
-          .select()
-          .single();
+        .from('promo_codes')
+        .insert({
+          code: formData.promoCode,
+          title: formData.title,
+          description: formData.description,
+          category_id: formData.category,
+          discount_url: formData.discountUrl,
+          expires_at: formData.expiryDate || null,
+          user_id: user?.id,
+          status: moderationStatus
+        })
+        .select()
+        .maybeSingle();
 
         if (promoError) throw promoError;
 

@@ -1,18 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useContext } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import AddDealPage from '../components/deals/AddDealPage';
 import { supabase } from '../lib/supabase';
 import { ArrowLeft } from 'lucide-react';
 import { useGlobalState } from '../contexts/GlobalStateContext';
+import { useAdmin } from '../hooks/useAdmin';
+import { ModerationContext, useModeration } from '../contexts/ModerationContext';
 
 const EditDealPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [dealData, setDealData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasCarousel, setHasCarousel] = useState(false);
   const { dispatch } = useGlobalState();
+  const { role } = useAdmin();
+  const isFromModeration = location.pathname.includes('moderation') || location.search.includes('from=moderation');
 
   useEffect(() => {
     // Полностью очищаем кеш сделок при монтировании компонента редактирования
@@ -34,7 +39,7 @@ const EditDealPage: React.FC = () => {
           profiles!deals_user_id_fkey(id, email, display_name)
         `)
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (error || !data) {
         console.error('Error fetching deal:', error);
@@ -150,7 +155,12 @@ const EditDealPage: React.FC = () => {
         </button>
         <h1 className="text-2xl font-bold text-white">Edit Deal</h1>
       </div>
-      <AddDealPage isEditing={true} dealId={id} initialData={dealData} />
+      <AddDealPage 
+        isEditing={true} 
+        dealId={id} 
+        initialData={dealData} 
+        autoApprove={isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin')}
+      />
     </div>
   );
 };

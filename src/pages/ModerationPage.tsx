@@ -370,11 +370,11 @@ const ModerationPage: React.FC = () => {
                     <button
                       onClick={() => {
                         if (item.item_type === 'promo') {
-                          navigate(`/promos/${item.item_id}/edit`);
+                          navigate(`/promos/${item.item_id}/edit?from=moderation`);
                         } else if (item.item_type === 'deal') {
-                          navigate(`/deals/${item.item_id}/edit`);
+                          navigate(`/deals/${item.item_id}/edit?from=moderation`);
                         } else if (item.item_type === 'sweepstake') {
-                          navigate(`/sweepstakes/${item.item_id}/edit`);
+                          navigate(`/sweepstakes/${item.item_id}/edit?from=moderation`);
                         }
                       }}
                       className="w-full mt-2 bg-blue-500 text-white py-2 rounded-md flex items-center justify-center gap-1"
