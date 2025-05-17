@@ -28,12 +28,12 @@ interface AddDealPageNewProps {
   isEditing?: boolean;
   dealId?: string;
   initialData?: any;
-  customHeaderComponent?: React.ReactNode; // Added custom header prop
+  onSubmit?: (data: any) => void;
+  onSave?: (dealId: string) => Promise<void>;
   allowHotToggle?: boolean;
-  autoApprove?: boolean; // Add autoApprove prop
-  labelOverrides?: {
-    expiryDate?: string;
-  };
+  autoApprove?: boolean;
+  labelOverrides?: Record<string, string>;
+  customHeaderComponent?: React.ReactNode;
 }
 
 const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, dealId, initialData, customHeaderComponent, allowHotToggle, autoApprove, labelOverrides = {} }) => {
@@ -48,7 +48,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
   const [isValid, setIsValid] = useState(false);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(isUploadingImage);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const selectedStoreName = stores.find(store => store.id === selectedStoreId)?.name || '';
 
@@ -336,7 +336,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log('Значение autoApprove при handleSubmit:', autoApprove);
     e.preventDefault();
     setError(null);
 
@@ -421,28 +420,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
           } : {}),
         };
 
-        // Проверяем текущий статус скидки перед обновлением
-        const { data: currentDeal, error: currentDealError } = await supabase
-          .from('deals')
-          .select('status, user_id')
-          .eq('id', dealId)
-          .single();
-
-        if (currentDealError) {
-          console.error('Ошибка при получении текущего статуса скидки:', currentDealError);
-          throw new Error(currentDealError.message);
-        }
-
-        console.log('AddDealPageNew - Текущий статус скидки перед обновлением:', currentDeal.status);
-        console.log('AddDealPageNew - autoApprove:', autoApprove);
-
-        // Если скидка уже одобрена/опубликована и это не автоматическое одобрение,
-        // то всегда изменяем статус на "pending" для повторной модерации
-        if ((currentDeal.status === 'approved' || currentDeal.status === 'published') && !autoApprove) {
-          console.log('AddDealPageNew - Изменяем статус скидки на pending для повторной модерации');
-          dealDataToUpdate.status = 'pending';
-        }
-
         // 1. Обновление данных сделки в таблице 'deals'
         const { error: updateError } = await supabase
           .from('deals')
@@ -454,42 +431,45 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
           throw new Error('Failed to update deal');
         }
 
-        // Проверяем статус сделки после обновления (для отладки)
-        const { data: dealAfterUpdate, error: dealUpdateCheckError } = await supabase
-          .from('deals')
-          .select('id, status')
-          .eq('id', dealId)
-          .single();
-            
-        console.log('AddDealPageNew - Deal status after update:', dealAfterUpdate, 'Error:', dealUpdateCheckError);
+        console.log('Deal successfully updated!');
 
-        // --- ЛОГИКА ОЧЕРЕДИ МОДЕРАЦИИ ---
+        // --- ЛОГИКА ДОБАВЛЕНИЯ В ОЧЕРЕДЬ МОДЕРАЦИИ ПОСЛЕ ОБНОВЛЕНИЯ ---
+        // Вызываем onSave, если функция предоставлена (она должна вызывать addToModerationQueue)
+        if (!autoApprove) {
+          try {
+            // Устанавливаем статус сделки на pending
+            await supabase
+              .from('deals')
+              .update({ status: 'pending' })
+              .eq('id', dealId);
+
+            // Если передан callback onSave, вызываем его
+            if (typeof onSave === 'function') {
+              console.log('AddDealPageNew: вызываем функцию onSave для добавления в модерацию, dealId:', dealId);
+              await onSave(dealId);
+            } else {
+              // Иначе добавляем напрямую через контекст
+              console.log('AddDealPageNew: добавляем в модерацию напрямую, dealId:', dealId);
+              await addToModerationQueue(dealId, 'deal');
+            }
+          } catch (e) {
+            console.error('Ошибка при добавлении в модерацию:', e);
+          }
+        }
+
+        // --- ЛОГИКА УДАЛЕНИЯ ИЗ ОЧЕРЕДИ МОДЕРАЦИИ ---
+        // 2. Если это обновление из модерации (autoApprove = true), удаляем из очереди модерации
         if (autoApprove) {
-          // Если это обновление из модерации (autoApprove = true), удаляем из очереди модерации
           console.log('Updating deal from moderation, auto-approving and removing from queue');
           const { error: deleteQueueError } = await supabase
             .from('moderation_queue')
             .delete()
             .eq('item_id', dealId)
-            .eq('item_type', 'deal');
+            .eq('item_type', 'deal'); // Убедитесь, что item_type = 'deal'
 
           if (deleteQueueError) {
             console.error('Error removing from moderation queue:', deleteQueueError);
-          }
-        } else if (dealDataToUpdate.status === 'pending') {
-          // Если статус изменился на 'pending', добавляем в очередь модерации
-          console.log('AddDealPageNew - Добавляем скидку в очередь модерации');
-          
-          // Используем контекст модерации для добавления в очередь
-          if (addToModerationQueue) {
-            try {
-              await addToModerationQueue('deal', dealId);
-              console.log('AddDealPageNew - Скидка успешно добавлена в очередь модерации');
-            } catch (error) {
-              console.error('AddDealPageNew - Ошибка при добавлении в очередь модерации:', error);
-            }
-          } else {
-            console.error('AddDealPageNew - addToModerationQueue не определен');
+            // Возможно, не выбрасывать ошибку, чтобы не отменять обновление сделки
           }
         }
 
@@ -536,7 +516,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
          // Добавляем новую сделку в очередь модерации
          if (deal && deal.id) {
           console.log('Добавляем сделку в очередь модерации:', deal.id);
-          await addToModerationQueue('deal', deal.id);
+          await addToModerationQueue(deal.id, 'deal');
         }
       }
     } catch (error) {
@@ -803,7 +783,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
                                   index === 0 ? 'opacity-30' : 'bg-gray-700 hover:bg-gray-600'
                                 }`}
                               >
-                                <svg xmlns="http://www.w3.org/2000svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="M15 18l-6-6 6-6" />
                                 </svg>
                               </button>

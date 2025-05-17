@@ -59,6 +59,28 @@ const PromosPage: React.FC = () => {
       loadFavorites();
     }
   }, [searchQuery, user, location.key]); // Added location.key
+  
+  // Обработчик события восстановления фокуса на вкладке
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Обновляем список промокодов при возвращении к вкладке');
+        setPage(1);
+        setHasMore(true);
+        setPromoCodes([]);
+        fetchPromoCodes();
+        if (user) {
+          loadFavorites();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user]);
 
   const loadFavorites = async () => {
     if (!user) return;

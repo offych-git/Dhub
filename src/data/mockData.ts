@@ -348,7 +348,7 @@ export const categoryIcons: Record<string, any> = {
   'Ломбарды': Building2,
   'Услуги': Wrench,
   'Доставка': Truck,
-  'Ремонт': Hammer,
+  'Сервисы': Hammer, // Изменено с 'Ремонт' для избежания дублирования
   'Образование': GraduationCap,
   'Медицина': Stethoscope,
   'Юридические услуги': Scale,

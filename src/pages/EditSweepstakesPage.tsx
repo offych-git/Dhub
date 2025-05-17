@@ -21,6 +21,29 @@ const EditSweepstakesPage: React.FC = () => {
   const { role } = useAdmin();
   const { addToModerationQueue } = useModeration();
 
+  // Функция для добавления в очередь модерации после редактирования
+  const handleAddToModeration = async (sweepstakesId: string) => {
+    // Проверяем, что мы не редактируем из очереди модерации и ID существует
+    if (location.pathname.indexOf('moderation') === -1 && sweepstakesId) {
+      console.log("EditSweepstakesPage: добавляем отредактированный розыгрыш в очередь модерации, ID:", sweepstakesId);
+
+      try {
+        // Обновляем статус розыгрыша на pending
+        await supabase
+          .from('deals')
+          .update({ status: 'pending' })
+          .eq('id', sweepstakesId)
+          .eq('type', 'sweepstakes');
+
+        // Вызываем функцию из контекста модерации
+        const result = await addToModerationQueue(sweepstakesId, 'sweepstake');
+        console.log("Результат добавления в очередь модерации:", result);
+      } catch (e) {
+        console.error("Ошибка при добавлении в очередь модерации:", e);
+      }
+    }
+  };
+
   useEffect(() => {
     if (DEBUG_EDIT_SWEEPSTAKES) {
       console.log('🔍 EditSweepstakesPage загружена');
@@ -28,7 +51,7 @@ const EditSweepstakesPage: React.FC = () => {
       console.log('🔍 Текущий путь:', location.pathname);
       console.log('🔍 ID розыгрыша из параметров:', id);
     }
-    
+
     const loadSweepstakesData = async () => {
       if (!id) {
         console.error('🔴 Ошибка: ID розыгрыша отсутствует');
@@ -37,9 +60,24 @@ const EditSweepstakesPage: React.FC = () => {
         return;
       }
 
+      // Проверяем, есть ли сохраненные данные формы в localStorage
+      const savedData = localStorage.getItem(`form_sweepstake_edit_${id}`);
+      if (savedData) {
+        try {
+          const parsedData = JSON.parse(savedData);
+          console.log('Восстановлены сохраненные данные розыгрыша из localStorage:', parsedData);
+          setSweepstakesData(parsedData);
+          setLoading(false);
+          return;
+        } catch (e) {
+          console.error('Ошибка при парсинге сохраненных данных розыгрыша:', e);
+          // Продолжаем загрузку с сервера в случае ошибки
+        }
+      }
+
       try {
         console.log('🔍 Загрузка данных розыгрыша с ID:', id);
-        
+
         // Обновлено: используем правильный тип 'sweepstakes'
         const { data, error } = await supabase
           .from('deals')
@@ -66,7 +104,7 @@ const EditSweepstakesPage: React.FC = () => {
         console.log('✅ Данные розыгрыша успешно загружены:', data);
 
         // Трансформируем данные для AddSweepstakesPage
-        setSweepstakesData({
+        const sweepstakeFullData = {
           id: data.id,
           title: data.title,
           description: data.description,
@@ -74,7 +112,13 @@ const EditSweepstakesPage: React.FC = () => {
           expiryDate: data.expires_at || '',
           image: data.image_url,
           isHot: !!data.is_hot
-        });
+        };
+
+        setSweepstakesData(sweepstakeFullData);
+
+        // Сохраняем данные в localStorage для восстановления при переключении вкладок
+        localStorage.setItem(`form_sweepstake_edit_${id}`, JSON.stringify(sweepstakeFullData));
+
       } catch (err: any) {
         console.error('🔴 Ошибка:', err);
         setError(err.message || 'Ошибка при загрузке данных розыгрыша');
@@ -84,7 +128,20 @@ const EditSweepstakesPage: React.FC = () => {
     };
 
     loadSweepstakesData();
-  }, [id, location]);
+
+    // Обработчик события восстановления фокуса на вкладке
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshDeals()
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [id, location, refreshDeals]);
 
   if (loading) {
     return (
@@ -121,6 +178,12 @@ const EditSweepstakesPage: React.FC = () => {
     );
   }
 
+  const onEditSuccess = async (sweepstakesId: string) => {
+    // Очищаем сохраненные данные из localStorage после успешного сохранения
+    localStorage.removeItem(`form_sweepstake_edit_${id}`);
+    await handleAddToModeration(sweepstakesId);
+  }
+
   return (
     <AddSweepstakesPage 
       isEditing={true}
@@ -131,6 +194,7 @@ const EditSweepstakesPage: React.FC = () => {
         pageTitle: 'Редактирование розыгрыша',
         submitButton: 'Сохранить изменения'
       }}
+      onEditSuccess={onEditSuccess}
     />
   );
 };

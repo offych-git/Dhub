@@ -185,6 +185,22 @@ const DealsPage: React.FC = () => {
   useEffect(() => {
     loadDeals(true);
   }, [activeTab, location.key, searchQuery, user?.id]);
+  
+  // Обработчик события восстановления фокуса на вкладке
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Обновляем список сделок при возвращении к вкладке');
+        loadDeals(true);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [loadDeals]);
 
   useEffect(() => {
     if (page > 1) loadDeals(false);

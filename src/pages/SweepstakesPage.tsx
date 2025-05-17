@@ -45,6 +45,26 @@ const SweepstakesPage: React.FC = () => {
     setHasMore(true);
     fetchSweepstakes();
   }, [location.key]);
+  
+  // Обработчик события восстановления фокуса на вкладке
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Обновляем список розыгрышей при возвращении к вкладке');
+        setSweepstakes([]);
+        setLoading(true);
+        setPage(1);
+        setHasMore(true);
+        fetchSweepstakes();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     setPage(1);

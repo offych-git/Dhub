@@ -18,12 +18,31 @@ const EditPromoPage: React.FC = () => {
   const { isAdmin, isModerator, role } = useAdmin();
   const { addToModerationQueue } = useModeration();
   const isFromModeration = location.pathname.includes('moderation') || location.search.includes('from=moderation');
-  
-  // Повторная модерация будет выполнена через компонент AddPromoPage
-  
+
+  // Функция для добавления в очередь модерации после редактирования
+  const handleAddToModeration = async (promoId: string) => {
+    if (!isFromModeration && promo && promo.id) {
+      console.log("EditPromoPage: добавляем отредактированный промокод в очередь модерации, ID:", promoId);
+
+      try {
+        // Обновляем статус промокода на pending
+        await supabase
+          .from('promo_codes')
+          .update({ status: 'pending' })
+          .eq('id', promoId);
+
+        // Вызываем функцию из контекста модерации
+        const result = await addToModerationQueue(promoId, 'promo');
+        console.log("Результат добавления в очередь модерации:", result);
+      } catch (e) {
+        console.error("Ошибка при добавлении в очередь модерации:", e);
+      }
+    }
+  };
+
   // Check if we need to auto-approve the promo
   const autoApprove = isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin');
-  
+
   useEffect(() => {
     const fetchPromo = async () => {
       try {
@@ -92,6 +111,7 @@ const EditPromoPage: React.FC = () => {
       isEditing={true} 
       promoData={promo} 
       autoApprove={autoApprove}
+      onEditSuccess={(promoId) => handleAddToModeration(promoId)}
     />;
   }
 

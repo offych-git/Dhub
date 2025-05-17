@@ -506,7 +506,6 @@ const UserCommentsPage: React.FC = () => {
                                           <div key={i} className="relative">
                                             <img
                                               src={image}
-                                              src={image}
                                               alt={`Reply image ${i + 1}`}
                                               className="w-16 h-16 object-cover rounded cursor-pointer"
                                               onClick={() => {

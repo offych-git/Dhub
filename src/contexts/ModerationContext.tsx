@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { useAdmin } from '../hooks/useAdmin';
@@ -213,7 +213,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const loadModerationQueue = async () => {
+  const loadModerationQueue = useCallback(async () => {
     try {
       setIsLoading(true);
 
@@ -227,6 +227,10 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setQueueCount(count || 0);
 
       // Получаем элементы очереди модерации
+      // Добавляем таймаут для запроса
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       const { data, error } = await supabase
         .from('moderation_queue')
         .select(`
@@ -235,8 +239,15 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         `)
         .eq('status', 'pending')
         .order('submitted_at', { ascending: false })
-        .limit(50);
-      
+        .limit(50)
+        .abortSignal(controller.signal);
+
+      clearTimeout(timeoutId);
+
+      if (error) {
+        throw error;
+      }
+
       // Если нет элементов в очереди модерации, выходим
       if (!data || data.length === 0) {
         setModerationQueue([]);
@@ -375,7 +386,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             // Автоматически удаляем из очереди модерации записи, для которых не найдены соответствующие элементы
             try {
               console.log(`Удаление из очереди модерации элемента с ID ${item.item_id}, тип: ${item.item_type}, так как соответствующий элемент не найден`);
-              
+
               supabase
                 .from('moderation_queue')
                 .delete()
@@ -387,7 +398,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 .catch(err => {
                   console.error(`Ошибка при удалении из очереди модерации: ${err}`);
                 });
-              
+
               return false;
             } catch (e) {
               console.error('Ошибка при удалении из очереди модерации:', e);
@@ -399,11 +410,20 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       setModerationQueue(enrichedQueue);
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.error('Запрос к API был прерван из-за таймаута');
+      }
+
       console.error('Error loading moderation queue:', error);
+
+      // Проверяем подключение к сети
+      if (!navigator.onLine) {
+        console.log('Нет подключения к сети. Попытка загрузки будет выполнена, когда подключение восстановится.');
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [setIsLoading, setModerationQueue, setQueueCount, user, supabase]);
 
   const approveModerationItem = async (itemId: string, itemType: string) => {
     if (!isModerator) return false;
@@ -455,7 +475,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // Если элемент уже одобрен, просто обновим UI и вернем true
       if (checkData && checkData.status === 'approved') {
         console.log(`Элемент ${itemId} типа ${itemType} уже имеет статус approved, обновляем только UI`);
-        
+
         // Обновляем очередь модерации
         const { error: queueError } = await supabase
           .from('moderation_queue')
@@ -481,7 +501,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         // Перезагружаем очередь модерации для синхронизации с базой данных
         await loadModerationQueue();
-        
+
         return true;
       }
 
@@ -508,7 +528,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         if (rpcError) {
           console.error('RPC update failed:', rpcError);
-          
+
           // Если RPC не сработал, пробуем прямой update
           const { data: updateData, error: updateError } = await supabase
             .from(tableName)
@@ -571,7 +591,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         if (verifyData?.status !== 'approved') {
           console.error(`Статус не был обновлен на 'approved'! Текущий статус: ${verifyData?.status}`);
-          
+
           // Последняя попытка - через RPC с принудительным обновлением
           console.log('Trying final RPC update...');
           const { data: finalRpcData, error: finalRpcError } = await supabase.rpc(

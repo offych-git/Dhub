@@ -19,7 +19,7 @@ const EditDealPage: React.FC = () => {
   const { role } = useAdmin();
   const { addToModerationQueue } = useModeration();
   const isFromModeration = location.pathname.includes('moderation') || location.search.includes('from=moderation');
-  
+
   // Логи для отладки
   console.log("EditDealPage - Компонент инициализирован с параметрами:");
   console.log(" - id скидки:", id);
@@ -147,6 +147,17 @@ const EditDealPage: React.FC = () => {
     fetchDeal();
   }, [id, navigate, dispatch]);
 
+  // Добавляем в очередь модерации после редактирования
+  const handleAddToModeration = async (dealId: string) => {
+    if (!isFromModeration && dealData && dealData.id) {
+      console.log("EditDealPage: добавляем отредактированную сделку в очередь модерации, ID:", dealId);
+      await addToModerationQueue(dealId, 'deal');
+    }
+  };
+
+  // Check if we need to auto-approve
+  const autoApprove = isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin');
+
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
@@ -169,7 +180,8 @@ const EditDealPage: React.FC = () => {
         isEditing={true} 
         dealId={id} 
         initialData={dealData} 
-        autoApprove={isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin')}
+        autoApprove={autoApprove}
+        onSave={handleAddToModeration}
       />
     </div>
   );

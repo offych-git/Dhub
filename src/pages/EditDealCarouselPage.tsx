@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { ArrowLeft } from 'lucide-react';
 import { useGlobalState } from '../contexts/GlobalStateContext';
 import { useAdmin } from '../hooks/useAdmin';
+import { useModeration } from '../contexts/ModerationContext';
 
 const EditDealCarouselPage: React.FC = () => {
   // Получаем роль пользователя для проверки доступа к функции HOT
@@ -15,8 +16,30 @@ const EditDealCarouselPage: React.FC = () => {
   const [dealData, setDealData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { dispatch } = useGlobalState();
-  const isFromModeration = location.search.includes('from=moderation');
+  const { addToModerationQueue } = useModeration();
+  const isFromModeration = location.search.includes('from=moderation') || location.pathname.includes('moderation');
   console.log('EditDealCarouselPage - isFromModeration:', isFromModeration, 'Search params:', location.search);
+
+  // Функция для добавления в очередь модерации после редактирования
+  const handleAddToModeration = async (dealId: string) => {
+    if (!isFromModeration && dealData && dealData.id) {
+      console.log("EditDealCarouselPage: добавляем отредактированную карусельную сделку в очередь модерации, ID:", dealId);
+      
+      try {
+        // Обновляем статус сделки на pending
+        await supabase
+          .from('deals')
+          .update({ status: 'pending' })
+          .eq('id', dealId);
+        
+        // Вызываем функцию из контекста модерации
+        const result = await addToModerationQueue(dealId, 'deal');
+        console.log("Результат добавления в очередь модерации:", result);
+      } catch (e) {
+        console.error("Ошибка при добавлении в очередь модерации:", e);
+      }
+    }
+  };
 
   useEffect(() => {
     // Очищаем кеш сделок при монтировании компонента
@@ -28,6 +51,21 @@ const EditDealCarouselPage: React.FC = () => {
       if (!id) {
         navigate('/');
         return;
+      }
+
+      // Проверяем, есть ли сохраненные данные формы в localStorage
+      const savedData = localStorage.getItem(`form_deal_edit_${id}`);
+      if (savedData) {
+        try {
+          const parsedData = JSON.parse(savedData);
+          console.log('Восстановлены сохраненные данные формы из localStorage:', parsedData);
+          setDealData(parsedData);
+          setLoading(false);
+          return;
+        } catch (e) {
+          console.error('Ошибка при парсинге сохраненных данных:', e);
+          // Продолжаем загрузку с сервера в случае ошибки
+        }
       }
 
       const { data, error } = await supabase
@@ -47,6 +85,19 @@ const EditDealCarouselPage: React.FC = () => {
 
       if (data) {
         console.log('Raw carousel deal data from DB:', data);
+
+        // Обновляем статус на "pending" для обеспечения модерации
+        if (data.status !== 'pending' && !isFromModeration) {
+          console.log("Обновляем статус сделки на pending для обеспечения модерации");
+          const { error: statusError } = await supabase
+            .from('deals')
+            .update({ status: 'pending' })
+            .eq('id', id);
+
+          if (statusError) {
+            console.error('Ошибка при обновлении статуса на pending:', statusError);
+          }
+        }
 
         // Переданные данные в AddDealPageNew должны быть правильно трансформированы
         // Учитываем формат карусели в комментарии DEAL_IMAGES
@@ -108,20 +159,38 @@ const EditDealCarouselPage: React.FC = () => {
         console.log('Transformed carousel data:', transformedData);
 
         // Сохраняем данные для передачи в компонент AddDealPageNew
-        setDealData({
+        const dealFullData = {
           ...transformedData,
           imageUrls,
           postedBy: {
             id: data.profiles?.id,
             name: data.profiles?.display_name || data.profiles?.email?.split('@')[0] || 'Anonymous'
           }
-        });
+        };
+        setDealData(dealFullData);
+        
+        // Сохраняем данные в localStorage для восстановления при переключении вкладок
+        localStorage.setItem(`form_deal_edit_${id}`, JSON.stringify(dealFullData));
       }
       setLoading(false);
     };
 
     fetchDeal();
-  }, [id, navigate, dispatch]);
+    
+    // Обработчик события восстановления фокуса на вкладке
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // При возвращении к вкладке обновляем статус сделок как устаревший
+        dispatch({ type: 'MARK_DEALS_STALE' });
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [id, navigate, dispatch, isFromModeration]);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">
@@ -141,6 +210,7 @@ const EditDealCarouselPage: React.FC = () => {
       labelOverrides={{
         expiryDate: "Expired date"
       }}
+      onSave={handleAddToModeration}
       customHeaderComponent={
         <div className="flex items-center">
           <button onClick={() => navigate('/deals')} className="text-white">

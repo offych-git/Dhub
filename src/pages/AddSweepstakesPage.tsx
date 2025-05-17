@@ -18,7 +18,8 @@ interface AddSweepstakesPageProps {
   sweepstakesId?: string;
   initialData?: any;
   allowHotToggle?: boolean;
-  labelOverrides?: { submitButton?: string };
+  labelOverrides?: { submitButton?: string, pageTitle?: string };
+  onEditSuccess?: (id: string) => Promise<void>;
 }
 
 const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = false, sweepstakesId, initialData, allowHotToggle, labelOverrides }) => {
@@ -244,6 +245,43 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
     });
   }, [formData, sweepstakesImage]);
 
+  // Сохраняем данные формы в localStorage при изменении
+  useEffect(() => {
+    if (formData.title || formData.description || formData.dealUrl || imageUrl || formData.expiryDate) {
+      const formDataToSave = {
+        title: formData.title,
+        description: formData.description,
+        dealUrl: formData.dealUrl,
+        expiryDate: formData.expiryDate,
+        imageUrl: imageUrl,
+      };
+      localStorage.setItem('form_sweepstake_new', JSON.stringify(formDataToSave));
+    }
+  }, [formData.title, formData.description, formData.dealUrl, imageUrl, formData.expiryDate]);
+
+  // Восстанавливаем данные формы при загрузке компонента
+  useEffect(() => {
+    const savedData = localStorage.getItem('form_sweepstake_new');
+    if (savedData) {
+      try {
+        const formData = JSON.parse(savedData);
+        setFormData(prev => ({
+          ...prev,
+          title: formData.title || '',
+          description: formData.description || '',
+          dealUrl: formData.dealUrl || '',
+          expiryDate: formData.expiryDate || ''
+        }));
+        setImageUrl(formData.imageUrl || '');
+        if (editor) {
+          editor.commands.setContent(formData.description || '');
+        }
+      } catch (e) {
+        console.error('Ошибка при восстановлении данных формы розыгрыша:', e);
+      }
+    }
+  }, [editor]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -378,6 +416,19 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         const moderationResult = await addToModerationQueue(data.id, 'sweepstake');
         console.log('Розыгрыш отправлен на модерацию:', moderationResult);
       }
+
+      // Вызываем функцию обратного вызова, если она определена
+      if (isEditing && onEditSuccess && data.id) {
+        console.log("Вызываем onEditSuccess после успешного редактирования розыгрыша");
+        try {
+          await onEditSuccess(data.id);
+        } catch (e) {
+          console.error("Ошибка при вызове onEditSuccess:", e);
+        }
+      }
+
+      // Очищаем данные формы из localStorage
+      localStorage.removeItem('form_sweepstake_new');
 
       // Перенаправляем на страницу просмотра розыгрыша
       navigate(`/sweepstakes/${data.id}`);
