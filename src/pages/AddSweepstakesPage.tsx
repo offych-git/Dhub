@@ -278,6 +278,31 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         uploadedImageUrl = urlData.publicUrl;
       }
 
+      // Получаем оригинального создателя розыгрыша при редактировании
+      let originalUserId = user?.id;
+      
+      // Если это редактирование существующего розыгрыша, получаем оригинального создателя
+      if (isEditing && sweepstakesId) {
+        console.log("Получаем данные оригинального розыгрыша для сохранения создателя");
+        try {
+          const { data: existingData, error: fetchError } = await supabase
+            .from('deals')
+            .select('user_id')
+            .eq('id', sweepstakesId)
+            .single();
+            
+          if (!fetchError && existingData) {
+            // Сохраняем оригинального пользователя
+            originalUserId = existingData.user_id;
+            console.log("Оригинальный создатель розыгрыша:", originalUserId);
+          } else {
+            console.warn("Не удалось получить оригинального создателя, используем текущего пользователя");
+          }
+        } catch (err) {
+          console.error("Ошибка при получении данных о создателе:", err);
+        }
+      }
+      
       // Prepare sweepstakes data
       const sweepstakesData = {
         title: formData.title,
@@ -290,7 +315,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         // Используем новое изображение только если оно было загружено
         image_url: sweepstakesImage ? uploadedImageUrl : (initialData?.image || null),
         deal_url: formData.dealUrl,
-        user_id: user?.id,
+        user_id: originalUserId, // Используем оригинального создателя при редактировании
         expires_at: formData.expiryDate || null,
         is_hot: allowHotToggle ? formData.isHot : false,
         type: 'sweepstakes',

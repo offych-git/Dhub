@@ -290,11 +290,11 @@ const ModerationPage: React.FC = () => {
                     {item.item_type === 'deal' && (
                       <div className="flex items-baseline gap-2 mb-3">
                         <span className="font-bold text-xl text-orange-600">
-                          {item.content.current_price}₽
+                          ${item.content.current_price}
                         </span>
                         {item.content.original_price && (
                           <span className="text-gray-500 line-through">
-                            {item.content.original_price}₽
+                            ${item.content.original_price}
                           </span>
                         )}
                       </div>

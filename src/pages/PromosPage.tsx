@@ -470,21 +470,15 @@ const PromosPage: React.FC = () => {
                       </button>
 
                       {/* Индикатор модерации */}
-                      {promo.status === 'pending' && (
-                        <div className="ml-3 text-yellow-500 flex items-center text-xs">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {t('common.statusPending')}
-                        </div>
-                      )}
                       {(role === 'admin' || role === 'moderator' || (user && user.id === promo.user.id)) && (
-                        <div className="ml-2 border-l border-gray-700 pl-2" onClick={(e) => e.stopPropagation()}>
-                          <AdminActions
-                            type="promo"
-                            id={promo.id}
-                            userId={promo.user.id}
-                            onAction={fetchPromoCodes}
-                          />
-                        </div>
+                        <AdminActions
+                          className="ml-3 text-orange-500 flex items-center"
+                          onClick={(e) => e.stopPropagation()}
+                          type="promo"
+                          id={promo.id}
+                          userId={promo.user.id}
+                          onAction={fetchPromoCodes}
+                        />
                       )}
                     </div>
                   </div>
