@@ -246,12 +246,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    if (!validateForm()) {
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -280,7 +274,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
 
       // Получаем оригинального создателя розыгрыша при редактировании
       let originalUserId = user?.id;
-      
+
       // Если это редактирование существующего розыгрыша, получаем оригинального создателя
       if (isEditing && sweepstakesId) {
         console.log("Получаем данные оригинального розыгрыша для сохранения создателя");
@@ -290,7 +284,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
             .select('user_id')
             .eq('id', sweepstakesId)
             .single();
-            
+
           if (!fetchError && existingData) {
             // Сохраняем оригинального пользователя
             originalUserId = existingData.user_id;
@@ -302,7 +296,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
           console.error("Ошибка при получении данных о создателе:", err);
         }
       }
-      
+
       // Prepare sweepstakes data
       const sweepstakesData = {
         title: formData.title,
@@ -325,6 +319,24 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       let data, error;
 
       if (isEditing && sweepstakesId) {
+        // Проверяем текущий статус розыгрыша перед обновлением
+        const { data: currentSweepstake, error: currentSweepstakeError } = await supabase
+          .from('deals')
+          .select('status')
+          .eq('id', sweepstakesId)
+          .eq('type', 'sweepstakes')
+          .single();
+
+        if (currentSweepstakeError) {
+          throw new Error(currentSweepstakeError.message);
+        }
+
+        // Если розыгрыш уже был одобрен и не происходит автоматическое одобрение,
+        // меняем статус на "pending" для повторной модерации
+        if (currentSweepstake.status === 'approved' && !allowHotToggle) {
+          sweepstakesData.status = 'pending';
+        }
+
         console.log("Обновление существующего розыгрыша:", sweepstakesId);
         // Обновляем существующий розыгрыш
         const { data: updatedData, error: updateError } = await supabase
@@ -358,13 +370,13 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         }
       }
 
-      try {
-        // Отправляем розыгрыш на модерацию
+      // Добавляем в очередь модерации в двух случаях:
+      // 1. Новый розыгрыш
+      // 2. Редактирование розыгрыша, который уже был одобрен
+      if ((!isEditing || (isEditing && sweepstakesData.status === 'pending')) && addToModerationQueue) {
+        console.log('Добавление розыгрыша в очередь модерации');
         const moderationResult = await addToModerationQueue(data.id, 'sweepstake');
         console.log('Розыгрыш отправлен на модерацию:', moderationResult);
-      } catch (moderationError) {
-        console.error('Ошибка при отправке розыгрыша на модерацию:', moderationError);
-        // Продолжаем выполнение даже при ошибке модерации
       }
 
       // Перенаправляем на страницу просмотра розыгрыша

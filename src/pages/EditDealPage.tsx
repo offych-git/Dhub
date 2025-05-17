@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import AddDealPage from '../components/deals/AddDealPage';
 import { supabase } from '../lib/supabase';
 import { ArrowLeft } from 'lucide-react';
 import { useGlobalState } from '../contexts/GlobalStateContext';
 import { useAdmin } from '../hooks/useAdmin';
-import { ModerationContext, useModeration } from '../contexts/ModerationContext';
+import { useModeration } from '../contexts/ModerationContext';
 
 const EditDealPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,7 +17,15 @@ const EditDealPage: React.FC = () => {
   const [hasCarousel, setHasCarousel] = useState(false);
   const { dispatch } = useGlobalState();
   const { role } = useAdmin();
+  const { addToModerationQueue } = useModeration();
   const isFromModeration = location.pathname.includes('moderation') || location.search.includes('from=moderation');
+  
+  // Логи для отладки
+  console.log("EditDealPage - Компонент инициализирован с параметрами:");
+  console.log(" - id скидки:", id);
+  console.log(" - роль пользователя:", role);
+  console.log(" - isFromModeration:", isFromModeration);
+  console.log(" - autoApprove:", isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin'));
 
   useEffect(() => {
     // Полностью очищаем кеш сделок при монтировании компонента редактирования
@@ -25,6 +33,8 @@ const EditDealPage: React.FC = () => {
     dispatch({ type: 'SET_DEALS', payload: [] });
     dispatch({ type: 'MARK_DEALS_STALE' });
     console.log("EditDealPage: полная очистка кеша сделок для обеспечения актуальности");
+    console.log("EditDealPage: ID редактируемой скидки:", id);
+    console.log("EditDealPage: autoApprove:", isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin'));
 
     const fetchDeal = async () => {
       if (!id) {

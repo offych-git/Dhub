@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { ArrowLeft } from 'lucide-react';
 import { useGlobalState } from '../contexts/GlobalStateContext';
 import { useAdmin } from '../hooks/useAdmin';
+import { useModeration } from '../contexts/ModerationContext';
 
 // Добавляем константу для отладки
 const DEBUG_EDIT_SWEEPSTAKES = true;
@@ -18,6 +19,7 @@ const EditSweepstakesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const { refreshDeals } = useGlobalState();
   const { role } = useAdmin();
+  const { addToModerationQueue } = useModeration();
 
   useEffect(() => {
     if (DEBUG_EDIT_SWEEPSTAKES) {

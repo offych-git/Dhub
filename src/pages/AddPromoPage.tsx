@@ -74,17 +74,6 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    if (!isValid) {
-      if (formData.expiryDate && new Date(formData.expiryDate) <= new Date()) {
-        setError('Expiry date must be in the future');
-      } else {
-        setError('Please fill in all required fields');
-      }
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -103,13 +92,13 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
         console.log("Updating promo with autoApprove:", autoApprove);
         console.log("Promo ID для обновления:", promoData.id);
         console.log("Данные для обновления:", updateData);
-        
+
         // If autoApprove is true, update the status to approved and add moderator info
         if (autoApprove) {
           updateData.status = 'approved';
           updateData.moderator_id = user.id;
           updateData.moderated_at = new Date().toISOString();
-          
+
           // Also update the moderation queue if coming from moderation
           const { error: queueError } = await supabase
             .from('moderation_queue')
@@ -120,7 +109,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
             })
             .eq('item_id', promoData.id)
             .eq('item_type', 'promo');
-            
+
           if (queueError) {
             console.error('Error updating moderation queue:', queueError);
           }
@@ -129,7 +118,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
         // Импортируем функцию executeWithRetry
         // Импорт не нужен, так как это в рамках одного компонента
         console.log("Обновляем промокод через RPC для обхода ограничений политик безопасности");
-        
+
         // Сначала обновляем данные промокода напрямую
         console.log("Выполняем прямое обновление данных промокода");
         const { data: updatedData, error } = await supabase
@@ -142,9 +131,9 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
           console.error("Ошибка при прямом обновлении промокода:", error);
           throw error;
         }
-        
+
         console.log("Результат прямого обновления промокода:", updatedData);
-        
+
         // Если требуется автоматическое одобрение, используем существующую RPC-функцию
         if (autoApprove) {
           console.log("Обновляем статус промокода через RPC-функцию update_promo_status");
@@ -158,9 +147,9 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
                 new_moderation_note: 'Approved from moderation page'
               }
             );
-            
+
             console.log("Результат обновления статуса через RPC:", statusResult);
-            
+
             if (statusError) {
               console.error("Ошибка RPC вызова update_promo_status:", statusError);
               console.error("Параметры вызова:", {
@@ -175,7 +164,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
           } catch (rpcErr) {
             console.error("Ошибка при вызове RPC-функции update_promo_status:", rpcErr);
             // Попробуем обновить статус напрямую
-          
+
           console.log("Дополнительное обновление статуса промокода на approved напрямую");
             try {
               const { error: statusError } = await supabase
@@ -186,7 +175,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
                   moderated_at: new Date().toISOString() 
                 })
                 .eq('id', promoData.id);
-                
+
               if (statusError) {
                 console.error("Ошибка при обновлении статуса промокода:", statusError);
               } else {
@@ -211,7 +200,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
               })
               .eq('item_id', promoData.id)
               .eq('item_type', 'promo');
-              
+
             if (queueUpdateError) {
               console.error("Ошибка при обновлении статуса в очереди модерации:", queueUpdateError);
             } else {

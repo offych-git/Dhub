@@ -149,9 +149,6 @@ const EditDealCarouselPage: React.FC = () => {
           <h1 className="text-white text-lg font-medium ml-4">Edit Carousel Deal</h1>
         </div>
       }
-      labelOverrides={{
-        expiryDate: "Expires at"
-      }}
     />
   );
 };

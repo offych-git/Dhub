@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AddPromoPage from './AddPromoPage';
 import { useAuth } from '../contexts/AuthContext';
 import { useAdmin } from "../hooks/useAdmin";
-import { ModerationContext } from '../contexts/ModerationContext';
+import { useModeration } from '../contexts/ModerationContext';
 
 const EditPromoPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,19 +16,10 @@ const EditPromoPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [promo, setPromo] = useState<any>(null);
   const { isAdmin, isModerator, role } = useAdmin();
-  const moderationContext = useContext(ModerationContext);
+  const { addToModerationQueue } = useModeration();
   const isFromModeration = location.pathname.includes('moderation') || location.search.includes('from=moderation');
   
-  useEffect(() => {
-    // Если мы пришли из модерации, принудительно устанавливаем элемент в контекст модерации
-    if (isFromModeration && id && moderationContext && moderationContext.setCurrentItem) {
-      console.log("EditPromoPage: Устанавливаем текущий элемент модерации из EditPromoPage:", id);
-      moderationContext.setCurrentItem({
-        id,
-        type: 'promo'
-      });
-    }
-  }, [isFromModeration, id, moderationContext]);
+  // Повторная модерация будет выполнена через компонент AddPromoPage
   
   // Check if we need to auto-approve the promo
   const autoApprove = isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin');
@@ -66,18 +57,7 @@ const EditPromoPage: React.FC = () => {
     fetchPromo();
   }, [id, user, isAdmin, isModerator]);
 
-  // After the page loads, if coming from moderation, update the moderation item
-  useEffect(() => {
-    if (isFromModeration && id && (role === 'admin' || role === 'moderator' || role === 'super_admin')) {
-      console.log("Setting current moderation item to:", id);
-      if (moderationContext && moderationContext.setCurrentItem) {
-        moderationContext.setCurrentItem({
-          id: id,
-          type: 'promo'
-        });
-      }
-    }
-  }, [isFromModeration, id, role, moderationContext]);
+  // Повторная модерация будет происходить при сохранении в AddPromoPage
 
   if (loading) {
     return (
