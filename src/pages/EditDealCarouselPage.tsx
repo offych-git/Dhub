@@ -47,27 +47,20 @@ const EditDealCarouselPage: React.FC = () => {
     dispatch({ type: 'MARK_DEALS_STALE' });
     console.log("EditDealCarouselPage: очистка кеша сделок для обеспечения актуальности");
 
+    // Очищаем сохраненные данные в localStorage при монтировании компонента
+    if (id) {
+      localStorage.removeItem(`form_deal_edit_${id}`);
+      console.log(`EditDealCarouselPage: удаление кешированных данных для сделки ${id} из localStorage`);
+    }
+
     const fetchDeal = async () => {
       if (!id) {
         navigate('/');
         return;
       }
 
-      // Проверяем, есть ли сохраненные данные формы в localStorage
-      const savedData = localStorage.getItem(`form_deal_edit_${id}`);
-      if (savedData) {
-        try {
-          const parsedData = JSON.parse(savedData);
-          console.log('Восстановлены сохраненные данные формы из localStorage:', parsedData);
-          setDealData(parsedData);
-          setLoading(false);
-          return;
-        } catch (e) {
-          console.error('Ошибка при парсинге сохраненных данных:', e);
-          // Продолжаем загрузку с сервера в случае ошибки
-        }
-      }
-
+      console.log(`EditDealCarouselPage: загрузка свежих данных для сделки ${id} с сервера`);
+      
       const { data, error } = await supabase
         .from('deals')
         .select(`

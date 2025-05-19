@@ -83,6 +83,8 @@ const EditDealPage: React.FC = () => {
 
         // Если нет карусели, продолжаем с обычным редактированием
         if (!hasCarouselImages) {
+          // Всегда загружаем свежие данные с сервера
+          console.log('Загружаем актуальные данные сделки с сервера');
           // Извлечение дополнительных изображений из комментария в описании
           let additionalImages: string[] = [];
           if (data.description) {
@@ -155,8 +157,8 @@ const EditDealPage: React.FC = () => {
     }
   };
 
-  // Check if we need to auto-approve
-  const autoApprove = isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin');
+  // Отключаем автоматическое одобрение для редактирования
+  const autoApprove = false;
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">
