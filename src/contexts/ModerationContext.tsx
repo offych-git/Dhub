@@ -518,11 +518,13 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // Пробуем обновить через RPC с проверкой прав
       try {
         const { data: rpcData, error: rpcError } = await supabase.rpc(
-          'update_item_status',
+          'update_entity_status',
           {
-            p_item_id: itemId,
-            p_status: 'approved',
-            p_table_name: tableName
+            item_id: itemId,
+            item_type: itemType,
+            new_status: 'approved',
+            moderator_user_id: user?.id,
+            new_moderation_note: ''
           }
         );
 
@@ -705,38 +707,34 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         // Пробуем альтернативный метод обновления в зависимости от типа элемента
         let altUpdateSuccess = false;
 
-        if (itemType === 'promo') {
-          // Для промокодов используем существующую RPC функцию
-          const { data: altUpdateData, error: altUpdateError } = await supabase.rpc(
-            'update_promo_status', 
-            { 
-              promo_id: itemId,
-              new_status: 'rejected',
-              moderator_user_id: user?.id || null,
-              new_moderation_note: comment || ''
-            }
-          );
-
-          if (altUpdateError) {
-            console.error(`Ошибка альтернативного обновления промокода:`, altUpdateError);
-          } else {
-            altUpdateSuccess = !!altUpdateData;
-            console.log(`Результат альтернативного обновления промокода:`, altUpdateData);
+        // Используем универсальную RPC функцию для всех типов элементов
+        const { data: altUpdateData, error: altUpdateError } = await supabase.rpc(
+          'update_entity_status', 
+          { 
+            item_id: itemId,
+            item_type: itemType,
+            new_status: 'rejected',
+            moderator_user_id: user?.id || null,
+            new_moderation_note: comment || ''
           }
-        } else if (itemType === 'deal' || itemType === 'sweepstake') {
-          // Для сделок и розыгрышей проверяем наличие RPC или делаем прямой запрос
+        );
+
+        if (altUpdateError) {
+          console.error(`Ошибка обновления через RPC:`, altUpdateError);
+        } else {
+          altUpdateSuccess = !!altUpdateData;
+          console.log(`Результат обновления через RPC:`, altUpdateData);
+        }
+        
+        // Если универсальная RPC функция не сработала, пробуем прямой запрос
+        if (!altUpdateSuccess && (itemType === 'deal' || itemType === 'sweepstake')) {
           try {
-            // Прямой SQL запрос через rpc (требуется создать соответствующую функцию в базе данных)
-            const rpcName = itemType === 'deal' ? 'update_deal_status' : 'update_sweepstake_status';
-            const { data: altUpdateData, error: altUpdateError } = await supabase.rpc(
-              rpcName, 
-              { 
-                item_id: itemId,
-                new_status: 'rejected',
-                moderator_user_id: user?.id || null,
-                new_moderation_note: comment || ''
-              }
-            );
+            // Прямой SQL запрос как запасной вариант
+            const { data: finalUpdateData, error: finalUpdateError } = await supabase
+              .from(tableName)
+              .update(updateObject)
+              .eq('id', itemId)
+              .select();
 
             if (altUpdateError) {
               console.error(`RPC функция ${rpcName} не найдена или возникла ошибка:`, altUpdateError);

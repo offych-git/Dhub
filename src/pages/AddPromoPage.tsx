@@ -8,6 +8,7 @@ import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomS
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { useGlobalState } from '../contexts/GlobalStateContext';
 import { useAdmin } from '../hooks/useAdmin';
+import { useModeration } from '../contexts/ModerationContext';
 
 interface PromoData {
   id: string;
@@ -32,6 +33,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
   const { t, language } = useLanguage();
   const { dispatch } = useGlobalState();
   const { isAdmin, isModerator } = useAdmin();
+  const { addToModerationQueue } = useModeration();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
