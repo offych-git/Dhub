@@ -245,25 +245,11 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
     });
   }, [formData, sweepstakesImage]);
 
-  // Сохраняем данные формы в localStorage при изменении
+  // Инициализируем форму только в режиме редактирования
   useEffect(() => {
-    if (formData.title || formData.description || formData.dealUrl || imageUrl || formData.expiryDate) {
-      const formDataToSave = {
-        title: formData.title,
-        description: formData.description,
-        dealUrl: formData.dealUrl,
-        expiryDate: formData.expiryDate,
-        imageUrl: imageUrl,
-      };
-      localStorage.setItem('form_sweepstake_new', JSON.stringify(formDataToSave));
-    }
-  }, [formData.title, formData.description, formData.dealUrl, imageUrl, formData.expiryDate]);
-
-  // Восстанавливаем данные формы при загрузке компонента
-  useEffect(() => {
-    // Если это режим редактирования и есть начальные данные, не используем localStorage
+    // Если это режим редактирования и есть начальные данные
     if (isEditing && initialData) {
-      console.log('Режим редактирования: используем initialData вместо кеша');
+      console.log('Режим редактирования: используем initialData');
       setFormData(prev => ({
         ...prev,
         title: initialData.title || '',
@@ -275,34 +261,20 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       if (editor) {
         editor.commands.setContent(initialData.description || '');
       }
-      return;
-    }
-    
-    // Для новых розыгрышей можем использовать сохраненные в localStorage данные
-    const savedData = localStorage.getItem('form_sweepstake_new');
-    if (savedData && !isEditing) {
-      try {
-        const formData = JSON.parse(savedData);
-        setFormData(prev => ({
-          ...prev,
-          title: formData.title || '',
-          description: formData.description || '',
-          dealUrl: formData.dealUrl || '',
-          expiryDate: formData.expiryDate || ''
-        }));
-        setImageUrl(formData.imageUrl || '');
-        if (editor) {
-          editor.commands.setContent(formData.description || '');
-        }
-      } catch (e) {
-        console.error('Ошибка при восстановлении данных формы розыгрыша:', e);
-      }
     }
   }, [editor, isEditing, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // Проверка аутентификации пользователя
+    if (!user || !user.id) {
+      console.error('User not authenticated or user ID is missing.');
+      setError('Для создания розыгрыша необходимо войти в систему.');
+      setLoading(false);
+      return;
+    }
 
     try {
       let uploadedImageUrl = '';
@@ -311,7 +283,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       if (sweepstakesImage) {
         const fileExt = sweepstakesImage.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${user?.id}/sweepstakes-images/${fileName}`;
+        const filePath = `${user.id}/sweepstakes-images/${fileName}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('deal-images')
@@ -329,7 +301,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       }
 
       // Получаем оригинального создателя розыгрыша при редактировании
-      let originalUserId = user?.id;
+      let originalUserId = user.id; // Используем не опциональный доступ к user.id
 
       // Если это редактирование существующего розыгрыша, получаем оригинального создателя
       if (isEditing && sweepstakesId) {
@@ -341,12 +313,12 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
             .eq('id', sweepstakesId)
             .single();
 
-          if (!fetchError && existingData) {
-            // Сохраняем оригинального пользователя
+          if (!fetchError && existingData && existingData.user_id) {
+            // Сохраняем оригинального пользователя только если он существует
             originalUserId = existingData.user_id;
             console.log("Оригинальный создатель розыгрыша:", originalUserId);
           } else {
-            console.warn("Не удалось получить оригинального создателя, используем текущего пользователя");
+            console.warn("Не удалось получить оригинального создателя, используем текущего пользователя:", user.id);
           }
         } catch (err) {
           console.error("Ошибка при получении данных о создателе:", err);
@@ -371,6 +343,12 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         type: 'sweepstakes',
         status: 'pending' // Устанавливаем начальный статус 'pending' для модерации
       };
+
+      console.log('Отправляемые данные розыгрыша:', {
+        ...sweepstakesData,
+        userId: user.id,
+        originalUserId
+      });
 
       let data, error;
 
@@ -406,12 +384,14 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         error = updateError;
 
         if (error) {
+          console.error("Детали ошибки обновления:", error);
           throw new Error(`Failed to update sweepstakes: ${error.message}`);
         }
 
         console.log("Розыгрыш успешно обновлен:", data);
       } else {
         // Создаем новый розыгрыш
+        console.log("Создание нового розыгрыша...");
         const { data: newData, error: insertError } = await supabase
           .from('deals')
           .insert(sweepstakesData)
@@ -422,17 +402,31 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         error = insertError;
 
         if (error) {
+          console.error("Детали ошибки создания:", error);
           throw new Error(`Failed to create sweepstakes: ${error.message}`);
         }
+        
+        console.log("Розыгрыш успешно создан:", data);
+      }
+
+      // Дополнительная проверка полученных данных
+      if (!data || !data.id) {
+        console.error("Получены некорректные данные после операции с розыгрышем:", data);
+        throw new Error("Получены некорректные данные после операции с розыгрышем");
       }
 
       // Добавляем в очередь модерации в двух случаях:
       // 1. Новый розыгрыш
       // 2. Редактирование розыгрыша, который уже был одобрен
       if ((!isEditing || (isEditing && sweepstakesData.status === 'pending')) && addToModerationQueue) {
-        console.log('Добавление розыгрыша в очередь модерации');
-        const moderationResult = await addToModerationQueue(data.id, 'sweepstake');
-        console.log('Розыгрыш отправлен на модерацию:', moderationResult);
+        try {
+          console.log('Добавление розыгрыша в очередь модерации');
+          const moderationResult = await addToModerationQueue(data.id, 'sweepstake');
+          console.log('Розыгрыш отправлен на модерацию:', moderationResult);
+        } catch (moderationError) {
+          console.error('Ошибка при добавлении в очередь модерации:', moderationError);
+          // Продолжаем выполнение даже при ошибке модерации
+        }
       }
 
       // Вызываем функцию обратного вызова, если она определена
@@ -445,14 +439,32 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         }
       }
 
-      // Очищаем данные формы из localStorage
-      localStorage.removeItem('form_sweepstake_new');
-
       // Перенаправляем на страницу просмотра розыгрыша
       navigate(`/sweepstakes/${data.id}`);
     } catch (error) {
       console.error('Error in handleSubmit:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create/update sweepstakes');
+      
+      // Добавляем подробное логирование ошибок
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      
+      // Форматируем сообщение об ошибке для пользователя
+      let errorMessage = 'Failed to create/update sweepstakes';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('actor_id')) {
+          errorMessage = 'Не удалось создать розыгрыш: проблема с идентификацией пользователя. Пожалуйста, выйдите и войдите снова в систему.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

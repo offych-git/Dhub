@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -35,7 +34,7 @@ const NotificationBell: React.FC = () => {
 
   const subscribeToNotifications = () => {
     console.log('Подписываемся на обновления уведомлений...');
-    
+
     const subscription = supabase
       .channel('notifications')
       .on('postgres_changes', {
@@ -58,7 +57,7 @@ const NotificationBell: React.FC = () => {
         // При удалении через другие устройства обновляем локальное состояние
         if (payload.old && payload.old.id) {
           setNotifications(prev => prev.filter(notification => notification.id !== payload.old.id));
-          
+
           // Если удаленное уведомление было непрочитанным, обновляем счетчик
           if (payload.old.read === false) {
             setUnreadCount(prev => Math.max(0, prev - 1));
@@ -66,7 +65,7 @@ const NotificationBell: React.FC = () => {
         }
       })
       .subscribe();
-    
+
     console.log('Подписка на уведомления активирована');
 
     return () => {
@@ -80,7 +79,7 @@ const NotificationBell: React.FC = () => {
 
     try {
       console.log('Загружаем список уведомлений из базы данных...');
-      
+
       const { data, error } = await supabase
         .from('notifications')
         .select(`
@@ -92,7 +91,7 @@ const NotificationBell: React.FC = () => {
           )
         `)
         .eq('user_id', user?.id)
-        .in('type', ['mention', 'reply'])
+        .in('type', ['mention', 'reply', 'subscription'])
         .order('created_at', { ascending: false })
         .limit(5);  // Ограничили до 5 уведомлений
 
@@ -108,7 +107,7 @@ const NotificationBell: React.FC = () => {
         .eq('read', false);
 
       if (countError) throw countError;
-      
+
       console.log('Количество непрочитанных уведомлений:', count || 0);
       setUnreadCount(count || 0);
     } catch (err) {
@@ -139,42 +138,42 @@ const NotificationBell: React.FC = () => {
       console.error('Error marking notifications as read:', error);
     }
   };
-  
+
   // Функция для удаления уведомления
   const deleteNotification = async (notificationId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Предотвращаем всплытие события
-    
+
     try {
       // Получаем уведомление перед удалением (для проверки статуса)
       const deletedNotification = notifications.find(notification => notification.id === notificationId);
-      
+
       // Сначала обновляем локальное состояние перед запросом к API
       setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
-      
+
       // Если удаляем непрочитанное уведомление, уменьшаем счетчик
       if (deletedNotification && !deletedNotification.read) {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
-      
+
       // Удаляем уведомление из базы данных
       const { error } = await supabase
         .from('notifications')
         .delete()
         .eq('id', notificationId);
-        
+
       if (error) {
         throw error;
       }
 
       console.log("Уведомление успешно удалено из базы данных:", notificationId);
-      
+
       // Не вызываем loadNotifications() после успешного удаления, 
       // так как мы уже обновили локальное состояние выше
       console.log("Локальное состояние уведомлений обновлено");
     } catch (error) {
       console.error("Ошибка при удалении уведомления:", error);
       console.error("Детали ошибки:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      
+
       // В случае ошибки обновляем весь список из базы
       await loadNotifications();
     }
@@ -196,6 +195,14 @@ const NotificationBell: React.FC = () => {
     const actorName = notification.actor?.display_name || 
                      notification.actor?.email?.split('@')[0] || 
                      'Someone';
+
+    // Добавляем логирование для отладки
+    console.log('Notification type:', notification.type, 'Content:', notification.content);
+
+    // Явная проверка на тип subscription перед другими типами
+    if (notification.type === 'subscription') {
+      return `New content for keyword: ${notification.content}`;
+    }
 
     switch (notification.type) {
       case 'mention':
@@ -230,73 +237,62 @@ const NotificationBell: React.FC = () => {
     console.log("source_id:", notification.source_id);
     console.log("source_type:", notification.source_type);
     console.log("entity_id (если есть):", notification.entity_id);
-    
+
     // Сразу отметим как прочитанное
     await markAsRead(notification.id);
     setShowDropdown(false);
-    
+
     const sourceType = notification.source_type;
     const sourceId = notification.source_id;
-    
+
     if (!sourceId) {
       console.error("Отсутствует source_id в уведомлении");
       return;
     }
-    
+
     // Пытаемся получить entity_id (ID сделки/промо/свипстейка)
     const entityId = getEntityIdFromNotification(notification);
-    
+
     try {
-      // Проверяем, имеет ли смысл искать комментарий, или сразу переходим на сущность
-      if (!isValidUUID(sourceId)) {
-        console.error(`Невалидный UUID формат для source_id: ${sourceId}`);
-        
-        // Если у нас есть entity_id, просто переходим на страницу сущности
-        if (entityId) {
-          let entityUrl;
-          if (sourceType === 'deal_comment') {
-            entityUrl = `/deals/${entityId}`;
-          } else if (sourceType === 'promo_comment') {
-            entityUrl = `/promos/${entityId}`;
-          } else if (sourceType === 'sweepstake_comment') {
-            entityUrl = `/sweepstakes/${entityId}`;
-          }
-          
-          if (entityUrl) {
-            console.log(`source_id невалидный, переходим к сущности: ${entityUrl}`);
-            navigate(entityUrl);
-            return;
-          }
-        } else {
-          // Если нет entity_id, сообщаем пользователю
-          alert("Не удалось определить связанный контент. Возможно, он был удален.");
-          return;
-        }
-        
+      // Обработка уведомлений о подписках
+    if (notification.type === 'subscription') {
+      console.log("Обрабатываем уведомление о подписке");
+
+      // Переходим непосредственно к сущности по source_type и source_id
+      if (sourceType === 'deal') {
+        console.log("Переход к сделке:", sourceId);
+        navigate(`/deals/${sourceId}`);
+        return;
+      } else if (sourceType === 'promo') {
+        console.log("Переход к промокоду:", sourceId);
+        navigate(`/promos/${sourceId}`);
+        return;
+      } else if (sourceType === 'sweepstake') {
+        console.log("Переход к розыгрышу:", sourceId);
+        navigate(`/sweepstakes/${sourceId}`);
         return;
       }
-      
-      console.log(`Обрабатываем ${sourceType} с ID: ${sourceId}`);
-      
-      // В зависимости от типа источника делаем разные запросы
-      if (sourceType === 'deal_comment') {
+    }
+
+    // В зависимости от типа источника делаем разные запросы
+    if (sourceType === 'deal_comment') {
         console.log("Запрашиваем информацию о комментарии к сделке");
-        
+
         // Прямой запрос к таблице deal_comments, используя maybeSingle() вместо single()
         const { data, error } = await supabase
           .from('deal_comments')
           .select('deal_id')
           .eq('id', sourceId)
           .maybeSingle();
-        
+
         if (error) {
           console.error("Ошибка при получении данных о комментарии:", JSON.stringify(error));
           return;
         }
-        
+
         if (!data) {
           console.error("Комментарий не найден для ID:", sourceId, "Подробности уведомления:", notification);
-          
+
           // Дополнительная проверка - попробуем использовать сам source_id как идентификатор комментария в другом формате
           try {
             console.log("Пробуем выполнить повторный запрос с прямым указанием поля id");
@@ -305,7 +301,7 @@ const NotificationBell: React.FC = () => {
               .select('deal_id')
               .filter('id', 'eq', sourceId)
               .maybeSingle();
-            
+
             if (!directError && directData && directData.deal_id) {
               console.log("Комментарий найден через прямой запрос:", directData);
               const dealUrl = `/deals/${directData.deal_id}?comment=${sourceId}`;
@@ -316,15 +312,15 @@ const NotificationBell: React.FC = () => {
           } catch (directErr) {
             console.error("Ошибка при прямом запросе комментария:", directErr);
           }
-          
+
           // Используем entityId, который мы получили ранее из уведомления
           let dealId = entityId;
-          
+
           // Если entityId не установлен или на всякий случай,
           // попробуем найти ID сделки другими способами
           if (!dealId) {
             console.log("entityId отсутствует, ищем сделку альтернативными способами");
-            
+
             try {
               // Ищем другие уведомления с тем же source_id, которые могут содержать правильный entity_id
               const { data: relatedNotifications, error: relatedError } = await supabase
@@ -334,7 +330,7 @@ const NotificationBell: React.FC = () => {
                 .neq('id', notification.id) // Исключаем текущее уведомление
                 .order('created_at', { ascending: false }) // Начиная с самых новых
                 .limit(5); // Увеличиваем лимит поиска
-              
+
               if (!relatedError && relatedNotifications && relatedNotifications.length > 0) {
                 // Ищем первое уведомление с валидным UUID в entity_id
                 for (const relNotif of relatedNotifications) {
@@ -349,11 +345,11 @@ const NotificationBell: React.FC = () => {
               console.error("Ошибка при поиске связанных уведомлений:", err);
             }
           }
-          
+
           // Если мы все еще не нашли ID сделки, проверим все сделки
           if (!dealId) {
             console.log("Не удалось найти ID сделки через уведомления, проверяем комментарии");
-            
+
             try {
               // Пробуем найти связь через комментарии
               const { data: dealComments, error: commentsError } = await supabase
@@ -361,7 +357,7 @@ const NotificationBell: React.FC = () => {
                 .select('deal_id')
                 .or(`id.eq.${sourceId},parent_id.eq.${sourceId}`)
                 .limit(5); // Увеличиваем лимит поиска
-              
+
               if (!commentsError && dealComments && dealComments.length > 0) {
                 // Берем первый валидный ID сделки
                 for (const comment of dealComments) {
@@ -376,7 +372,7 @@ const NotificationBell: React.FC = () => {
               console.error("Ошибка при поиске через комментарии:", err);
             }
           }
-          
+
           // Если у нас есть потенциальный ID сделки, проверяем его существование
           if (dealId) {
             try {
@@ -385,11 +381,11 @@ const NotificationBell: React.FC = () => {
                 .select('id')
                 .eq('id', dealId)
                 .maybeSingle();
-                
+
               if (dealError) {
                 console.error("Ошибка при проверке существования сделки:", dealError);
               }
-              
+
               if (dealData) {
                 // Сделка существует, переходим на её страницу
                 const dealUrl = `/deals/${dealData.id}`;
@@ -403,17 +399,17 @@ const NotificationBell: React.FC = () => {
               console.error("Критическая ошибка при проверке сделки:", err);
             }
           }
-          
+
           // Если все способы поиска не дали результата
           console.error("Не удалось найти связанную сделку для комментария:", sourceId);
           alert("Этот комментарий больше не доступен, возможно, он был удален.");
           return;
         }
-        
+
         // Если мы нашли комментарий, но у него нет deal_id
         if (!data.deal_id || !isValidUUID(data.deal_id)) {
           console.error("Комментарий найден, но deal_id отсутствует или невалидный:", data);
-          
+
           // Проверяем entity_id из уведомления как запасной вариант
           if (entityId) {
             const dealUrl = `/deals/${entityId}`;
@@ -421,33 +417,33 @@ const NotificationBell: React.FC = () => {
             navigate(dealUrl);
             return;
           }
-          
+
           alert("Не удалось определить связанную сделку. Возможно, она была удалена.");
           return;
         }
-        
+
         // Строим URL и переходим на страницу сделки с якорем на комментарий
         const dealUrl = `/deals/${data.deal_id}?comment=${sourceId}`;
         console.log("Переходим по URL с комментарием:", dealUrl);
         navigate(dealUrl);
-        
+
       } else if (sourceType === 'promo_comment') {
         console.log("Запрашиваем информацию о комментарии к промо");
-        
+
         const { data, error } = await supabase
           .from('promo_comments')
           .select('promo_id')
           .eq('id', sourceId)
           .maybeSingle();
-        
+
         if (error) {
           console.error("Ошибка при получении данных о комментарии к промо:", JSON.stringify(error));
           return;
         }
-        
+
         if (!data) {
           console.error("Комментарий к промо не найден для ID:", sourceId);
-          
+
           // Дополнительная проверка - попробуем использовать source_id напрямую
           try {
             console.log("Пробуем выполнить повторный запрос для промо с прямым указанием поля id");
@@ -456,7 +452,7 @@ const NotificationBell: React.FC = () => {
               .select('promo_id')
               .filter('id', 'eq', sourceId)
               .maybeSingle();
-            
+
             if (!directError && directData && directData.promo_id) {
               console.log("Комментарий к промо найден через прямой запрос:", directData);
               const promoUrl = `/promos/${directData.promo_id}?comment=${sourceId}`;
@@ -467,14 +463,14 @@ const NotificationBell: React.FC = () => {
           } catch (directErr) {
             console.error("Ошибка при прямом запросе комментария к промо:", directErr);
           }
-          
+
           // Используем entityId, который мы получили ранее
           let promoId = entityId;
-          
+
           // Если entityId не установлен, ищем другими способами
           if (!promoId) {
             console.log("entityId отсутствует, ищем ID промо альтернативными способами");
-            
+
             try {
               // Ищем в других уведомлениях
               const { data: relatedNotifications, error: relatedError } = await supabase
@@ -484,7 +480,7 @@ const NotificationBell: React.FC = () => {
                 .neq('id', notification.id)
                 .order('created_at', { ascending: false })
                 .limit(5); // Увеличиваем лимит поиска
-              
+
               if (!relatedError && relatedNotifications && relatedNotifications.length > 0) {
                 // Ищем первое уведомление с валидным UUID в entity_id
                 for (const relNotif of relatedNotifications) {
@@ -499,18 +495,18 @@ const NotificationBell: React.FC = () => {
               console.error("Ошибка при поиске связанных уведомлений:", err);
             }
           }
-          
+
           // Если всё ещё не нашли ID промо, ищем через комментарии
           if (!promoId) {
             console.log("Не удалось найти ID промо через уведомления, ищем через комментарии");
-            
+
             try {
               const { data: promoComments, error: commentsError } = await supabase
                 .from('promo_comments')
                 .select('promo_id')
                 .or(`id.eq.${sourceId},parent_id.eq.${sourceId}`)
                 .limit(5);
-              
+
               if (!commentsError && promoComments && promoComments.length > 0) {
                 // Берем первый валидный ID промо
                 for (const comment of promoComments) {
@@ -525,7 +521,7 @@ const NotificationBell: React.FC = () => {
               console.error("Ошибка при поиске через комментарии:", err);
             }
           }
-          
+
           // Если у нас есть ID промо, проверяем его существование
           if (promoId) {
             try {
@@ -534,11 +530,11 @@ const NotificationBell: React.FC = () => {
                 .select('id')
                 .eq('id', promoId)
                 .maybeSingle();
-                
+
               if (promoError) {
                 console.error("Ошибка при проверке существования промо:", promoError);
               }
-              
+
               if (promoData) {
                 // Промо существует, переходим на его страницу
                 const promoUrl = `/promos/${promoData.id}`;
@@ -552,17 +548,17 @@ const NotificationBell: React.FC = () => {
               console.error("Критическая ошибка при проверке промо:", err);
             }
           }
-          
+
           // Если все способы поиска не дали результата
           console.error("Не удалось найти связанное промо для комментария:", sourceId);
           alert("Этот комментарий больше не доступен, возможно, он был удален.");
           return;
         }
-        
+
         // Если мы нашли комментарий, но у него нет promo_id
         if (!data.promo_id || !isValidUUID(data.promo_id)) {
           console.error("Комментарий к промо найден, но promo_id отсутствует или невалидный:", data);
-          
+
           // Проверяем entity_id из уведомления как запасной вариант
           if (entityId) {
             const promoUrl = `/promos/${entityId}`;
@@ -570,15 +566,15 @@ const NotificationBell: React.FC = () => {
             navigate(promoUrl);
             return;
           }
-          
+
           alert("Не удалось определить связанную промо-акцию. Возможно, она была удалена.");
           return;
         }
-        
+
         const promoUrl = `/promos/${data.promo_id}?comment=${sourceId}`;
         console.log("Переходим по URL:", promoUrl);
         navigate(promoUrl);
-        
+
       } else {
         console.warn("Неизвестный тип источника:", sourceType);
       }
