@@ -279,6 +279,16 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
               submitted_at: new Date().toISOString(),
               status: 'pending'
             });
+            
+          // Use the moderation context to add to the queue
+          if (addToModerationQueue) {
+            try {
+              await addToModerationQueue(promo.id, 'promo');
+              console.log('Промокод успешно добавлен в очередь модерации');
+            } catch (error) {
+              console.error('Ошибка при добавлении промокода в очередь модерации:', error);
+            }
+          }
 
           if (queueError) console.error('Error adding to moderation queue:', queueError);
 

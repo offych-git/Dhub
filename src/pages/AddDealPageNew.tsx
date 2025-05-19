@@ -443,11 +443,13 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
           dealDataToUpdate.status = 'pending';
         }
 
-        // 1. Обновление данных сделки в таблице 'deals'
-        const { error: updateError } = await supabase
+        // 1. Обновление данных сделки в таблице 'deals' и получение обновленной записи
+        const { data: updatedDeal, error: updateError } = await supabase
           .from('deals')
           .update(dealDataToUpdate) // Используйте объект с условным статусом
-          .eq('id', dealId);
+          .eq('id', dealId)
+          .select()
+          .single();
 
         if (updateError) {
           console.error('Error updating deal:', updateError);
@@ -476,14 +478,14 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
           if (deleteQueueError) {
             console.error('Error removing from moderation queue:', deleteQueueError);
           }
-        } else if (dealDataToUpdate.status === 'pending') {
-          // Если статус изменился на 'pending', добавляем в очередь модерации
-          console.log('AddDealPageNew - Добавляем скидку в очередь модерации');
+        } else if (updatedDeal && updatedDeal.status === 'pending') {
+          // Если статус в обновленной записи равен 'pending', добавляем в очередь модерации
+          console.log('AddDealPageNew - Добавляем скидку в очередь модерации, статус:', updatedDeal.status);
           
           // Используем контекст модерации для добавления в очередь
           if (addToModerationQueue) {
             try {
-              await addToModerationQueue('deal', dealId);
+              await addToModerationQueue(dealId, 'deal');
               console.log('AddDealPageNew - Скидка успешно добавлена в очередь модерации');
             } catch (error) {
               console.error('AddDealPageNew - Ошибка при добавлении в очередь модерации:', error);
@@ -491,6 +493,8 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
           } else {
             console.error('AddDealPageNew - addToModerationQueue не определен');
           }
+        } else {
+          console.log('AddDealPageNew - Статус сделки после обновления:', updatedDeal?.status, '- не требует добавления в очередь модерации');
         }
 
         // Если редактирование из модерации, перенаправляем обратно на страницу модерации,
@@ -536,7 +540,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({ isEditing = false, deal
          // Добавляем новую сделку в очередь модерации
          if (deal && deal.id) {
           console.log('Добавляем сделку в очередь модерации:', deal.id);
-          await addToModerationQueue('deal', deal.id);
+          await addToModerationQueue(deal.id, 'deal');
         }
       }
     } catch (error) {

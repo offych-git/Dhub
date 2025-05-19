@@ -22,7 +22,7 @@ interface AddSweepstakesPageProps {
   onEditSuccess?: (id: string) => Promise<void>;
 }
 
-const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = false, sweepstakesId, initialData, allowHotToggle, labelOverrides }) => {
+const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = false, sweepstakesId, initialData, allowHotToggle, labelOverrides, onEditSuccess }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { role } = useAdmin();
@@ -261,8 +261,26 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
 
   // Восстанавливаем данные формы при загрузке компонента
   useEffect(() => {
+    // Если это режим редактирования и есть начальные данные, не используем localStorage
+    if (isEditing && initialData) {
+      console.log('Режим редактирования: используем initialData вместо кеша');
+      setFormData(prev => ({
+        ...prev,
+        title: initialData.title || '',
+        description: initialData.description || '',
+        dealUrl: initialData.dealUrl || '',
+        expiryDate: initialData.expiryDate || ''
+      }));
+      setImageUrl(initialData.image || null);
+      if (editor) {
+        editor.commands.setContent(initialData.description || '');
+      }
+      return;
+    }
+    
+    // Для новых розыгрышей можем использовать сохраненные в localStorage данные
     const savedData = localStorage.getItem('form_sweepstake_new');
-    if (savedData) {
+    if (savedData && !isEditing) {
       try {
         const formData = JSON.parse(savedData);
         setFormData(prev => ({
@@ -280,7 +298,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         console.error('Ошибка при восстановлении данных формы розыгрыша:', e);
       }
     }
-  }, [editor]);
+  }, [editor, isEditing, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -418,7 +436,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       }
 
       // Вызываем функцию обратного вызова, если она определена
-      if (isEditing && onEditSuccess && data.id) {
+      if (isEditing && typeof onEditSuccess === 'function' && data.id) {
         console.log("Вызываем onEditSuccess после успешного редактирования розыгрыша");
         try {
           await onEditSuccess(data.id);

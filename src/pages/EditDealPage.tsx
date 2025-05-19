@@ -38,7 +38,7 @@ const EditDealPage: React.FC = () => {
 
     const fetchDeal = async () => {
       if (!id) {
-        navigate('/');
+        navigate('deals');
         return;
       }
 
@@ -53,7 +53,7 @@ const EditDealPage: React.FC = () => {
 
       if (error || !data) {
         console.error('Error fetching deal:', error);
-        navigate('/');
+        navigate('deals');
         return;
       }
 
@@ -153,7 +153,25 @@ const EditDealPage: React.FC = () => {
   const handleAddToModeration = async (dealId: string) => {
     if (!isFromModeration && dealData && dealData.id) {
       console.log("EditDealPage: добавляем отредактированную сделку в очередь модерации, ID:", dealId);
-      await addToModerationQueue(dealId, 'deal');
+
+      try {
+        // Обновляем статус сделки на pending
+        await supabase
+          .from('deals')
+          .update({ status: 'pending' })
+          .eq('id', dealId);
+
+        // Вызываем функцию из контекста модерации
+        if (addToModerationQueue) {
+          const result = await addToModerationQueue(dealId, 'deal');
+          console.log("EditDealPage: сделка успешно добавлена в очередь модерации");
+          console.log("Результат добавления в очередь модерации:", result);
+        } else {
+          console.error("EditDealPage: функция addToModerationQueue не определена");
+        }
+      } catch (e) {
+        console.error("Ошибка при добавлении в очередь модерации:", e);
+      }
     }
   };
 
@@ -173,7 +191,7 @@ const EditDealPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center mb-6">
-        <button onClick={() => navigate('/deals')} className="text-white mr-4">
+        <button onClick={() => navigate('deals')} className="text-white mr-4">
           <ArrowLeft className="h-6 w-6" />
         </button>
         <h1 className="text-2xl font-bold text-white">Edit Deal</h1>

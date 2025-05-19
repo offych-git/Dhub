@@ -779,7 +779,7 @@ const SweepstakesDetailPage: React.FC = () => {
                         rel="noopener noreferrer"
                         className="mt-4 bg-orange-500 text-white py-3 rounded-md flex items-center justify-center font-medium"
                     >
-                        <span>Участвовать в розыгрыше</span>
+                                <span>Участвовать в розыгрыше</span>
                         <ExternalLink className="h-4 w-4 ml-2"/>
                     </a>
                 ) : (

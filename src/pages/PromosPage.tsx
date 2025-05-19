@@ -473,7 +473,7 @@ const PromosPage: React.FC = () => {
                         <Share2 className="h-4 w-4" />
                       </button>
                       {user && user.id === promo.user.id && 
-                        new Date().getTime() - new Date(promo.created_at + 'Z').getTime() < 24 * 60 * 60 * 1000 && (
+                        new Date().getTime() - new Date(promo.created_at).getTime() < 24 * 60 * 60 * 1000 && (
                           <button
                             onClick={(e) => {
                               e.preventDefault();

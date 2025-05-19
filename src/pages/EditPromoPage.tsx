@@ -32,8 +32,13 @@ const EditPromoPage: React.FC = () => {
           .eq('id', promoId);
 
         // Вызываем функцию из контекста модерации
-        const result = await addToModerationQueue(promoId, 'promo');
-        console.log("Результат добавления в очередь модерации:", result);
+        if (addToModerationQueue) {
+          const result = await addToModerationQueue(promoId, 'promo');
+          console.log("EditPromoPage: промокод успешно добавлен в очередь модерации");
+          console.log("Результат добавления в очередь модерации:", result);
+        } else {
+          console.error("EditPromoPage: функция addToModerationQueue не определена");
+        }
       } catch (e) {
         console.error("Ошибка при добавлении в очередь модерации:", e);
       }
@@ -91,7 +96,7 @@ const EditPromoPage: React.FC = () => {
       <div className="min-h-screen bg-gray-900 flex flex-col">
         <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
           <div className="flex items-center">
-            <button onClick={() => navigate('/promos')} className="text-white">
+            <button onClick={() => navigate('promos')} className="text-white">
               <ArrowLeft className="h-6 w-6" />
             </button>
             <h1 className="text-white text-lg font-medium ml-4">Error</h1>

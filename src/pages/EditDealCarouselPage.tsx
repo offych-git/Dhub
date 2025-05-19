@@ -24,17 +24,22 @@ const EditDealCarouselPage: React.FC = () => {
   const handleAddToModeration = async (dealId: string) => {
     if (!isFromModeration && dealData && dealData.id) {
       console.log("EditDealCarouselPage: добавляем отредактированную карусельную сделку в очередь модерации, ID:", dealId);
-      
+
       try {
         // Обновляем статус сделки на pending
         await supabase
           .from('deals')
           .update({ status: 'pending' })
           .eq('id', dealId);
-        
+
         // Вызываем функцию из контекста модерации
-        const result = await addToModerationQueue(dealId, 'deal');
-        console.log("Результат добавления в очередь модерации:", result);
+        if (addToModerationQueue) {
+          const result = await addToModerationQueue(dealId, 'deal');
+          console.log("EditDealCarouselPage: сделка успешно добавлена в очередь модерации");
+          console.log("Результат добавления в очередь модерации:", result);
+        } else {
+          console.error("EditDealCarouselPage: функция addToModerationQueue не определена");
+        }
       } catch (e) {
         console.error("Ошибка при добавлении в очередь модерации:", e);
       }
@@ -60,7 +65,7 @@ const EditDealCarouselPage: React.FC = () => {
       }
 
       console.log(`EditDealCarouselPage: загрузка свежих данных для сделки ${id} с сервера`);
-      
+
       const { data, error } = await supabase
         .from('deals')
         .select(`
@@ -161,7 +166,7 @@ const EditDealCarouselPage: React.FC = () => {
           }
         };
         setDealData(dealFullData);
-        
+
         // Сохраняем данные в localStorage для восстановления при переключении вкладок
         localStorage.setItem(`form_deal_edit_${id}`, JSON.stringify(dealFullData));
       }
@@ -169,7 +174,7 @@ const EditDealCarouselPage: React.FC = () => {
     };
 
     fetchDeal();
-    
+
     // Обработчик события восстановления фокуса на вкладке
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -177,9 +182,9 @@ const EditDealCarouselPage: React.FC = () => {
         dispatch({ type: 'MARK_DEALS_STALE' });
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -206,7 +211,7 @@ const EditDealCarouselPage: React.FC = () => {
       onSave={handleAddToModeration}
       customHeaderComponent={
         <div className="flex items-center">
-          <button onClick={() => navigate('/deals')} className="text-white">
+          <button onClick={() => navigate('deals')} className="text-white">
             <ArrowLeft className="h-6 w-6" />
           </button>
           <h1 className="text-white text-lg font-medium ml-4">Edit Carousel Deal</h1>

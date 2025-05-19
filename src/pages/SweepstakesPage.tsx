@@ -263,15 +263,7 @@ const SweepstakesPage: React.FC = () => {
                   onVoteChange={fetchSweepstakes}
                   hideFreeLabel={true}
                 />
-                {/* Индикатор модерации для розыгрышей */}
-                {deal.status === 'pending' && (
-                  <div className="absolute top-3 right-3 text-yellow-500 flex items-center text-xs px-2 py-1 bg-gray-800/80 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {t('common.statusPending', 'Pending Review')}
-                  </div>
-                )}
+                {/* Индикатор модерации удален, чтобы не перекрывал стрелки голосования */}
               </div>
             ))}
           </div>
