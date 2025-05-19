@@ -35,6 +35,7 @@ import SweepstakesPage from './pages/SweepstakesPage';
 import EditSweepstakesPage from './pages/EditSweepstakesPage'; 
 import ModerationPage from './pages/ModerationPage';
 import ModerationSettingsPage from './pages/ModerationSettingsPage';
+import UserSubscriptionsPage from './pages/UserSubscriptionsPage';
 
 
 function App() {
@@ -81,6 +82,7 @@ function App() {
                     <Route path="/sweepstakes/:id/edit" element={<PrivateRoute><EditSweepstakesPage /></PrivateRoute>} />
                     <Route path="/moderation" element={<PrivateRoute><ModerationPage /></PrivateRoute>} />
                     <Route path="/moderation/settings" element={<PrivateRoute><ModerationSettingsPage /></PrivateRoute>} />
+                    <Route path="/user-subscriptions" element={<PrivateRoute><UserSubscriptionsPage /></PrivateRoute>} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Route>
                 </Routes>
