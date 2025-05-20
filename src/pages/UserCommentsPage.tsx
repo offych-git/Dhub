@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import DealCard from '../components/deals/DealCard';
 import { Deal } from '../types';
 import AdminActions from '../components/admin/AdminActions';
+import VoteControls from "../components/deals/VoteControls";
 
 type SortOption = 'newest' | 'oldest' | 'popular';
 
@@ -717,6 +718,7 @@ const UserCommentsPage: React.FC = () => {
                               <span className="text-orange-500 font-mono">{promo.code}</span>
                             </div>
                           </div>
+                          <VoteControls dealId={promo.id} type="promo" do_refresh={true}/>
                           
                           <div className="mt-3">
                             <a
