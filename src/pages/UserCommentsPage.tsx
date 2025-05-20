@@ -709,16 +709,22 @@ const UserCommentsPage: React.FC = () => {
                 <h2 className="text-white font-medium mb-4">Promo Comments</h2>
                 <div className="space-y-4">
                   {filteredPromos.map((promo, index) => (
-                    <div key={`promo-${promo.id}-${index}`} className="space-y-2">
-                      <div className="bg-gray-800 rounded-lg overflow-hidden">
-                        <div className="p-4">
-                          <h3 className="text-white font-medium">{promo.title}</h3>
-                          <div className="mt-2 flex items-center space-x-2">
-                            <div className="bg-gray-700 px-3 py-1 rounded border border-gray-600">
-                              <span className="text-orange-500 font-mono">{promo.code}</span>
+                      <div key={`promo-${promo.id}-${index}`} className="space-y-2">
+                        <div className="bg-gray-800 rounded-lg overflow-hidden">
+                          <div className="p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="text-white font-medium">{promo.title}</h3>
+                              <div className="flex items-center space-x-2">
+                                <div className="flex items-center space-x-1">
+                                  <VoteControls dealId={promo.id} type="promo" do_refresh={true}/>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <VoteControls dealId={promo.id} type="promo" do_refresh={true}/>
+                            <div className="mt-2 flex items-center space-x-2">
+                              <div className="bg-gray-700 px-3 py-1 rounded border border-gray-600">
+                                <span className="text-orange-500 font-mono">{promo.code}</span>
+                              </div>
+                            </div>
                           
                           <div className="mt-3">
                             <a
