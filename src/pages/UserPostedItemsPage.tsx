@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DealCard from '../components/deals/DealCard';
 import { Deal } from '../types';
+import VoteControls from "../components/deals/VoteControls";
 
 type SortOption = 'newest' | 'oldest' | 'popular';
 
@@ -222,6 +223,7 @@ const UserPostedItemsPage: React.FC = () => {
       const { data: promosData, error: promosError } = await promosQuery;
 
       if (promosError) throw promosError;
+      console.log(promosData)
 
       setPromos(promosData || []);
     } catch (error) {
@@ -363,9 +365,13 @@ const UserPostedItemsPage: React.FC = () => {
                         </div>
                         <div className="flex items-center space-x-2">
                           <div className="flex items-center space-x-1">
-                            <span className={`text-sm font-medium ${(promo.vote_count || 0) > 0 ? 'text-red-500' : (promo.vote_count || 0) < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
-                              {(promo.vote_count || 0) > 0 ? '+' : ''}{promo.vote_count || 0}°
-                            </span>
+                            <VoteControls dealId={promo.id} type="promo" do_refresh={true}/>
+
+                            {/*<VoteControls dealId={promo.id} popularity={promo.vote_count} userVoteType={promo.userVoteType} type="promo" />*/}
+
+                            {/*<span className={`text-sm font-medium ${(promo.vote_count || 0) > 0 ? 'text-red-500' : (promo.vote_count || 0) < 0 ? 'text-blue-500' : 'text-gray-400'}`}>*/}
+                            {/*  {(promo.vote_count || 0) > 0 ? '+' : ''}{promo.vote_count || 0}°*/}
+                            {/*</span>*/}
                           </div>
                         </div>
                       </div>

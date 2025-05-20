@@ -8,10 +8,11 @@ interface VoteControlsProps {
     dealId: string;
     popularity: bigint;
     userVoteType: boolean;
-    type: string
+    type: string;
+    do_refresh: boolean;
 }
 
-const VoteControls: React.FC<VoteControlsProps> = ({ dealId, type, popularity, userVoteType }) => {
+const VoteControls: React.FC<VoteControlsProps> = ({ dealId, type, popularity, userVoteType, do_refresh }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [voteCount, setVoteCount] = useState(popularity || 0);
@@ -24,7 +25,7 @@ const VoteControls: React.FC<VoteControlsProps> = ({ dealId, type, popularity, u
     }, [userVoteType]);
 
     const table = type === 'promo' ? 'promo_votes' : 'deal_votes';
-    if (type !== 'deal' && type !== 'promo') {
+    if (do_refresh || type !== 'deal' && type !== 'promo') {
         useEffect(() => {
             loadVoteStatus();
         }, [dealId, user]);
