@@ -59,7 +59,7 @@ const PromosPage: React.FC = () => {
       loadFavorites();
     }
   }, [searchQuery, user, location.key]); // Added location.key
-  
+
   // Обработчик события восстановления фокуса на вкладке
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -74,9 +74,9 @@ const PromosPage: React.FC = () => {
         }
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -137,25 +137,42 @@ const PromosPage: React.FC = () => {
       }
 
       let query = supabase
-        .from('promo_codes')
-        .select(`
-          *,
-          profiles:user_id (
-            id,
-            email,
-            display_name
-          )
-        `);
+          .from('get_promos_with_stats')
+          .select('*')
+          .order('updated_at', {ascending: false})
+          .limit(100);
+
+      let favoriteIds: Set<string> = new Set();
+      if (user) {
+        const {data: favoritesData, error: favoritesError} = await supabase
+            .from('promo_favorites')
+            .select('promo_id')
+            .eq('user_id', user.id);
+
+        if (!favoritesError && favoritesData) {
+          favoriteIds = new Set(favoritesData.map(fav => fav.promo_id));
+        }
+      }
+
+      let votedIds: Map<string, boolean> = new Map();
+      if (user) {
+        const {data: votesData, error: votesError} = await supabase
+            .from('promo_votes')
+            .select('promo_id, vote_type')
+            .eq('user_id', user.id);
+
+        if (!votesError && votesData) {
+          votedIds = new Map(votesData.map(vote => [vote.promo_id, vote.vote_type]));
+        }
+      }
 
       if (searchQuery) {
-        const searchTerms = searchQuery.toLowerCase().split(' ').filter(Boolean);
-
-        if (searchTerms.length > 0) {
-          query = query.or(
-            searchTerms.map(term =>
-              `title.ilike.%${term}%,description.ilike.%${term}%,code.ilike.%${term}%`
-            ).join(',')
+        const terms = searchQuery.toLowerCase().split(' ').filter(Boolean);
+        if (terms.length) {
+          const filters = terms.map(term =>
+              `title.ilike.%${term}%,description.ilike.%${term}%,store_id.ilike.%${term}%`
           );
+          query.or(filters.join(','));
         }
       }
 
@@ -164,7 +181,7 @@ const PromosPage: React.FC = () => {
         // Пользователи видят все одобренные промокоды (или без статуса) или свои собственные
         // Для своих промокодов показываем любые (включая отклоненные)
         query = query.or(`status.eq.approved,status.is.null,user_id.eq.${user?.id}`);
-        
+
         // Исключаем отклоненные промокоды других пользователей
         // Используем правильный синтаксис для фильтра not
         const userId = user?.id;
@@ -177,9 +194,8 @@ const PromosPage: React.FC = () => {
       }
       // Для админов и модераторов показываем все промокоды (фильтрация не применяется)
 
-
       query = query
-        .order('created_at', { ascending: false })
+        // .order('created_at', { ascending: false })
         .range((page - 1) * 20, page * 20 - 1);
 
       const { data, error } = await query;
@@ -187,31 +203,13 @@ const PromosPage: React.FC = () => {
       if (error) throw error;
 
       const promosWithVotes = await Promise.all([...(data || [])].map(async (promo) => {
-        const { data: votes } = await supabase
-          .from('promo_votes')
-          .select('vote_type')
-          .eq('promo_id', promo.id);
-
-        const voteCount = votes?.reduce((acc, vote) => acc + (vote.vote_type ? 1 : -1), 0) || 0;
-
-        const userVote = user ? await supabase
-          .from('promo_votes')
-          .select('vote_type')
-          .eq('promo_id', promo.id)
-          .eq('user_id', user.id)
-          .maybeSingle() : { data: null };
-
-        const { count: commentCount } = await supabase
-          .from('promo_comments')
-          .select('id', { count: 'exact' })
-          .eq('promo_id', promo.id);
-
         const displayName =
           promo.profiles?.display_name
           || (promo.profiles?.email ? promo.profiles.email.split('@')[0] : 'Anonymous User');
         const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
         const email = promo.profiles?.email || '';
-
+        console.log(promo)
+        console.log(votedIds.get(promo.id))
         return {
           ...promo,
           user: {
@@ -220,9 +218,9 @@ const PromosPage: React.FC = () => {
             avatarUrl,
             email
           },
-          votes: voteCount,
-          comments: commentCount || 0,
-          userVote: userVote?.vote_type ?? null
+          votes: promo.popularity || 0,
+          comments: promo.comment_count || 0,
+          userVote: votedIds.get(promo.id)
         };
       }));
 
@@ -370,7 +368,8 @@ const PromosPage: React.FC = () => {
                     <div className="text-gray-400 text-xs">
                       {formatTimeAgo(promo.created_at)}
                     </div>
-                    <VoteControls dealId={promo.id} type="promo" />
+                    <VoteControls dealId={promo.id} popularity={promo.votes} userVoteType={promo.userVote} type="promo"/>
+                    {/*<VoteControls dealId={promo.id} type="promo" />*/}
                   </div>
 
                   <div className="mb-2">

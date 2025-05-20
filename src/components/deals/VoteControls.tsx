@@ -24,7 +24,7 @@ const VoteControls: React.FC<VoteControlsProps> = ({ dealId, type, popularity, u
     }, [userVoteType]);
 
     const table = type === 'promo' ? 'promo_votes' : 'deal_votes';
-    if (type !== 'deal') {
+    if (type !== 'deal' && type !== 'promo') {
         useEffect(() => {
             loadVoteStatus();
         }, [dealId, user]);
