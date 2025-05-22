@@ -38,6 +38,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       document.documentElement.style.setProperty('--bg-secondary', '#1F2937');
       document.documentElement.style.setProperty('--text-primary', '#FFFFFF');
     }
+    
+    // Отправляем информацию о теме в нативное приложение при инициализации
+    if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ 
+        type: 'themeInit', 
+        theme: theme 
+      }));
+      console.log("Отправлено начальное состояние темы в нативное приложение:", theme);
+    }
   }, [theme]);
 
   const toggleTheme = () => {
@@ -45,6 +54,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTheme(prevTheme => {
       const newTheme = prevTheme === 'dark' ? 'light' : 'dark';
       console.log("Новая тема:", newTheme);
+      
+      // Отправка сообщения в нативное приложение через WebView
+      if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ 
+          type: 'themeChange', 
+          theme: newTheme 
+        }));
+        console.log("Отправлено сообщение в нативное приложение о смене темы:", newTheme);
+      }
+      
       return newTheme;
     });
   };
