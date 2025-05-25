@@ -139,8 +139,7 @@ const PromosPage: React.FC = () => {
       let query = supabase
           .from('get_promos_with_stats')
           .select('*')
-          .order('updated_at', {ascending: false})
-          .limit(100);
+          .order('updated_at', {ascending: false});
 
       let favoriteIds: Set<string> = new Set();
       if (user) {
@@ -195,7 +194,7 @@ const PromosPage: React.FC = () => {
       // Для админов и модераторов показываем все промокоды (фильтрация не применяется)
 
       query = query
-        // .order('created_at', { ascending: false })
+        // .order('popularity', { ascending: false })
         .range((page - 1) * 20, page * 20 - 1);
 
       const { data, error } = await query;
@@ -208,8 +207,6 @@ const PromosPage: React.FC = () => {
           || (promo.profiles?.email ? promo.profiles.email.split('@')[0] : 'Anonymous User');
         const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
         const email = promo.profiles?.email || '';
-        console.log(promo)
-        console.log(votedIds.get(promo.id))
         return {
           ...promo,
           user: {
