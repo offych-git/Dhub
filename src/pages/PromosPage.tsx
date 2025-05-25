@@ -213,10 +213,12 @@ const PromosPage: React.FC = () => {
         return {
           ...promo,
           user: {
-            id: promo.profiles?.id || 'anonymous',
-            displayName,
-            avatarUrl,
-            email
+            id: promo.profile_id || 'anonymous',
+            displayName: promo.display_name || promo.email?.split('@')[0] || 'Anonymous',
+            avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              promo.display_name || promo.email?.split('@')[0] || 'Anonymous'
+            )}&background=random`,
+            email: promo.email?.split('@')[0] || 'Anonymous'
           },
           votes: promo.popularity || 0,
           comments: promo.comment_count || 0,
