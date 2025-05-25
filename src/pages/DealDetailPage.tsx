@@ -1,24 +1,29 @@
-import React, {useEffect, useMemo, useState} from 'react';
-import {useLocation, useNavigate, useParams, useSearchParams} from 'react-router-dom';
-import {ArrowLeft, Edit2, ExternalLink, Heart, Share2} from 'lucide-react';
-import {mockDeals} from '../data/mockData';
-import {useAuth} from '../contexts/AuthContext';
-import AdminActions from '../components/admin/AdminActions';
-import {supabase} from '../lib/supabase';
-import Comment from '../components/comments/Comment';
-import CommentInput from '../components/comments/CommentInput';
-import {getValidImageUrl, handleImageError} from '../utils/imageUtils';
-import {highlightText} from '../utils/highlightText';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+    useLocation,
+    useNavigate,
+    useParams,
+    useSearchParams,
+} from "react-router-dom";
+import { ArrowLeft, Edit2, ExternalLink, Heart, Share2 } from "lucide-react";
+import { mockDeals } from "../data/mockData";
+import { useAuth } from "../contexts/AuthContext";
+import AdminActions from "../components/admin/AdminActions";
+import { supabase } from "../lib/supabase";
+import Comment from "../components/comments/Comment";
+import CommentInput from "../components/comments/CommentInput";
+import { getValidImageUrl, handleImageError } from "../utils/imageUtils";
+import { highlightText } from "../utils/highlightText";
 import VoteControls from "../components/deals/VoteControls.tsx";
 
 const DealDetailPage: React.FC = () => {
-    const {id} = useParams<{ id: string }>();
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams] = useSearchParams();
-    const highlightedCommentId = searchParams.get('comment');
-    const searchQuery = searchParams.get('q') || '';
-    const {user} = useAuth();
+    const highlightedCommentId = searchParams.get("comment");
+    const searchQuery = searchParams.get("q") || "";
+    const { user } = useAuth();
     const [comments, setComments] = useState<any[]>([]);
     const [commentCount, setCommentCount] = useState(0);
     const [userVote, setUserVote] = useState<boolean | null>(null);
@@ -26,11 +31,14 @@ const DealDetailPage: React.FC = () => {
     const [deal, setDeal] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'popular'>('newest');
+    const [sortBy, setSortBy] = useState<"newest" | "oldest" | "popular">(
+        "newest",
+    );
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
-    const isExpired = deal?.expires_at && new Date(deal.expires_at) < new Date();
+    const isExpired =
+        deal?.expires_at && new Date(deal.expires_at) < new Date();
 
     // Получение списка изображений для карусели
     const dealImages = useMemo(() => {
@@ -55,7 +63,10 @@ const DealDetailPage: React.FC = () => {
                         images.push(...allImages.slice(1));
                     }
                 } catch (e) {
-                    console.error('Ошибка при разборе JSON с изображениями:', e);
+                    console.error(
+                        "Ошибка при разборе JSON с изображениями:",
+                        e,
+                    );
                 }
             }
         }
@@ -73,13 +84,13 @@ const DealDetailPage: React.FC = () => {
     // Функции для навигации по карусели с циклическим переходом
     const goToPreviousImage = () => {
         setCurrentImageIndex((prev) =>
-            prev === 0 ? dealImages.length - 1 : prev - 1
+            prev === 0 ? dealImages.length - 1 : prev - 1,
         );
     };
 
     const goToNextImage = () => {
         setCurrentImageIndex((prev) =>
-            prev === dealImages.length - 1 ? 0 : prev + 1
+            prev === dealImages.length - 1 ? 0 : prev + 1,
         );
     };
 
@@ -128,182 +139,220 @@ const DealDetailPage: React.FC = () => {
     // Функция генерации ценовой истории удалена
 
     useEffect(() => {
-    // Прокручиваем страницу вверх при открытии деталей сделки
-    window.scrollTo(0, 0);
+        // Прокручиваем страницу вверх при открытии деталей сделки
+        window.scrollTo(0, 0);
 
-    if (id) {
-      loadDeal();
-      loadComments();
-      loadFavoriteStatus();
-    }
-  }, [id, sortBy]);
-
-  // Прокрутка к комментарию если есть параметр comment в URL
-  useEffect(() => {
-    const commentId = searchParams.get('comment');
-    if (commentId && deal) {
-      console.log('Ищем комментарий для прокрутки:', commentId, 'в сделке:', deal.id);
-
-      // Сначала убедимся, что комментарии загружены
-      const checkCommentsLoaded = () => {
-        if (comments.length === 0) {
-          console.log('Комментарии еще не загружены, повторная попытка загрузки...');
-          loadComments();
-          return false;
+        if (id) {
+            loadDeal();
+            loadComments();
+            loadFavoriteStatus();
         }
-        return true;
-      };
+    }, [id, sortBy]);
 
-      // Функция для проверки, принадлежит ли комментарий текущей сделке
-      const checkCommentBelongsToDeal = () => {
-        // Рекурсивная функция для поиска комментария в дереве
-        const findCommentInTree = (commentsList) => {
-          for (const comment of commentsList) {
-            if (comment.id === commentId) {
-              return true; // Комментарий найден
-            }
-            if (comment.replies && comment.replies.length > 0) {
-              if (findCommentInTree(comment.replies)) {
+    // Прокрутка к комментарию если есть параметр comment в URL
+    useEffect(() => {
+        const commentId = searchParams.get("comment");
+        if (commentId && deal) {
+            console.log(
+                "Ищем комментарий для прокрутки:",
+                commentId,
+                "в сделке:",
+                deal.id,
+            );
+
+            // Сначала убедимся, что комментарии загружены
+            const checkCommentsLoaded = () => {
+                if (comments.length === 0) {
+                    console.log(
+                        "Комментарии еще не загружены, повторная попытка загрузки...",
+                    );
+                    loadComments();
+                    return false;
+                }
                 return true;
-              }
-            }
-          }
-          return false; // Комментарий не найден
-        };
-        
-        const found = findCommentInTree(comments);
-        if (!found) {
-          console.warn(`Комментарий ${commentId} не принадлежит сделке ${deal.id}. Возможно неправильная ссылка.`);
+            };
+
+            // Функция для проверки, принадлежит ли комментарий текущей сделке
+            const checkCommentBelongsToDeal = () => {
+                // Рекурсивная функция для поиска комментария в дереве
+                const findCommentInTree = (commentsList) => {
+                    for (const comment of commentsList) {
+                        if (comment.id === commentId) {
+                            return true; // Комментарий найден
+                        }
+                        if (comment.replies && comment.replies.length > 0) {
+                            if (findCommentInTree(comment.replies)) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false; // Комментарий не найден
+                };
+
+                const found = findCommentInTree(comments);
+                if (!found) {
+                    console.warn(
+                        `Комментарий ${commentId} не принадлежит сделке ${deal.id}. Возможно неправильная ссылка.`,
+                    );
+                }
+                return found;
+            };
+
+            // Функция для поиска и прокрутки
+            const findAndScrollToComment = () => {
+                if (!checkCommentsLoaded()) {
+                    return false;
+                }
+
+                // Проверка принадлежности комментария текущей сделке
+                if (!checkCommentBelongsToDeal()) {
+                    console.log(
+                        `Комментарий ${commentId} не найден в текущей сделке ${deal.id}`,
+                    );
+                    return false;
+                }
+
+                const commentElement = document.getElementById(
+                    `comment-${commentId}`,
+                );
+                console.log(
+                    "Найден элемент комментария:",
+                    !!commentElement,
+                    commentId,
+                );
+
+                if (commentElement) {
+                    // Прокручиваем сразу к комментарию без промежуточных прокруток
+                    commentElement.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                    });
+                    commentElement.classList.add("highlight-comment");
+
+                    // Добавляем более заметное выделение комментария с корректной анимацией без дерганий
+                    commentElement.classList.add("bg-orange-500/20");
+                    setTimeout(() => {
+                        commentElement.classList.remove("bg-orange-500/20");
+                        commentElement.classList.add("bg-orange-500/10");
+                        setTimeout(() => {
+                            commentElement.classList.remove("bg-orange-500/10");
+                        }, 1000);
+                    }, 1000);
+
+                    // Для всех элементов с классом highlighted-comment также применим подсветку
+                    if (commentId === highlightedCommentId) {
+                        const allHighlighted = document.querySelectorAll(
+                            ".highlighted-comment",
+                        );
+                        allHighlighted.forEach((element) => {
+                            element.classList.add("bg-orange-500/20");
+                            setTimeout(() => {
+                                element.classList.remove("bg-orange-500/20");
+                                element.classList.add("bg-orange-500/10");
+                                setTimeout(() => {
+                                    element.classList.remove(
+                                        "bg-orange-500/10",
+                                    );
+                                }, 1000);
+                            }, 1000);
+                        });
+                    }
+
+                    // Снимаем дополнительное выделение после анимации
+                    setTimeout(() => {
+                        commentElement.classList.remove("highlight-comment");
+                    }, 3000);
+
+                    return true;
+                }
+                return false;
+            };
+
+            // Попробуем найти комментарий несколько раз с интервалом
+            let attempts = 0;
+            const maxAttempts = 15; // Увеличиваем количество попыток для более надежного поиска
+
+            const attemptToFind = () => {
+                if (findAndScrollToComment() || attempts >= maxAttempts) {
+                    if (attempts >= maxAttempts) {
+                        console.warn(
+                            `Не удалось найти комментарий ${commentId} после ${maxAttempts} попыток`,
+                        );
+                    }
+                    return;
+                }
+
+                attempts++;
+                console.log(
+                    `Попытка найти комментарий ${attempts}/${maxAttempts} для ID: ${commentId}`,
+                );
+                setTimeout(attemptToFind, 1000); // Увеличиваем интервал между попытками
+            };
+
+            // Начинаем поиск с задержкой, чтобы дать время на рендеринг и загрузку комментариев
+            setTimeout(attemptToFind, 1500);
         }
-        return found;
-      };
-
-      // Функция для поиска и прокрутки
-      const findAndScrollToComment = () => {
-        if (!checkCommentsLoaded()) {
-          return false;
-        }
-
-        // Проверка принадлежности комментария текущей сделке
-        if (!checkCommentBelongsToDeal()) {
-          console.log(`Комментарий ${commentId} не найден в текущей сделке ${deal.id}`);
-          return false;
-        }
-        
-        const commentElement = document.getElementById(`comment-${commentId}`);
-        console.log('Найден элемент комментария:', !!commentElement, commentId);
-
-        if (commentElement) {
-          // Прокручиваем сразу к комментарию без промежуточных прокруток
-          commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          commentElement.classList.add('highlight-comment');
-
-            // Добавляем более заметное выделение комментария с корректной анимацией без дерганий
-            commentElement.classList.add('bg-orange-500/20');
-            setTimeout(() => {
-              commentElement.classList.remove('bg-orange-500/20');
-              commentElement.classList.add('bg-orange-500/10');
-              setTimeout(() => {
-                commentElement.classList.remove('bg-orange-500/10');
-              }, 1000);
-            }, 1000);
-
-            // Для всех элементов с классом highlighted-comment также применим подсветку
-            if (commentId === highlightedCommentId) {
-              const allHighlighted = document.querySelectorAll('.highlighted-comment');
-              allHighlighted.forEach(element => {
-                element.classList.add('bg-orange-500/20');
-                setTimeout(() => {
-                  element.classList.remove('bg-orange-500/20');
-                  element.classList.add('bg-orange-500/10');
-                  setTimeout(() => {
-                    element.classList.remove('bg-orange-500/10');
-                  }, 1000);
-                }, 1000);
-              });
-            }
-
-            // Снимаем дополнительное выделение после анимации
-            setTimeout(() => {
-              commentElement.classList.remove('highlight-comment');
-            }, 3000);
-
-          return true;
-        }
-        return false;
-      };
-
-      // Попробуем найти комментарий несколько раз с интервалом
-      let attempts = 0;
-      const maxAttempts = 15; // Увеличиваем количество попыток для более надежного поиска
-
-      const attemptToFind = () => {
-        if (findAndScrollToComment() || attempts >= maxAttempts) {
-          if (attempts >= maxAttempts) {
-            console.warn(`Не удалось найти комментарий ${commentId} после ${maxAttempts} попыток`);
-          }
-          return;
-        }
-
-        attempts++;
-        console.log(`Попытка найти комментарий ${attempts}/${maxAttempts} для ID: ${commentId}`);
-        setTimeout(attemptToFind, 1000); // Увеличиваем интервал между попытками
-      };
-
-      // Начинаем поиск с задержкой, чтобы дать время на рендеринг и загрузку комментариев
-      setTimeout(attemptToFind, 1500);
-    }
-  }, [searchParams, deal, comments, highlightedCommentId, id]); // Добавляем id сделки в зависимости
+    }, [searchParams, deal, comments, highlightedCommentId, id]); // Добавляем id сделки в зависимости
 
     const loadDeal = async () => {
         try {
-            const mockDeal = mockDeals.find(d => d.id === id);
+            const mockDeal = mockDeals.find((d) => d.id === id);
             if (mockDeal) {
                 setDeal({
                     ...mockDeal,
                     currentPrice: Number(mockDeal.currentPrice),
-                    originalPrice: mockDeal.originalPrice ? Number(mockDeal.originalPrice) : undefined,
+                    originalPrice: mockDeal.originalPrice
+                        ? Number(mockDeal.originalPrice)
+                        : undefined,
                     image: mockDeal.image,
-                    description: mockDeal.description || '',
-                    url: mockDeal.url || '',
+                    description: mockDeal.description || "",
+                    url: mockDeal.url || "",
                     postedAt: mockDeal.postedAt,
                     postedBy: {
                         ...mockDeal.postedBy,
-                        avatar: mockDeal.postedBy.avatar || `https://ui-avatars.com/api/?name=${mockDeal.postedBy.name}&background=random`
-                    }
+                        avatar:
+                            mockDeal.postedBy.avatar ||
+                            `https://ui-avatars.com/api/?name=${mockDeal.postedBy.name}&background=random`,
+                    },
                 });
                 setLoading(false);
                 return;
             }
 
-            const {data, error} = await supabase
-                .from('deals')
-                .select(`
+            const { data, error } = await supabase
+                .from("deals")
+                .select(
+                    `
           *,
           profiles:profiles!deals_user_id_fkey(id, email, display_name)
-        `)
-                .eq('id', id)
+        `,
+                )
+                .eq("id", id)
                 .maybeSingle();
 
             if (error) throw error;
 
             if (!data) {
-                setError('Deal not found');
+                setError("Deal not found");
                 return;
             }
 
             // Add null checks and default values for profile data
-            const profileDisplayName = data.profiles?.display_name || (
-                data.profiles?.email ? data.profiles.email.split('@')[0] : 'Anonymous'
-            );
+            const profileDisplayName =
+                data.profiles?.display_name ||
+                (data.profiles?.email
+                    ? data.profiles.email.split("@")[0]
+                    : "Anonymous");
 
             setDeal({
                 id: data.id,
                 title: data.title,
                 currentPrice: Number(data.current_price),
-                originalPrice: data.original_price ? Number(data.original_price) : undefined,
-                store: {id: data.store_id, name: data.store_id},
-                category: {id: data.category_id, name: data.category_id},
+                originalPrice: data.original_price
+                    ? Number(data.original_price)
+                    : undefined,
+                store: { id: data.store_id, name: data.store_id },
+                category: { id: data.category_id, name: data.category_id },
                 image: data.image_url,
                 additional_images: data.additional_images || [], // Явно передаем дополнительные изображения
                 description: data.description,
@@ -312,14 +361,14 @@ const DealDetailPage: React.FC = () => {
                 created_at: data.created_at, // Добавляем оригинальное поле created_at
                 postedAt: new Date(data.created_at).toLocaleDateString(),
                 postedBy: {
-                    id: data.profiles?.id || 'anonymous',
+                    id: data.profiles?.id || "anonymous",
                     name: profileDisplayName,
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(profileDisplayName)}&background=random`
-                }
+                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(profileDisplayName)}&background=random`,
+                },
             });
         } catch (err: any) {
-            console.error('Error loading deal:', err);
-            setError(err.message || 'Failed to load deal details');
+            console.error("Error loading deal:", err);
+            setError(err.message || "Failed to load deal details");
         } finally {
             setLoading(false);
         }
@@ -328,16 +377,18 @@ const DealDetailPage: React.FC = () => {
     const loadComments = async () => {
         if (!id) return;
 
-        const {data: comments, error} = await supabase
-            .from('deal_comments')
-            .select(`
+        const { data: comments, error } = await supabase
+            .from("deal_comments")
+            .select(
+                `
         *,
         profiles!deal_comments_user_id_fkey(id, email, display_name)
-      `)
-            .eq('deal_id', id);
+      `,
+            )
+            .eq("deal_id", id);
 
         if (error) {
-            console.error('Error loading comments:', error);
+            console.error("Error loading comments:", error);
             return;
         }
 
@@ -348,13 +399,19 @@ const DealDetailPage: React.FC = () => {
         // Sort comments before building the tree
         const sortedComments = [...comments].sort((a, b) => {
             switch (sortBy) {
-                case 'oldest':
-                    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-                case 'popular':
+                case "oldest":
+                    return (
+                        new Date(a.created_at).getTime() -
+                        new Date(b.created_at).getTime()
+                    );
+                case "popular":
                     return (b.like_count || 0) - (a.like_count || 0);
-                case 'newest':
+                case "newest":
                 default:
-                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                    return (
+                        new Date(b.created_at).getTime() -
+                        new Date(a.created_at).getTime()
+                    );
             }
         });
 
@@ -364,15 +421,15 @@ const DealDetailPage: React.FC = () => {
             const rootComments = [];
 
             // First pass: create map of all comments
-            comments.forEach(comment => {
+            comments.forEach((comment) => {
                 commentMap.set(comment.id, {
                     ...comment,
-                    replies: []
+                    replies: [],
                 });
             });
 
             // Second pass: build tree structure
-            sortedComments.forEach(comment => {
+            sortedComments.forEach((comment) => {
                 const commentWithReplies = commentMap.get(comment.id);
                 if (comment.parent_id) {
                     const parent = commentMap.get(comment.parent_id);
@@ -386,17 +443,26 @@ const DealDetailPage: React.FC = () => {
 
             // Sort replies recursively
             const sortReplies = (comments) => {
-                comments.forEach(comment => {
+                comments.forEach((comment) => {
                     if (comment.replies && comment.replies.length > 0) {
                         comment.replies.sort((a, b) => {
                             switch (sortBy) {
-                                case 'oldest':
-                                    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-                                case 'popular':
-                                    return (b.like_count || 0) - (a.like_count || 0);
-                                case 'newest':
+                                case "oldest":
+                                    return (
+                                        new Date(a.created_at).getTime() -
+                                        new Date(b.created_at).getTime()
+                                    );
+                                case "popular":
+                                    return (
+                                        (b.like_count || 0) -
+                                        (a.like_count || 0)
+                                    );
+                                case "newest":
                                 default:
-                                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                                    return (
+                                        new Date(b.created_at).getTime() -
+                                        new Date(a.created_at).getTime()
+                                    );
                             }
                         });
                         sortReplies(comment.replies);
@@ -410,15 +476,14 @@ const DealDetailPage: React.FC = () => {
         }
     };
 
-
     const loadFavoriteStatus = async () => {
         if (!user || !id) return;
 
-        const {data: favorite} = await supabase
-            .from('deal_favorites')
-            .select('id')
-            .eq('deal_id', id)
-            .eq('user_id', user.id)
+        const { data: favorite } = await supabase
+            .from("deal_favorites")
+            .select("id")
+            .eq("deal_id", id)
+            .eq("user_id", user.id)
             .maybeSingle();
 
         setIsFavorite(!!favorite);
@@ -426,23 +491,21 @@ const DealDetailPage: React.FC = () => {
 
     const toggleFavorite = async () => {
         if (!user) {
-            navigate('/auth');
+            navigate("/auth");
             return;
         }
 
         if (isFavorite) {
             await supabase
-                .from('deal_favorites')
+                .from("deal_favorites")
                 .delete()
-                .eq('deal_id', id)
-                .eq('user_id', user.id);
+                .eq("deal_id", id)
+                .eq("user_id", user.id);
         } else {
-            await supabase
-                .from('deal_favorites')
-                .insert({
-                    deal_id: id,
-                    user_id: user.id
-                });
+            await supabase.from("deal_favorites").insert({
+                deal_id: id,
+                user_id: user.id,
+            });
         }
 
         setIsFavorite(!isFavorite);
@@ -469,12 +532,12 @@ const DealDetailPage: React.FC = () => {
 
         // ВАЖНО: Не используем useEffect внутри функции рендеринга!
         // Вместо этого определяем класс на основе isHighlighted
-        const commentClass = `transition-colors duration-300 ${isHighlighted ? 'bg-orange-500/20 rounded-lg highlighted-comment' : ''}`;
+        const commentClass = `transition-colors duration-300 ${isHighlighted ? "bg-orange-500/20 rounded-lg highlighted-comment" : ""}`;
 
         return (
-            <div 
-                key={comment.id} 
-                style={{marginLeft: depth * 24}}
+            <div
+                key={comment.id}
+                style={{ marginLeft: depth * 24 }}
                 id={`comment-${comment.id}`}
                 className={commentClass}
             >
@@ -485,20 +548,33 @@ const DealDetailPage: React.FC = () => {
                     images={comment.images || []}
                     user={{
                         id: comment.profiles?.id,
-                        name: comment.profiles?.display_name || comment.profiles?.email?.split('@')[0] || 'Anonymous',
-                        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.display_name || comment.profiles?.email || 'Anonymous')}&background=random`
+                        name:
+                            comment.profiles?.display_name ||
+                            comment.profiles?.email?.split("@")[0] ||
+                            "Anonymous",
+                        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.display_name || comment.profiles?.email || "Anonymous")}&background=random`,
                     }}
-                    replyCount={typeof comment.reply_count === 'number' ? comment.reply_count : 0}
-                    likeCount={typeof comment.like_count === 'number' ? comment.like_count : 0}
+                    replyCount={
+                        typeof comment.reply_count === "number"
+                            ? comment.reply_count
+                            : 0
+                    }
+                    likeCount={
+                        typeof comment.like_count === "number"
+                            ? comment.like_count
+                            : 0
+                    }
                     replies={undefined}
                     sourceType="deal_comment"
-                    sourceId={deal && deal.id ? String(deal.id) : ''}
+                    sourceId={deal && deal.id ? String(deal.id) : ""}
                     onReply={loadComments}
                     depth={depth || 0}
                 />
                 {comment.replies && comment.replies.length > 0 && (
                     <div>
-                        {comment.replies.map((reply: CommentTreeNode) => renderCommentTree(reply, (depth || 0) + 1))}
+                        {comment.replies.map((reply: CommentTreeNode) =>
+                            renderCommentTree(reply, (depth || 0) + 1),
+                        )}
                     </div>
                 )}
             </div>
@@ -508,8 +584,7 @@ const DealDetailPage: React.FC = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-900">
-                <div
-                    className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
@@ -517,12 +592,14 @@ const DealDetailPage: React.FC = () => {
     if (error || !deal) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
-                <h2 className="text-white text-xl mb-4">{error || 'Deal not found'}</h2>
+                <h2 className="text-white text-xl mb-4">
+                    {error || "Deal not found"}
+                </h2>
                 <button
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate("/")}
                     className="bg-orange-500 text-white py-2 px-4 rounded-md flex items-center"
                 >
-                    <ArrowLeft className="h-4 w-4 mr-2"/>
+                    <ArrowLeft className="h-4 w-4 mr-2" />
                     Back to Deals
                 </button>
             </div>
@@ -530,24 +607,32 @@ const DealDetailPage: React.FC = () => {
     }
 
     const discountPercent = deal.originalPrice
-        ? Math.round(((deal.originalPrice - deal.currentPrice) / deal.originalPrice) * 100)
+        ? Math.round(
+              ((deal.originalPrice - deal.currentPrice) / deal.originalPrice) *
+                  100,
+          )
         : 0;
 
     return (
         <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
-            <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
+            <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10 page-content-header">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                        <button onClick={() => navigate('/deals')} className="text-white">
-                            <ArrowLeft className="h-6 w-6"/>
+                        <button
+                            onClick={() => navigate("/deals")}
+                            className="text-white"
+                        >
+                            <ArrowLeft className="h-6 w-6" />
                         </button>
-                        <h1 className="text-white font-medium ml-4 truncate">Deal Details</h1>
+                        <h1 className="text-white font-medium ml-4 truncate">
+                            Deal Details
+                        </h1>
                     </div>
                     <AdminActions
                         type="deal"
                         id={deal.id}
                         userId={deal.postedBy.id}
-                        onAction={() => navigate('/')}
+                        onAction={() => navigate("/")}
                     />
                 </div>
             </div>
@@ -559,7 +644,9 @@ const DealDetailPage: React.FC = () => {
                 onTouchEnd={handleTouchEnd}
             >
                 <img
-                    src={getValidImageUrl(dealImages[currentImageIndex] || deal.image)}
+                    src={getValidImageUrl(
+                        dealImages[currentImageIndex] || deal.image,
+                    )}
                     alt={deal.title}
                     className="w-full h-full object-contain cursor-pointer"
                     onError={handleImageError}
@@ -569,7 +656,9 @@ const DealDetailPage: React.FC = () => {
                         const img = e.target as HTMLImageElement;
 
                         // Проверяем, есть ли уже модальное окно для этого изображения
-                        const existingModal = document.querySelector('.fullscreen-image-modal');
+                        const existingModal = document.querySelector(
+                            ".fullscreen-image-modal",
+                        );
                         if (existingModal) {
                             // Если модальное окно уже открыто, закрываем его
                             document.body.removeChild(existingModal);
@@ -577,14 +666,15 @@ const DealDetailPage: React.FC = () => {
                         }
 
                         // Создаем модальное окно для просмотра изображения в полном размере
-                        const modal = document.createElement('div');
-                        modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 fullscreen-image-modal';
+                        const modal = document.createElement("div");
+                        modal.className =
+                            "fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 fullscreen-image-modal";
 
                         // Переменная для отслеживания текущего индекса изображения в полноэкранном режиме
                         let currentFullscreenIndex = currentImageIndex;
 
                         // При клике на фон закрываем модальное окно
-                        modal.addEventListener('click', (e) => {
+                        modal.addEventListener("click", (e) => {
                             if (e.target === modal) {
                                 document.body.removeChild(modal);
                             }
@@ -596,17 +686,19 @@ const DealDetailPage: React.FC = () => {
                         // Функция для навигации по изображениям с циклическим переходом
                         const goToPrevImage = () => {
                             // Циклическая навигация: если мы на первом изображении, переходим к последнему
-                            const newIndex = currentFullscreenIndex > 0
-                                ? currentFullscreenIndex - 1
-                                : dealImages.length - 1;
+                            const newIndex =
+                                currentFullscreenIndex > 0
+                                    ? currentFullscreenIndex - 1
+                                    : dealImages.length - 1;
                             updateFullscreenImage(newIndex);
                         };
 
                         const goToNextImage = () => {
                             // Циклическая навигация: если мы на последнем изображении, переходим к первому
-                            const newIndex = currentFullscreenIndex < dealImages.length - 1
-                                ? currentFullscreenIndex + 1
-                                : 0;
+                            const newIndex =
+                                currentFullscreenIndex < dealImages.length - 1
+                                    ? currentFullscreenIndex + 1
+                                    : 0;
                             updateFullscreenImage(newIndex);
                         };
 
@@ -619,10 +711,13 @@ const DealDetailPage: React.FC = () => {
                             fullImg.src = getValidImageUrl(dealImages[index]);
 
                             // Обновляем активную точку навигации
-                            const dots = navContainer.querySelectorAll('button.nav-dot');
+                            const dots =
+                                navContainer.querySelectorAll("button.nav-dot");
                             dots.forEach((d, i) => {
                                 d.className = `nav-dot h-2 w-2 rounded-full ${
-                                    i === index ? 'bg-orange-500' : 'bg-gray-400'
+                                    i === index
+                                        ? "bg-orange-500"
+                                        : "bg-gray-400"
                                 }`;
                             });
 
@@ -632,21 +727,25 @@ const DealDetailPage: React.FC = () => {
                             }
                         };
 
-                        const content = document.createElement('div');
-                        content.className = 'relative max-w-4xl max-h-[90vh]';
+                        const content = document.createElement("div");
+                        content.className = "relative max-w-4xl max-h-[90vh]";
 
                         // Добавляем кнопку закрытия (крестик) с улучшенной видимостью
-                        const closeBtn = document.createElement('button');
-                        closeBtn.className = 'absolute top-4 right-4 bg-orange-500 hover:bg-orange-600 text-white text-2xl font-bold rounded-full w-12 h-12 flex items-center justify-center shadow-xl z-10 border-2 border-white';
-                        closeBtn.innerHTML = '×';
+                        const closeBtn = document.createElement("button");
+                        closeBtn.className =
+                            "absolute top-4 right-4 bg-orange-500 hover:bg-orange-600 text-white text-2xl font-bold rounded-full w-12 h-12 flex items-center justify-center shadow-xl z-10 border-2 border-white";
+                        closeBtn.innerHTML = "×";
                         closeBtn.onclick = (e) => {
                             e.stopPropagation();
                             document.body.removeChild(modal);
                         };
 
-                        const fullImg = document.createElement('img');
-                        fullImg.src = getValidImageUrl(dealImages[currentImageIndex] || deal.image);
-                        fullImg.className = 'max-w-full max-h-[90vh] object-contain';
+                        const fullImg = document.createElement("img");
+                        fullImg.src = getValidImageUrl(
+                            dealImages[currentImageIndex] || deal.image,
+                        );
+                        fullImg.className =
+                            "max-w-full max-h-[90vh] object-contain";
                         fullImg.onError = handleImageError;
                         fullImg.draggable = false; // Отключаем стандартное перетаскивание
 
@@ -690,20 +789,33 @@ const DealDetailPage: React.FC = () => {
                         };
 
                         // Назначаем обработчики событий касания для полноэкранного изображения
-                        fullImg.addEventListener('touchstart', handleTouchStartModal, {passive: false});
-                        fullImg.addEventListener('touchmove', handleTouchMoveModal, {passive: false});
-                        fullImg.addEventListener('touchend', handleTouchEndModal);
+                        fullImg.addEventListener(
+                            "touchstart",
+                            handleTouchStartModal,
+                            { passive: false },
+                        );
+                        fullImg.addEventListener(
+                            "touchmove",
+                            handleTouchMoveModal,
+                            { passive: false },
+                        );
+                        fullImg.addEventListener(
+                            "touchend",
+                            handleTouchEndModal,
+                        );
 
                         content.appendChild(closeBtn);
 
                         // Создаем контейнер для навигационных точек
-                        const navContainer = document.createElement('div');
-                        navContainer.className = 'absolute bottom-4 left-0 right-0 flex justify-center space-x-2';
+                        const navContainer = document.createElement("div");
+                        navContainer.className =
+                            "absolute bottom-4 left-0 right-0 flex justify-center space-x-2";
 
                         // Создаем счетчик изображений (только если есть больше одного изображения)
                         if (dealImages.length > 1) {
-                            counterElement = document.createElement('div');
-                            counterElement.className = 'absolute top-4 left-4 bg-orange-500 text-white px-2 py-1 rounded-md text-sm font-semibold shadow-lg border border-white/60';
+                            counterElement = document.createElement("div");
+                            counterElement.className =
+                                "absolute top-4 left-4 bg-orange-500 text-white px-2 py-1 rounded-md text-sm font-semibold shadow-lg border border-white/60";
                             counterElement.textContent = `${currentFullscreenIndex + 1} / ${dealImages.length}`;
                             content.appendChild(counterElement);
                         }
@@ -711,9 +823,11 @@ const DealDetailPage: React.FC = () => {
                         // Добавляем кнопки навигации при наличии нескольких изображений
                         if (dealImages.length > 1) {
                             // Кнопка "Предыдущее изображение"
-                            const prevButton = document.createElement('button');
-                            prevButton.className = 'absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30';
-                            prevButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+                            const prevButton = document.createElement("button");
+                            prevButton.className =
+                                "absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30";
+                            prevButton.innerHTML =
+                                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
                             prevButton.onclick = (e) => {
                                 e.stopPropagation();
                                 goToPrevImage();
@@ -722,9 +836,11 @@ const DealDetailPage: React.FC = () => {
                             content.appendChild(prevButton);
 
                             // Кнопка "Следующее изображение"
-                            const nextButton = document.createElement('button');
-                            nextButton.className = 'absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30';
-                            nextButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+                            const nextButton = document.createElement("button");
+                            nextButton.className =
+                                "absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30";
+                            nextButton.innerHTML =
+                                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
                             nextButton.onclick = (e) => {
                                 e.stopPropagation();
                                 goToNextImage();
@@ -734,13 +850,15 @@ const DealDetailPage: React.FC = () => {
 
                             // Создаем точки для каждого изображения
                             dealImages.forEach((_, index) => {
-                                const dot = document.createElement('button');
+                                const dot = document.createElement("button");
                                 dot.className = `nav-dot h-2 w-2 rounded-full ${
-                                    currentFullscreenIndex === index ? 'bg-orange-500' : 'bg-gray-400'
+                                    currentFullscreenIndex === index
+                                        ? "bg-orange-500"
+                                        : "bg-gray-400"
                                 }`;
 
                                 // При клике на точку меняем изображение
-                                dot.addEventListener('click', (e) => {
+                                dot.addEventListener("click", (e) => {
                                     e.stopPropagation();
                                     updateFullscreenImage(index);
                                 });
@@ -757,22 +875,28 @@ const DealDetailPage: React.FC = () => {
 
                         // Обработчик клавиатуры для навигации
                         const handleKeyDown = (e) => {
-                            if (e.key === 'ArrowLeft') {
+                            if (e.key === "ArrowLeft") {
                                 goToPrevImage();
-                            } else if (e.key === 'ArrowRight') {
+                            } else if (e.key === "ArrowRight") {
                                 goToNextImage();
-                            } else if (e.key === 'Escape') {
+                            } else if (e.key === "Escape") {
                                 document.body.removeChild(modal);
-                                document.removeEventListener('keydown', handleKeyDown);
+                                document.removeEventListener(
+                                    "keydown",
+                                    handleKeyDown,
+                                );
                             }
                         };
 
                         // Добавляем обработчик клавиатуры
-                        document.addEventListener('keydown', handleKeyDown);
+                        document.addEventListener("keydown", handleKeyDown);
 
                         // Удаляем обработчик при закрытии модального окна
-                        modal.addEventListener('remove', () => {
-                            document.removeEventListener('keydown', handleKeyDown);
+                        modal.addEventListener("remove", () => {
+                            document.removeEventListener(
+                                "keydown",
+                                handleKeyDown,
+                            );
                         });
                     }}
                 />
@@ -785,9 +909,17 @@ const DealDetailPage: React.FC = () => {
                             className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30"
                             aria-label="Previous image"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                 fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"
-                                 strokeLinejoin="round">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="white"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
                                 <polyline points="15 18 9 12 15 6"></polyline>
                             </svg>
                         </button>
@@ -798,9 +930,17 @@ const DealDetailPage: React.FC = () => {
                             className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30"
                             aria-label="Next image"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                 fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"
-                                 strokeLinejoin="round">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="white"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
                                 <polyline points="9 18 15 12 9 6"></polyline>
                             </svg>
                         </button>
@@ -812,7 +952,9 @@ const DealDetailPage: React.FC = () => {
                                     key={index}
                                     onClick={() => setCurrentImageIndex(index)}
                                     className={`h-2 w-2 rounded-full ${
-                                        index === currentImageIndex ? 'bg-orange-500' : 'bg-gray-400'
+                                        index === currentImageIndex
+                                            ? "bg-orange-500"
+                                            : "bg-gray-400"
                                     }`}
                                     aria-label={`Go to image ${index + 1}`}
                                 />
@@ -821,8 +963,7 @@ const DealDetailPage: React.FC = () => {
 
                         {/* Счетчик изображений */}
                         {dealImages.length > 1 && (
-                            <div
-                                className="absolute top-3 right-3 bg-orange-500 text-white px-2 py-1 rounded font-medium text-sm shadow-md border border-white/60">
+                            <div className="absolute top-3 right-3 bg-orange-500 text-white px-2 py-1 rounded font-medium text-sm shadow-md border border-white/60">
                                 {currentImageIndex + 1} / {dealImages.length}
                             </div>
                         )}
@@ -835,8 +976,7 @@ const DealDetailPage: React.FC = () => {
                     <h2 className="text-white text-xl font-medium">
                         {searchQuery
                             ? highlightText(deal.title, searchQuery)
-                            : deal.title
-                        }
+                            : deal.title}
                     </h2>
                     <div className="flex items-center space-x-2">
                         <button
@@ -846,94 +986,133 @@ const DealDetailPage: React.FC = () => {
                                     const dealUrl = `${window.location.origin}/deals/${deal.id}`;
 
                                     // Очищаем HTML-теги из заголовка
-                                    const cleanTitle = deal.title ? deal.title.replace(/<[^>]*>/g, '') : '';
+                                    const cleanTitle = deal.title
+                                        ? deal.title.replace(/<[^>]*>/g, "")
+                                        : "";
 
-                                    navigator.share({
-                                        title: cleanTitle,
-                                        url: dealUrl
-                                    }).catch(console.error);
+                                    navigator
+                                        .share({
+                                            title: cleanTitle,
+                                            url: dealUrl,
+                                        })
+                                        .catch(console.error);
                                 } else {
                                     // Формируем правильный URL для копирования
                                     const dealUrl = `${window.location.origin}/deals/${deal.id}`;
                                     navigator.clipboard.writeText(dealUrl);
-                                    alert('Link copied to clipboard!');
+                                    alert("Link copied to clipboard!");
                                 }
                             }}
                             className="p-2 rounded-full text-gray-400 hover:text-orange-500"
                         >
-                            <Share2 className="h-6 w-6"/>
+                            <Share2 className="h-6 w-6" />
                         </button>
                         <button
                             onClick={toggleFavorite}
-                            className={`p-2 rounded-full ${isFavorite ? 'text-red-500' : 'text-gray-400'}`}
+                            className={`p-2 rounded-full ${isFavorite ? "text-red-500" : "text-gray-400"}`}
                         >
-                            <Heart className="h-6 w-6" fill={isFavorite ? 'currentColor' : 'none'}/>
+                            <Heart
+                                className="h-6 w-6"
+                                fill={isFavorite ? "currentColor" : "none"}
+                            />
                         </button>
-                        {user && user.id === deal.postedBy.id &&
-                            new Date().getTime() - new Date(deal.created_at || deal.postedAt).getTime() < 24 * 60 * 60 * 1000 && (
+                        {user &&
+                            user.id === deal.postedBy.id &&
+                            new Date().getTime() -
+                                new Date(
+                                    deal.created_at || deal.postedAt,
+                                ).getTime() <
+                                24 * 60 * 60 * 1000 && (
                                 <button
-                                    onClick={() => navigate(`/deals/${deal.id}/edit`)}
+                                    onClick={() =>
+                                        navigate(`/deals/${deal.id}/edit`)
+                                    }
                                     className="ml-3 text-orange-500 flex items-center"
                                 >
-                                    <Edit2 className="h-5 w-5"/>
+                                    <Edit2 className="h-5 w-5" />
                                 </button>
-                            )
-                        }
+                            )}
                     </div>
                 </div>
 
-
-
                 <div className="mt-3 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <span className="text-orange-500 font-bold text-2xl">
-                      {deal.currentPrice === 0 ? (
-                          <span
-                              className="px-4 py-1.5 bg-orange-500/20 text-orange-500 rounded-md text-xl font-semibold">FREE</span>
-                      ) : (
-                          `$${deal.currentPrice.toFixed(2)}`
-                      )}
-                    </span>
-
-                    {deal.originalPrice && (
-                        <span className="ml-3 text-gray-400 line-through text-base">
-                          ${deal.originalPrice.toFixed(2)}
+                    <div className="flex items-center">
+                        <span className="text-orange-500 font-bold text-2xl">
+                            {deal.currentPrice === 0 ? (
+                                <span className="px-4 py-1.5 bg-orange-500/20 text-orange-500 rounded-md text-xl font-semibold">
+                                    FREE
+                                </span>
+                            ) : (
+                                `$${deal.currentPrice.toFixed(2)}`
+                            )}
                         </span>
-                    )}
 
-                    {discountPercent > 0 && (
-                        <span className="ml-2 text-green-500 text-base">
-                          (-{discountPercent}%)
-                        </span>
-                    )}
-                  </div>
+                        {deal.originalPrice && (
+                            <span className="ml-3 text-gray-400 line-through text-base">
+                                ${deal.originalPrice.toFixed(2)}
+                            </span>
+                        )}
 
-                  {deal.expires_at && (
-                    <div className={`flex items-center ${isExpired 
-                        ? 'text-red-600 bg-red-600/20 px-2 py-0.5 rounded border border-red-600/30 font-semibold' 
-                        : 'text-gray-400'} font-medium`}>
-                        {isExpired ? (
-                          <>
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Expired
-                          </>
-                        ) : (
-                          <>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-                              <path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5" />
-                              <path d="M16 2v4" />
-                              <path d="M8 2v4" />
-                              <path d="M3 10h18" />
-                              <circle cx="18" cy="18" r="4" />
-                              <path d="M18 16.5v1.5h1.5" />
-                            </svg>
-                            {new Date(deal.expires_at).toLocaleDateString()}
-                          </>
+                        {discountPercent > 0 && (
+                            <span className="ml-2 text-green-500 text-base">
+                                (-{discountPercent}%)
+                            </span>
                         )}
                     </div>
-                  )}
+
+                    {deal.expires_at && (
+                        <div
+                            className={`flex items-center ${
+                                isExpired
+                                    ? "text-red-600 bg-red-600/20 px-2 py-0.5 rounded border border-red-600/30 font-semibold"
+                                    : "text-gray-400"
+                            } font-medium`}
+                        >
+                            {isExpired ? (
+                                <>
+                                    <svg
+                                        className="w-4 h-4 mr-1"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    Expired
+                                </>
+                            ) : (
+                                <>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="mr-1"
+                                    >
+                                        <path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.5" />
+                                        <path d="M16 2v4" />
+                                        <path d="M8 2v4" />
+                                        <path d="M3 10h18" />
+                                        <circle cx="18" cy="18" r="4" />
+                                        <path d="M18 16.5v1.5h1.5" />
+                                    </svg>
+                                    {new Date(
+                                        deal.expires_at,
+                                    ).toLocaleDateString()}
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-2 flex items-center justify-between">
@@ -941,10 +1120,8 @@ const DealDetailPage: React.FC = () => {
                         {deal.store.name}
                     </div>
 
-                    <VoteControls dealId={deal.id}/>
+                    <VoteControls dealId={deal.id} />
                 </div>
-
-
 
                 {user ? (
                     <a
@@ -954,15 +1131,15 @@ const DealDetailPage: React.FC = () => {
                         className="mt-4 bg-orange-500 text-white py-3 rounded-md flex items-center justify-center font-medium"
                     >
                         <span>Visit Deal</span>
-                        <ExternalLink className="h-4 w-4 ml-2"/>
+                        <ExternalLink className="h-4 w-4 ml-2" />
                     </a>
                 ) : (
                     <button
-                        onClick={() => navigate('/auth')}
+                        onClick={() => navigate("/auth")}
                         className="mt-4 bg-gray-500 text-white py-3 rounded-md flex items-center justify-center font-medium w-full cursor-pointer"
                     >
                         <span>Login to see deal</span>
-                        <ExternalLink className="h-4 w-4 ml-2"/>
+                        <ExternalLink className="h-4 w-4 ml-2" />
                     </button>
                 )}
 
@@ -975,42 +1152,65 @@ const DealDetailPage: React.FC = () => {
                                 // Сначала подготавливаем описание
                                 let processedDescription = deal.description
                                     // Сначала удаляем технический блок с JSON изображений
-                                    .replace(/<!-- DEAL_IMAGES: .*? -->/g, '')
+                                    .replace(/<!-- DEAL_IMAGES: .*? -->/g, "")
                                     // Обрабатываем URL в тексте с улучшенным регулярным выражением
-                                    .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
-                                        // Проверяем, заканчивается ли URL специальным символом
-                                        const lastChar = match.charAt(match.length - 1);
-                                        // Проверяем специальные символы на конце URL
-                                        if ([',', '.', ':', ';', '!', '?', ')', ']', '}'].includes(lastChar)) {
-                                            // Исключаем последний символ из ссылки (href и текста) и добавляем его после тега </a>
-                                            return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
-                                        }
-                                        // Если URL не заканчивается специальным символом из списка, создаем ссылку как обычно
-                                        return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
-                                    })
+                                    .replace(
+                                        /(https?:\/\/[^\s<>"]+)/g,
+                                        (match) => {
+                                            // Проверяем, заканчивается ли URL специальным символом
+                                            const lastChar = match.charAt(
+                                                match.length - 1,
+                                            );
+                                            // Проверяем специальные символы на конце URL
+                                            if (
+                                                [
+                                                    ",",
+                                                    ".",
+                                                    ":",
+                                                    ";",
+                                                    "!",
+                                                    "?",
+                                                    ")",
+                                                    "]",
+                                                    "}",
+                                                ].includes(lastChar)
+                                            ) {
+                                                // Исключаем последний символ из ссылки (href и текста) и добавляем его после тега </a>
+                                                return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
+                                            }
+                                            // Если URL не заканчивается специальным символом из списка, создаем ссылку как обычно
+                                            return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
+                                        },
+                                    )
                                     // Обрабатываем двойные переносы строк (пустые строки)
-                                    .replace(/\n\n/g, '<br><br>')
+                                    .replace(/\n\n/g, "<br><br>")
                                     // Затем обрабатываем обычные переносы строк
-                                    .replace(/\n/g, '<br>');
+                                    .replace(/\n/g, "<br>");
 
                                 // Если есть поисковый запрос, применяем прямую подсветку в HTML строке
                                 if (searchQuery) {
-                                    const searchRegex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                                    const searchRegex = new RegExp(
+                                        `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+                                        "gi",
+                                    );
                                     return processedDescription.replace(
                                         searchRegex,
-                                        '<span class="bg-orange-500 text-white px-0.5 rounded">$1</span>'
+                                        '<span class="bg-orange-500 text-white px-0.5 rounded">$1</span>',
                                     );
                                 }
 
                                 return processedDescription;
-                            })()
+                            })(),
                         }}
                         ref={(element) => {
                             if (element) {
-                                const links = element.querySelectorAll('a');
-                                links.forEach(link => {
-                                    link.setAttribute('target', '_blank');
-                                    link.setAttribute('rel', 'noopener noreferrer');
+                                const links = element.querySelectorAll("a");
+                                links.forEach((link) => {
+                                    link.setAttribute("target", "_blank");
+                                    link.setAttribute(
+                                        "rel",
+                                        "noopener noreferrer",
+                                    );
                                 });
                             }
                         }}
@@ -1021,10 +1221,19 @@ const DealDetailPage: React.FC = () => {
 
                 <div className="mt-6" id="comments-section">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-white font-medium">Comments ({commentCount})</h3>
+                        <h3 className="text-white font-medium">
+                            Comments ({commentCount})
+                        </h3>
                         <select
                             value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'popular')}
+                            onChange={(e) =>
+                                setSortBy(
+                                    e.target.value as
+                                        | "newest"
+                                        | "oldest"
+                                        | "popular",
+                                )
+                            }
                             className="bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none flex-shrink-0"
                         >
                             <option value="newest">Newest</option>
@@ -1044,7 +1253,9 @@ const DealDetailPage: React.FC = () => {
                     {/* Render comments as a tree */}
                     {comments.length > 0 ? (
                         <div className="space-y-4">
-                            {comments.map(comment => renderCommentTree(comment))}
+                            {comments.map((comment) =>
+                                renderCommentTree(comment),
+                            )}
                         </div>
                     ) : (
                         <div className="bg-gray-800 rounded-md p-4 text-gray-400 text-center">

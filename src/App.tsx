@@ -38,7 +38,38 @@ import ModerationSettingsPage from './pages/ModerationSettingsPage';
 import UserSubscriptionsPage from './pages/UserSubscriptionsPage';
 
 
+import initGlobalInteractions from './utils/globalInteractions';
+import initWebViewConsole from './utils/webViewConsole';
+
 function App() {
+  // Add a global class to body when app is embedded
+  React.useEffect(() => {
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isWebView = 
+      userAgent.includes('wv') || 
+      userAgent.includes('fbav') || 
+      userAgent.includes('instagram') || 
+      userAgent.includes('snapchat') || 
+      (userAgent.includes('iphone') && !userAgent.includes('safari')) ||
+      new URLSearchParams(window.location.search).has('embedded');
+    
+    if (isWebView) {
+      document.body.classList.add('embedded-app');
+    } else {
+      document.body.classList.add('standalone-browser');
+    }
+    
+    // Инициализация глобальных функций для внешнего взаимодействия
+    initGlobalInteractions();
+    
+    // Инициализация перехватчика консоли для WebView
+    initWebViewConsole();
+    
+    return () => {
+      document.body.classList.remove('embedded-app', 'standalone-browser');
+    };
+  }, []);
+
   return (
     <Router>
       <AuthProvider>

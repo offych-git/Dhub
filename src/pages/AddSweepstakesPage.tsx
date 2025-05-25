@@ -1,79 +1,128 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bold, Italic, Underline as UnderlineIcon, List, Info, X, Upload } from 'lucide-react';
-import imageCompression from 'browser-image-compression';
-import { stores } from '../data/mockData';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import { useAuth } from '../contexts/AuthContext';
-import { useAdmin } from '../hooks/useAdmin'; // Fixed import path for useAdmin hook
-import { useLanguage } from '../contexts/LanguageContext';
-import { supabase } from '../lib/supabase';
-import StoreBottomSheet from '../components/deals/StoreBottomSheet';
-import { useModeration } from '../contexts/ModerationContext';
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Bold,
+  Italic,
+  Underline as UnderlineIcon,
+  List,
+  Info,
+  X,
+  Upload,
+} from "lucide-react";
+import imageCompression from "browser-image-compression";
+import { stores } from "../data/mockData";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
+import { useAuth } from "../contexts/AuthContext";
+import { useAdmin } from "../hooks/useAdmin"; // Fixed import path for useAdmin hook
+import { useLanguage } from "../contexts/LanguageContext";
+import { supabase } from "../lib/supabase";
+import StoreBottomSheet from "../components/deals/StoreBottomSheet";
+import { useModeration } from "../contexts/ModerationContext";
 
 interface AddSweepstakesPageProps {
   isEditing?: boolean;
   sweepstakesId?: string;
   initialData?: any;
   allowHotToggle?: boolean;
-  labelOverrides?: { submitButton?: string, pageTitle?: string };
+  labelOverrides?: { submitButton?: string; pageTitle?: string };
   onEditSuccess?: (id: string) => Promise<void>;
 }
 
-const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = false, sweepstakesId, initialData, allowHotToggle, labelOverrides, onEditSuccess }) => {
+const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
+  isEditing = false,
+  sweepstakesId,
+  initialData,
+  allowHotToggle,
+  labelOverrides,
+  onEditSuccess,
+}) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { role } = useAdmin();
   const { t, language } = useLanguage();
-  const canMarkHot = role === 'admin' || role === 'moderator';
+  const canMarkHot = role === "admin" || role === "moderator";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
-  const selectedStoreName = stores.find(store => store.id === selectedStoreId)?.name || '';
+  const selectedStoreName =
+    stores.find((store) => store.id === selectedStoreId)?.name || "";
   const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
   const [sweepstakesImage, setSweepstakesImage] = useState<File | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(initialData?.image || null);
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    initialData?.image || null,
+  );
   const { addToModerationQueue } = useModeration();
+
+  useEffect(() => {
+    const pageTitle = "Add Sweepstakes";
+
+    console.log(
+      `[Add Sweepstakes Web] INFO: useEffect для отправки заголовка "${pageTitle}" запущен (с небольшой задержкой).`,
+    );
+
+    const timerId = setTimeout(() => {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        console.log(
+          `[Add Sweepstakes Web] INFO: Отправляю заголовок "${pageTitle}" в React Native после задержки.`,
+        );
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({
+            type: "SET_NATIVE_HEADER_TITLE",
+            title: pageTitle,
+          }),
+        );
+      } else {
+        console.warn(
+          `[Add Sweepstakes Web] WARN: ReactNativeWebView.postMessage НЕ ДОСТУПЕН (после задержки). Возможно, страница открыта не в WebView React Native.`,
+        );
+      }
+    }, 50);
+
+    return () => clearTimeout(timerId);
+  }, []);
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         bulletList: {
           HTMLAttributes: {
-            class: 'list-disc pl-4',
+            class: "list-disc pl-4",
           },
         },
         paragraph: {
           HTMLAttributes: {
-            class: 'mb-3',
+            class: "mb-3",
           },
         },
         hardBreak: {
           keepMarks: true,
           HTMLAttributes: {
-            class: 'inline-block',
+            class: "inline-block",
           },
         },
       }),
       Underline,
     ],
-    content: initialData?.description || '',
+    content: initialData?.description || "",
     parseOptions: {
-      preserveWhitespace: 'full',
+      preserveWhitespace: "full",
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[200px]',
+        class: "prose prose-invert max-w-none focus:outline-none min-h-[200px]",
       },
       handleKeyDown: (view, event) => {
-        if (event.key === 'Enter') {
-          view.dispatch(view.state.tr.replaceSelectionWith(
-            view.state.schema.nodes.hardBreak.create()
-          ).scrollIntoView());
+        if (event.key === "Enter") {
+          view.dispatch(
+            view.state.tr
+              .replaceSelectionWith(view.state.schema.nodes.hardBreak.create())
+              .scrollIntoView(),
+          );
           return true;
         }
         return false;
@@ -82,9 +131,9 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
 
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        description: html
+        description: html,
       }));
 
       checkImagesInEditor();
@@ -93,17 +142,19 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
 
   // Отладочная информация при инициализации компонента
   useEffect(() => {
-    console.log('📋 AddSweepstakesPage инициализирована');
-    console.log('📋 Режим редактирования:', isEditing);
-    console.log('📋 ID редактируемого розыгрыша:', sweepstakesId);
-    console.log('📋 Начальные данные:', initialData);
+    console.log("📋 AddSweepstakesPage инициализирована");
+    console.log("📋 Режим редактирования:", isEditing);
+    console.log("📋 ID редактируемого розыгрыша:", sweepstakesId);
+    console.log("📋 Начальные данные:", initialData);
   }, [isEditing, sweepstakesId, initialData]);
 
   const [formData, setFormData] = useState({
-    title: initialData?.title || '',
-    description: initialData?.description || '',
-    dealUrl: initialData?.dealUrl || '',
-    expiryDate: initialData?.expiryDate ? initialData.expiryDate.split('T')[0] : ''
+    title: initialData?.title || "",
+    description: initialData?.description || "",
+    dealUrl: initialData?.dealUrl || "",
+    expiryDate: initialData?.expiryDate
+      ? initialData.expiryDate.split("T")[0]
+      : "",
   });
 
   // Отслеживаем состояние валидации каждого поля отдельно
@@ -112,14 +163,17 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
     description: true,
     image: true,
     dealUrl: true,
-    expiryDate: true
+    expiryDate: true,
   });
 
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    console.log('AddSweepstakesPage - isStoreSheetOpen state changed:', isStoreSheetOpen);
+    console.log(
+      "AddSweepstakesPage - isStoreSheetOpen state changed:",
+      isStoreSheetOpen,
+    );
   }, [isStoreSheetOpen]);
 
   // Image compression function
@@ -128,14 +182,14 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       maxSizeMB: 0.2, // 200KB
       maxWidthOrHeight: 1200,
       useWebWorker: true,
-      fileType: 'image/jpeg',
+      fileType: "image/jpeg",
       initialQuality: 0.8,
     };
 
     try {
       return await imageCompression(file, options);
     } catch (error) {
-      console.error('Error compressing image:', error);
+      console.error("Error compressing image:", error);
       return file;
     }
   };
@@ -147,16 +201,18 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       setIsUploadingImage(true);
       const file = files[0]; // Take only the first file
 
-      if (!file.type.startsWith('image/')) {
-        throw new Error('Please select only image files');
+      if (!file.type.startsWith("image/")) {
+        throw new Error("Please select only image files");
       }
 
       const compressedImage = await compressImage(file);
       setSweepstakesImage(compressedImage);
       setImageUrl(URL.createObjectURL(compressedImage));
     } catch (error) {
-      console.error('Error uploading image:', error);
-      setError(error instanceof Error ? error.message : 'Failed to upload image');
+      console.error("Error uploading image:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to upload image",
+      );
     } finally {
       setIsUploadingImage(false);
     }
@@ -166,36 +222,40 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
 
   const validateForm = () => {
     if (!formData.title.trim()) {
-      setError('Title is required');
+      setError("Title is required");
       return false;
     }
 
     if (!formData.description.trim()) {
-      setError('Description is required');
+      setError("Description is required");
       return false;
     }
 
     // Проверяем, есть ли хотя бы одно из изображений - новое загруженное или существующее
     if (!sweepstakesImage && !imageUrl) {
-      setError('Please upload an image');
+      setError("Please upload an image");
       return false;
     }
 
     if (!formData.dealUrl) {
-      setError('Deal URL is required');
+      setError("Deal URL is required");
       return false;
     }
 
-    const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+    const urlRegex =
+      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
     if (!urlRegex.test(formData.dealUrl)) {
-      setError('Please enter a valid URL starting with http:// or https://');
+      setError("Please enter a valid URL starting with http:// or https://");
       return false;
     }
 
-    if (!formData.dealUrl.startsWith('http://') && !formData.dealUrl.startsWith('https://')) {
-      setFormData(prev => ({
+    if (
+      !formData.dealUrl.startsWith("http://") &&
+      !formData.dealUrl.startsWith("https://")
+    ) {
+      setFormData((prev) => ({
         ...prev,
-        dealUrl: `https://${prev.dealUrl}`
+        dealUrl: `https://${prev.dealUrl}`,
       }));
     }
 
@@ -204,11 +264,14 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
 
   useEffect(() => {
     // Проверяем каждое обязательное поле отдельно
-    const titleValid = formData.title.trim() !== '';
-    const descriptionValid = formData.description.trim() !== '';
+    const titleValid = formData.title.trim() !== "";
+    const descriptionValid = formData.description.trim() !== "";
     // При редактировании считаем изображение валидным, если есть либо новое загруженное изображение, либо URL существующего
     const imageValid = sweepstakesImage !== null || imageUrl !== null;
-    const urlValid = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(formData.dealUrl);
+    const urlValid =
+      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(
+        formData.dealUrl,
+      );
 
     // Если указана дата, проверяем что она не раньше текущей
     let expiryDateValid = true;
@@ -225,23 +288,24 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       description: descriptionValid,
       image: imageValid,
       dealUrl: urlValid,
-      expiryDate: expiryDateValid
+      expiryDate: expiryDateValid,
     });
 
     // Общая проверка формы
-    const isFormValid = titleValid && 
-      descriptionValid && 
-      imageValid && 
+    const isFormValid =
+      titleValid &&
+      descriptionValid &&
+      imageValid &&
       urlValid &&
       expiryDateValid;
 
     setIsValid(isFormValid);
-    console.log('Form validation:', { 
-      titleValid, 
-      descriptionValid, 
-      imageValid, 
+    console.log("Form validation:", {
+      titleValid,
+      descriptionValid,
+      imageValid,
       urlValid,
-      expiryDateValid
+      expiryDateValid,
     });
   }, [formData, sweepstakesImage]);
 
@@ -249,17 +313,17 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
   useEffect(() => {
     // Если это режим редактирования и есть начальные данные
     if (isEditing && initialData) {
-      console.log('Режим редактирования: используем initialData');
-      setFormData(prev => ({
+      console.log("Режим редактирования: используем initialData");
+      setFormData((prev) => ({
         ...prev,
-        title: initialData.title || '',
-        description: initialData.description || '',
-        dealUrl: initialData.dealUrl || '',
-        expiryDate: initialData.expiryDate || ''
+        title: initialData.title || "",
+        description: initialData.description || "",
+        dealUrl: initialData.dealUrl || "",
+        expiryDate: initialData.expiryDate || "",
       }));
       setImageUrl(initialData.image || null);
       if (editor) {
-        editor.commands.setContent(initialData.description || '');
+        editor.commands.setContent(initialData.description || "");
       }
     }
   }, [editor, isEditing, initialData]);
@@ -270,23 +334,23 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
 
     // Проверка аутентификации пользователя
     if (!user || !user.id) {
-      console.error('User not authenticated or user ID is missing.');
-      setError('Для создания розыгрыша необходимо войти в систему.');
+      console.error("User not authenticated or user ID is missing.");
+      setError("Для создания розыгрыша необходимо войти в систему.");
       setLoading(false);
       return;
     }
 
     try {
-      let uploadedImageUrl = '';
+      let uploadedImageUrl = "";
 
       // Upload image if available
       if (sweepstakesImage) {
-        const fileExt = sweepstakesImage.name.split('.').pop();
+        const fileExt = sweepstakesImage.name.split(".").pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${user.id}/sweepstakes-images/${fileName}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('deal-images')
+          .from("deal-images")
           .upload(filePath, sweepstakesImage);
 
         if (uploadError) {
@@ -294,7 +358,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         }
 
         const { data: urlData } = supabase.storage
-          .from('deal-images')
+          .from("deal-images")
           .getPublicUrl(filePath);
 
         uploadedImageUrl = urlData.publicUrl;
@@ -305,12 +369,14 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
 
       // Если это редактирование существующего розыгрыша, получаем оригинального создателя
       if (isEditing && sweepstakesId) {
-        console.log("Получаем данные оригинального розыгрыша для сохранения создателя");
+        console.log(
+          "Получаем данные оригинального розыгрыша для сохранения создателя",
+        );
         try {
           const { data: existingData, error: fetchError } = await supabase
-            .from('deals')
-            .select('user_id')
-            .eq('id', sweepstakesId)
+            .from("deals")
+            .select("user_id")
+            .eq("id", sweepstakesId)
             .single();
 
           if (!fetchError && existingData && existingData.user_id) {
@@ -318,7 +384,10 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
             originalUserId = existingData.user_id;
             console.log("Оригинальный создатель розыгрыша:", originalUserId);
           } else {
-            console.warn("Не удалось получить оригинального создателя, используем текущего пользователя:", user.id);
+            console.warn(
+              "Не удалось получить оригинального создателя, используем текущего пользователя:",
+              user.id,
+            );
           }
         } catch (err) {
           console.error("Ошибка при получении данных о создателе:", err);
@@ -335,31 +404,34 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         category_id: 1, // Установка дефолтной категории вместо null
         subcategories: [],
         // Используем новое изображение только если оно было загружено
-        image_url: sweepstakesImage ? uploadedImageUrl : (initialData?.image || null),
+        image_url: sweepstakesImage
+          ? uploadedImageUrl
+          : initialData?.image || null,
         deal_url: formData.dealUrl,
         user_id: originalUserId, // Используем оригинального создателя при редактировании
         expires_at: formData.expiryDate || null,
         is_hot: allowHotToggle ? formData.isHot : false,
-        type: 'sweepstakes',
-        status: 'pending' // Устанавливаем начальный статус 'pending' для модерации
+        type: "sweepstakes",
+        status: "pending", // Устанавливаем начальный статус 'pending' для модерации
       };
 
-      console.log('Отправляемые данные розыгрыша:', {
+      console.log("Отправляемые данные розыгрыша:", {
         ...sweepstakesData,
         userId: user.id,
-        originalUserId
+        originalUserId,
       });
 
       let data, error;
 
       if (isEditing && sweepstakesId) {
         // Проверяем текущий статус розыгрыша перед обновлением
-        const { data: currentSweepstake, error: currentSweepstakeError } = await supabase
-          .from('deals')
-          .select('status')
-          .eq('id', sweepstakesId)
-          .eq('type', 'sweepstakes')
-          .single();
+        const { data: currentSweepstake, error: currentSweepstakeError } =
+          await supabase
+            .from("deals")
+            .select("status")
+            .eq("id", sweepstakesId)
+            .eq("type", "sweepstakes")
+            .single();
 
         if (currentSweepstakeError) {
           throw new Error(currentSweepstakeError.message);
@@ -367,16 +439,16 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
 
         // Если розыгрыш уже был одобрен и не происходит автоматическое одобрение,
         // меняем статус на "pending" для повторной модерации
-        if (currentSweepstake.status === 'approved' && !allowHotToggle) {
-          sweepstakesData.status = 'pending';
+        if (currentSweepstake.status === "approved" && !allowHotToggle) {
+          sweepstakesData.status = "pending";
         }
 
         console.log("Обновление существующего розыгрыша:", sweepstakesId);
         // Обновляем существующий розыгрыш
         const { data: updatedData, error: updateError } = await supabase
-          .from('deals')
+          .from("deals")
           .update(sweepstakesData)
-          .eq('id', sweepstakesId)
+          .eq("id", sweepstakesId)
           .select()
           .single();
 
@@ -393,7 +465,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         // Создаем новый розыгрыш
         console.log("Создание нового розыгрыша...");
         const { data: newData, error: insertError } = await supabase
-          .from('deals')
+          .from("deals")
           .insert(sweepstakesData)
           .select()
           .single();
@@ -405,33 +477,49 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
           console.error("Детали ошибки создания:", error);
           throw new Error(`Failed to create sweepstakes: ${error.message}`);
         }
-        
+
         console.log("Розыгрыш успешно создан:", data);
       }
 
       // Дополнительная проверка полученных данных
       if (!data || !data.id) {
-        console.error("Получены некорректные данные после операции с розыгрышем:", data);
-        throw new Error("Получены некорректные данные после операции с розыгрышем");
+        console.error(
+          "Получены некорректные данные после операции с розыгрышем:",
+          data,
+        );
+        throw new Error(
+          "Получены некорректные данные после операции с розыгрышем",
+        );
       }
 
       // Добавляем в очередь модерации в двух случаях:
       // 1. Новый розыгрыш
       // 2. Редактирование розыгрыша, который уже был одобрен
-      if ((!isEditing || (isEditing && sweepstakesData.status === 'pending')) && addToModerationQueue) {
+      if (
+        (!isEditing || (isEditing && sweepstakesData.status === "pending")) &&
+        addToModerationQueue
+      ) {
         try {
-          console.log('Добавление розыгрыша в очередь модерации');
-          const moderationResult = await addToModerationQueue(data.id, 'sweepstake');
-          console.log('Розыгрыш отправлен на модерацию:', moderationResult);
+          console.log("Добавление розыгрыша в очередь модерации");
+          const moderationResult = await addToModerationQueue(
+            data.id,
+            "sweepstake",
+          );
+          console.log("Розыгрыш отправлен на модерацию:", moderationResult);
         } catch (moderationError) {
-          console.error('Ошибка при добавлении в очередь модерации:', moderationError);
+          console.error(
+            "Ошибка при добавлении в очередь модерации:",
+            moderationError,
+          );
           // Продолжаем выполнение даже при ошибке модерации
         }
       }
 
       // Вызываем функцию обратного вызова, если она определена
-      if (isEditing && typeof onEditSuccess === 'function' && data.id) {
-        console.log("Вызываем onEditSuccess после успешного редактирования розыгрыша");
+      if (isEditing && typeof onEditSuccess === "function" && data.id) {
+        console.log(
+          "Вызываем onEditSuccess после успешного редактирования розыгрыша",
+        );
         try {
           await onEditSuccess(data.id);
         } catch (e) {
@@ -442,28 +530,29 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       // Перенаправляем на страницу просмотра розыгрыша
       navigate(`/sweepstakes/${data.id}`);
     } catch (error) {
-      console.error('Error in handleSubmit:', error);
-      
+      console.error("Error in handleSubmit:", error);
+
       // Добавляем подробное логирование ошибок
       if (error instanceof Error) {
-        console.error('Error details:', {
+        console.error("Error details:", {
           name: error.name,
           message: error.message,
-          stack: error.stack
+          stack: error.stack,
         });
       }
-      
+
       // Форматируем сообщение об ошибке для пользователя
-      let errorMessage = 'Failed to create/update sweepstakes';
-      
+      let errorMessage = "Failed to create/update sweepstakes";
+
       if (error instanceof Error) {
-        if (error.message.includes('actor_id')) {
-          errorMessage = 'Не удалось создать розыгрыш: проблема с идентификацией пользователя. Пожалуйста, выйдите и войдите снова в систему.';
+        if (error.message.includes("actor_id")) {
+          errorMessage =
+            "Не удалось создать розыгрыш: проблема с идентификацией пользователя. Пожалуйста, выйдите и войдите снова в систему.";
         } else {
           errorMessage = error.message;
         }
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -481,12 +570,14 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
     return null;
   }, [formData.currentPrice, formData.originalPrice]);
 
-
   // Определение editor перемещено выше
 
   useEffect(() => {
     if (editor) {
-      console.log('Editor initialized with extensions:', editor.extensionManager.extensions);
+      console.log(
+        "Editor initialized with extensions:",
+        editor.extensionManager.extensions,
+      );
     }
   }, [editor]);
 
@@ -496,7 +587,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         const target = e.target as HTMLElement;
         const imageNode = target.closest('img[alt^="img-"]');
         if (imageNode) {
-          const imageId = imageNode.getAttribute('alt');
+          const imageId = imageNode.getAttribute("alt");
           if (imageId) {
             setSelectedImageId(imageId);
           }
@@ -505,14 +596,12 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         }
       };
 
-      editor.view.dom.addEventListener('click', handleClick);
+      editor.view.dom.addEventListener("click", handleClick);
       return () => {
-        editor.view.dom.removeEventListener('click', handleClick);
+        editor.view.dom.removeEventListener("click", handleClick);
       };
     }
   }, [editor]);
-
-
 
   useEffect(() => {
     if (editor && editor.view.dom) {
@@ -521,13 +610,18 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       const observer = new MutationObserver((mutations) => {
         let needsCheck = false;
 
-        mutations.forEach(mutation => {
-          if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
-            Array.from(mutation.removedNodes).forEach(node => {
+        mutations.forEach((mutation) => {
+          if (
+            mutation.type === "childList" &&
+            mutation.removedNodes.length > 0
+          ) {
+            Array.from(mutation.removedNodes).forEach((node) => {
               if (node instanceof HTMLElement) {
-                if (node.classList?.contains('image-wrapper') ||
-                    node.tagName === 'IMG' ||
-                    node.querySelector('img')) {
+                if (
+                  node.classList?.contains("image-wrapper") ||
+                  node.tagName === "IMG" ||
+                  node.querySelector("img")
+                ) {
                   needsCheck = true;
                 }
               }
@@ -544,7 +638,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
         childList: true,
         subtree: true,
         characterData: false,
-        attributes: false
+        attributes: false,
       });
 
       return () => {
@@ -559,10 +653,10 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
   };
 
   useEffect(() => {
-    console.log('AddSweepstakesPage - StoreBottomSheet props:', {
+    console.log("AddSweepstakesPage - StoreBottomSheet props:", {
       isOpen: isStoreSheetOpen,
       selectedStore: selectedStoreId,
-      onStoreSelect: handleStoreSelect
+      onStoreSelect: handleStoreSelect,
     });
   }, [isStoreSheetOpen, selectedStoreId]);
 
@@ -571,18 +665,20 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
     if (!editor) return;
 
     // This is just a stub function since you removed image management functionality
-    console.log('Editor content checked');
+    console.log("Editor content checked");
   };
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
+      <div className="web-page-header fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <button onClick={() => navigate(-1)} className="text-white">
               <ArrowLeft className="h-6 w-6" />
             </button>
-            <h1 className="text-white text-lg font-medium ml-4">Add Sweepstakes</h1>
+            <h1 className="text-white text-lg font-medium ml-4">
+              Add Sweepstakes
+            </h1>
           </div>
           <button className="text-white">
             <Info className="h-6 w-6" />
@@ -591,7 +687,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
       </div>
 
       <div className="flex-1 overflow-y-auto pt-4 pb-24">
-        <div className="px-4">
+        <div className="main-content-area px-4 pt-6">
           {error && (
             <div className="bg-red-500 text-white px-4 py-3 rounded-md mb-4">
               {error}
@@ -605,23 +701,39 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                   type="text"
                   placeholder="Title *"
                   className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
-                    !validationState.title && formData.title !== '' ? 'border border-red-500' : 
-                    !validationState.title ? 'border border-yellow-500' : ''
+                    !validationState.title && formData.title !== ""
+                      ? "border border-red-500"
+                      : !validationState.title
+                        ? "border border-yellow-500"
+                        : ""
                   }`}
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   required
                 />
                 {validationState.title && formData.title && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-green-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 )}
               </div>
               {!validationState.title && (
-                <p className="text-orange-500 text-xs mt-1">Title is required</p>
+                <p className="text-orange-500 text-xs mt-1">
+                  Title is required
+                </p>
               )}
             </div>
 
@@ -653,8 +765,11 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
               ) : (
                 <div
                   className={`border-2 border-dashed rounded-lg p-4 text-center ${
-                    isUploadingImage ? 'border-orange-500 bg-orange-500/10' : 
-                    !validationState.image ? 'border-yellow-500' : 'border-gray-700'
+                    isUploadingImage
+                      ? "border-orange-500 bg-orange-500/10"
+                      : !validationState.image
+                        ? "border-yellow-500"
+                        : "border-gray-700"
                   }`}
                 >
                   <input
@@ -670,13 +785,17 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                   >
                     <Upload className="h-8 w-8 text-gray-400 mb-2" />
                     <p className="text-gray-400">
-                      {isUploadingImage ? 'Uploading...' : 'Click to upload image'}
+                      {isUploadingImage
+                        ? "Uploading..."
+                        : "Click to upload image"}
                     </p>
                   </label>
                 </div>
               )}
               {!validationState.image && !imageUrl && (
-                <p className="text-orange-500 text-xs mt-1">Image is required</p>
+                <p className="text-orange-500 text-xs mt-1">
+                  Image is required
+                </p>
               )}
             </div>
 
@@ -686,28 +805,32 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                   <button
                     type="button"
                     onClick={() => editor?.chain().focus().toggleBold().run()}
-                    className={`formatting-button p-2 rounded ${editor?.isActive('bold') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                    className={`formatting-button p-2 rounded ${editor?.isActive("bold") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
                   >
                     <Bold className="h-5 w-5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => editor?.chain().focus().toggleItalic().run()}
-                    className={`formatting-button p-2 rounded ${editor?.isActive('italic') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                    className={`formatting-button p-2 rounded ${editor?.isActive("italic") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
                   >
                     <Italic className="h-5 w-5" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => editor?.chain().focus().toggleUnderline().run()}
-                    className={`formatting-button p-2 rounded ${editor?.isActive('underline') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                    onClick={() =>
+                      editor?.chain().focus().toggleUnderline().run()
+                    }
+                    className={`formatting-button p-2 rounded ${editor?.isActive("underline") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
                   >
                     <UnderlineIcon className="h-5 w-5" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => editor?.chain().focus().toggleBulletList().run()}
-                    className={`formatting-button p-2 rounded ${editor?.isActive('bulletList') ? 'bg-gray-700 text-white active' : 'text-gray-400 hover:text-white'}`}
+                    onClick={() =>
+                      editor?.chain().focus().toggleBulletList().run()
+                    }
+                    className={`formatting-button p-2 rounded ${editor?.isActive("bulletList") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
                   >
                     <List className="h-5 w-5" />
                   </button>
@@ -722,7 +845,17 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                         setSelectedImageId(null);
                       }}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
                         <path d="M3 6h18"></path>
                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                         <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
@@ -731,21 +864,36 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                   )}
                 </div>
               </div>
-              <div className={`bg-gray-800 rounded-lg p-4 min-h-[200px] ${
-                !validationState.description ? 'border border-yellow-500' : ''
-              }`}>
+              <div
+                className={`bg-gray-800 rounded-lg p-4 min-h-[200px] ${
+                  !validationState.description ? "border border-yellow-500" : ""
+                }`}
+              >
                 {!editor?.getText() && (
-                  <div className="absolute text-gray-500 pointer-events-none p-1">Description *</div>
+                  <div className="absolute text-gray-500 pointer-events-none p-1">
+                    Description *
+                  </div>
                 )}
                 <EditorContent editor={editor} />
               </div>
               {!validationState.description && (
-                <p className="text-orange-500 text-xs mt-1">Description is required</p>
+                <p className="text-orange-500 text-xs mt-1">
+                  Description is required
+                </p>
               )}
               {validationState.description && formData.description && (
                 <div className="text-green-500 text-xs font-medium mt-1 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   Description looks good!
                 </div>
@@ -758,24 +906,39 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                   type="url"
                   placeholder="Sweepstakes URL *"
                   className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
-                    !validationState.dealUrl && formData.dealUrl !== '' ? 'border border-red-500' : 
-                    !validationState.dealUrl ? 'border border-yellow-500' : ''
+                    !validationState.dealUrl && formData.dealUrl !== ""
+                      ? "border border-red-500"
+                      : !validationState.dealUrl
+                        ? "border border-yellow-500"
+                        : ""
                   }`}
                   value={formData.dealUrl}
-                  onChange={(e) => setFormData({ ...formData, dealUrl: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dealUrl: e.target.value })
+                  }
                   required
                 />
                 {validationState.dealUrl && formData.dealUrl && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-green-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 )}
               </div>
               {!validationState.dealUrl && formData.dealUrl ? (
                 <p className="text-red-500 text-xs mt-1">
-                  Please enter a valid URL (e.g. example.com or https://example.com)
+                  Please enter a valid URL (e.g. example.com or
+                  https://example.com)
                 </p>
               ) : !validationState.dealUrl ? (
                 <p className="text-orange-500 text-xs mt-1">
@@ -793,17 +956,17 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                 <input
                   type="date"
                   className={`w-full bg-gray-800 text-white rounded-md px-4 py-3 ${
-                    !validationState.expiryDate ? 'border border-red-500' : ''
+                    !validationState.expiryDate ? "border border-red-500" : ""
                   }`}
                   value={formData.expiryDate}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => {
                     const selectedDate = new Date(e.target.value);
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
                     if (selectedDate < today) {
-                      setError('Expiry date cannot be earlier than today');
+                      setError("Expiry date cannot be earlier than today");
                       return;
                     }
                     setError(null);
@@ -813,7 +976,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                 {formData.expiryDate && (
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, expiryDate: '' })}
+                    onClick={() => setFormData({ ...formData, expiryDate: "" })}
                     className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                   >
                     <X className="h-5 w-5" />
@@ -821,8 +984,17 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                 )}
                 {validationState.expiryDate && formData.expiryDate && (
                   <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-green-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 )}
@@ -838,7 +1010,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
               )}
             </div>
 
-
             <div className="bg-gray-800 rounded-md p-4">
               <h3 className="text-white font-medium mb-2">Preview</h3>
               <pre
@@ -847,61 +1018,43 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({ isEditing = fal
                   __html: formData.description
                     .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
                       const lastChar = match.charAt(match.length - 1);
-                      if ([',', '.', ':', ';', '!', '?', ')', ']', '}'].includes(lastChar)) {
+                      if (
+                        [",", ".", ":", ";", "!", "?", ")", "]", "}"].includes(
+                          lastChar,
+                        )
+                      ) {
                         return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
                       }
                       return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
                     })
-                    .replace(/\n\n/g, '<br><br>')
-                    .replace(/\n/g, '<br>')
-                    .replace(/class="[^"]+"/g, '')
-                    .replace(/class='[^']+'/g, '')
+                    .replace(/\n\n/g, "<br><br>")
+                    .replace(/\n/g, "<br>")
+                    .replace(/class="[^"]+"/g, "")
+                    .replace(/class='[^']+'/g, ""),
                 }}
               />
               <button
                 type="submit"
                 disabled={loading || !isValid}
                 className={`w-full mt-4 py-3 rounded-md font-medium flex items-center justify-center ${
-                  isValid ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                  isValid
+                    ? "bg-orange-500 text-white"
+                    : "bg-gray-700 text-gray-400 cursor-not-allowed"
                 }`}
                 onClick={handleSubmit}
               >
                 {loading ? (
                   <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : isEditing ? (
+                  labelOverrides?.submitButton || "Update Sweepstakes"
                 ) : (
-                  isEditing ? (labelOverrides?.submitButton || 'Update Sweepstakes') : 'Post Sweepstakes'
+                  "Post Sweepstakes"
                 )}
               </button>
             </div>
           </form>
         </div>
       </div>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 p-4">
-        <div className="flex space-x-4">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex-1 bg-gray-800 text-white py-3 rounded-md font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading || !isValid}
-            className={`flex-1 py-3 rounded-md font-medium flex items-center justify-center ${
-              isValid ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {loading ? (
-              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              isEditing ? (labelOverrides?.submitButton || 'Update Sweepstakes') : 'Post Sweepstakes'
-            )}
-          </button>
-        </div>
-      </div>
-
       <style>
         {`
           .image-wrapper {

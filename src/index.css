@@ -30,6 +30,26 @@
   --card-background: #1F2937;
   --input-background: #374151;
   --border-color: #4B5563;
+
+/* Styles for embedded app mode */
+body.embedded-app {
+  padding: 0;
+  margin: 0;
+  background-color: transparent;
+}
+
+/* Additional space at the bottom when navigation is hidden */
+body.embedded-app .min-h-screen {
+  padding-bottom: 1rem;
+}
+
+/* When app is embedded, make sure content takes full height */
+body.embedded-app #root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
   --text-color: #f5f5f5;
   --text-muted: #9CA3AF;
   --accent-color: #ff6b00;
@@ -407,4 +427,24 @@ body {
 .form-select option {
   background-color: var(--dropdown-bg);
   color: var(--text-primary);
+}
+body, 
+#root, 
+.min-h-screen, /* Класс основного контейнера из AppLayout.tsx */
+header.bg-gray-900 { /* Класс вашего хедера */
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    /* Для отладки можно добавить рамку родителям, чтобы видеть их границы */
+    /* border: 1px dotted blue !important; */ 
+}
+body.embedded-app .page-content-header {
+  display: none !important; /* Скрываем элемент */
+}
+body.embedded-app .web-page-header {
+  display: none !important;
+}
+
+body.embedded-app .main-content-area {
+  padding-top: 6px !important;
 }

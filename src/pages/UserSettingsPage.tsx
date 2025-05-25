@@ -1,11 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, LogOut, KeyRound, Trash2, Globe2, Pencil, Check, X, Sun, Moon } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { cleanupUserData } from '../utils/accountUtils';
+// UserSettingsPage.tsx
+import React, { useState, useEffect } from "react";
+import {
+  ArrowLeft,
+  LogOut,
+  KeyRound,
+  Trash2,
+  Globe2,
+  Pencil,
+  Check,
+  X,
+  Sun,
+  Moon,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { cleanupUserData } from "../utils/accountUtils";
 
 const UserSettingsPage: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -18,11 +30,49 @@ const UserSettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState(''); // Added
-  const [originalName, setOriginalName] = useState(''); // Для редактирования имени
-  const [email, setEmail] = useState(''); // Added
-  const [isEditingName, setIsEditingName] = useState(false); // Для редактирования имени
+  const [displayName, setDisplayName] = useState("");
+  const [originalName, setOriginalName] = useState("");
+  const [email, setEmail] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
 
+  // Существующий useEffect для загрузки профиля
+  useEffect(() => {
+    if (user) {
+      loadUserProfile();
+    } else {
+      setDisplayName("");
+      setOriginalName("");
+      setEmail("");
+    }
+  }, [user]);
+
+  // ИЗМЕНЕННЫЙ useEffect для отправки заголовка в React Native приложение
+  useEffect(() => {
+    const pageTitle = "Settings"; // Заголовок для этой страницы (соответствует h1)
+    console.log(
+      `[${pageTitle} Web Page] INFO: useEffect для отправки заголовка запущен (с небольшой задержкой).`,
+    );
+
+    const timerId = setTimeout(() => {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        console.log(
+          `[${pageTitle} Web Page] INFO: Отправляю заголовок "${pageTitle}" после задержки.`,
+        );
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({
+            type: "SET_NATIVE_HEADER_TITLE",
+            title: pageTitle,
+          }),
+        );
+      } else {
+        console.warn(
+          `[${pageTitle} Web Page] WARN: ReactNativeWebView.postMessage НЕ ДОСТУПЕН (после задержки).`,
+        );
+      }
+    }, 50); // Небольшая задержка в 50 миллисекунд
+
+    return () => clearTimeout(timerId); // Очистка таймера при размонтировании компонента
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -30,8 +80,8 @@ const UserSettingsPage: React.FC = () => {
       setError(null);
       await signOut();
     } catch (error) {
-      console.error('Error signing out:', error);
-      navigate('/auth');
+      console.error("Error signing out:", error);
+      navigate("/auth");
     } finally {
       setLoading(false);
     }
@@ -51,7 +101,7 @@ const UserSettingsPage: React.FC = () => {
 
       if (error) throw error;
 
-      setSuccess('Password reset instructions have been sent to your email');
+      setSuccess("Password reset instructions have been sent to your email");
       setShowPasswordModal(false);
     } catch (err: any) {
       setError(err.message);
@@ -63,85 +113,86 @@ const UserSettingsPage: React.FC = () => {
   const handleDeleteAccount = async () => {
     try {
       if (!user) return;
-
-      console.log('Начало процедуры удаления данных пользователя:', user.id);
+      setLoading(true);
+      setError(null);
+      console.log("Начало процедуры удаления данных пользователя:", user.id);
 
       await cleanupUserData(user.id);
 
       const { error: profilesError, data: deletedProfile } = await supabase
-        .from('profiles')
+        .from("profiles")
         .delete()
-        .eq('id', user.id)
+        .eq("id", user.id)
         .select();
 
       if (profilesError) {
-        console.error('Ошибка при удалении профиля:', profilesError);
+        console.error("Ошибка при удалении профиля:", profilesError);
         throw profilesError;
       }
+      console.log("Профиль успешно удален:", deletedProfile);
 
-      console.log('Профиль успешно удален:', deletedProfile);
+      console.log("Выход из всех сессий Supabase...");
+      await supabase.auth.signOut({ scope: "global" });
 
-      console.log('Выход из всех сессий...');
-      await supabase.auth.signOut({ scope: 'global' });
-
-      console.log('Локальный выход...');
+      console.log("Локальный выход из AuthContext...");
       await signOut();
 
-      setSuccess('Ваша учетная запись успешно деактивирована');
-
-      setTimeout(() => {
-        navigate('/auth');
-      }, 2000);
+      setSuccess("Ваша учетная запись успешно деактивирована");
+      setShowDeleteModal(false);
     } catch (error: any) {
-      console.error('Ошибка при удалении аккаунта:', error);
-      setError(error.message || 'Не удалось удалить аккаунт. Пожалуйста, попробуйте позже.');
+      console.error("Ошибка при удалении аккаунта:", error);
+      setError(
+        error.message ||
+          "Не удалось удалить аккаунт. Пожалуйста, попробуйте позже.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const loadUserProfile = async () => {
+    if (!user?.id) return;
     try {
       const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('display_name, email')
-        .eq('id', user?.id)
+        .from("profiles")
+        .select("display_name, email")
+        .eq("id", user.id)
         .single();
 
       if (error) throw error;
 
-      const name = profile?.display_name || user?.email?.split('@')[0] || '';
+      const name = profile?.display_name || user.email?.split("@")[0] || "";
       setDisplayName(name);
       setOriginalName(name);
-      setEmail(user?.email || '');
+      setEmail(user.email || "");
     } catch (err) {
-      console.error('Error loading profile:', err);
+      console.error("Error loading profile:", err);
     }
   };
-  
+
   const handleNameEdit = () => {
+    setOriginalName(displayName);
     setIsEditingName(true);
   };
 
   const handleNameSave = async () => {
-    if (!user) return;
+    if (!user || !displayName.trim()) return;
 
     setLoading(true);
     setError(null);
 
     try {
       const { error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({ display_name: displayName.trim() })
-        .eq('id', user.id);
+        .eq("id", user.id);
 
       if (error) throw error;
 
-      setOriginalName(displayName);
+      setOriginalName(displayName.trim());
       setIsEditingName(false);
-      setSuccess('Имя успешно обновлено');
+      setSuccess("Имя успешно обновлено");
 
-      // Очистка сообщения об успехе через 3 секунды
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       setError(err.message);
@@ -156,166 +207,176 @@ const UserSettingsPage: React.FC = () => {
     setIsEditingName(false);
   };
 
-  useEffect(() => {
-    if (user) {
-      loadUserProfile();
-    }
-  }, [user]);
-
   const languages = [
-    { code: 'en', label: 'English' },
-    { code: 'ru', label: 'Русский' },
-    { code: 'es', label: 'Español' }
+    { code: "en", label: "English" },
+    { code: "ru", label: "Русский" },
+    { code: "es", label: "Español" },
   ];
 
   return (
-    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
-      <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
+    // Убрал pt-0, если он был, так как отступ основного контента будет управляться ниже
+    <div className="pb-16 bg-gray-900 min-h-screen">
+      {/* ИЗМЕНЕНО: Добавлен класс web-page-header */}
+      <div className="web-page-header fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center">
           <button onClick={() => navigate(-1)} className="text-white">
             <ArrowLeft className="h-6 w-6" />
           </button>
-          <h1 className="text-white font-medium ml-4">User Settings</h1>
+          <h1 className="text-white font-medium ml-4">Settings</h1>
         </div>
       </div>
 
-      <div className="px-4 pt-4">
+      {/* ИЗМЕНЕНО: Добавлен класс main-content-area и отступ pt-16 (примерно высота хедера) */}
+      {/* Ваш существующий pt-4 будет действовать, если бы хедер не был fixed. 
+          Так как он fixed, нужен отступ равный его высоте. */}
+      <div className="main-content-area px-4 pt-6">
         {error && (
-          <div className="bg-red-500 text-white px-4 py-2 rounded mb-4">
+          <div className="bg-red-500/90 text-white px-4 py-2 rounded-lg mb-4">
             {error}
           </div>
         )}
         {success && (
-          <div className="bg-green-500 text-white px-4 py-2 rounded mb-4">
+          <div className="bg-green-500/90 text-white px-4 py-2 rounded-lg mb-4">
             {success}
           </div>
         )}
-
-        {/* User Profile Information */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <div className="flex items-center mb-4">
-            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`} alt="Avatar" className="w-12 h-12 rounded-full mr-4"/>
-            <div className="flex-1">
-              <div className="flex items-center">
-                {isEditingName ? (
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      className="bg-gray-700 text-white px-2 py-1 rounded"
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleNameSave}
-                      disabled={loading || !displayName.trim()}
-                      className="text-green-500 hover:text-green-400 disabled:opacity-50"
-                    >
-                      <Check className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={handleNameCancel}
-                      className="text-red-500 hover:text-red-400"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <h2 className="text-white text-lg font-medium">{displayName}</h2>
-                    <button
-                      onClick={handleNameEdit}
-                      className="ml-2 text-gray-400 hover:text-orange-500 cursor-pointer transition-colors"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  </>
-                )}
+        {user && (
+          <div className="bg-gray-800 rounded-lg p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <img
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || "U")}&background=random`}
+                alt="Avatar"
+                className="w-12 h-12 rounded-full mr-4"
+              />
+              <div className="flex-1">
+                <div className="flex items-center">
+                  {isEditingName ? (
+                    <div className="flex items-center space-x-2 w-full">
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        className="bg-gray-700 text-white px-2 py-1 rounded flex-1"
+                        autoFocus
+                        maxLength={50}
+                      />
+                      <button
+                        onClick={handleNameSave}
+                        disabled={
+                          loading ||
+                          !displayName.trim() ||
+                          displayName === originalName
+                        }
+                        className="text-green-500 hover:text-green-400 disabled:opacity-50 p-1"
+                      >
+                        <Check className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={handleNameCancel}
+                        className="text-red-500 hover:text-red-400 p-1"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <h2 className="text-white text-lg font-medium truncate">
+                        {displayName}
+                      </h2>
+                      <button
+                        onClick={handleNameEdit}
+                        className="ml-2 text-gray-400 hover:text-orange-500 cursor-pointer transition-colors p-1"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
+                <p className="text-gray-400 truncate">{email}</p>
               </div>
-              <p className="text-gray-400">{email}</p>
+            </div>
+
+            <div className="divide-y divide-gray-700">
+              <div className="px-4 py-3 flex items-center">
+                {theme === "light" ? (
+                  <Sun className="h-5 w-5 text-orange-500 mr-3" />
+                ) : (
+                  <Moon className="h-5 w-5 text-orange-500 mr-3" />
+                )}
+                <button
+                  onClick={toggleTheme}
+                  className="text-white flex-1 text-left"
+                >
+                  Theme
+                </button>
+                <span className="ml-auto text-gray-400 capitalize">
+                  {theme}
+                </span>
+              </div>
+              <div className="px-4 py-3 flex items-center">
+                <Globe2 className="h-5 w-5 text-orange-500 mr-3" />
+                <button
+                  onClick={() => setShowLanguageModal(true)}
+                  className="text-white flex-1 text-left"
+                >
+                  Language
+                </button>
+                <span className="ml-auto text-gray-400">
+                  {languages.find((l) => l.code === language)?.label ||
+                    language}
+                </span>
+              </div>
+              <div className="px-4 py-3 flex items-center">
+                <KeyRound className="h-5 w-5 text-orange-500 mr-3" />
+                <button
+                  onClick={() => setShowPasswordModal(true)}
+                  className="text-white flex-1 text-left"
+                >
+                  Change Password
+                </button>
+              </div>
+              <div className="px-4 py-3 flex items-center">
+                <Trash2 className="h-5 w-5 text-red-500 mr-3" />
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="text-white flex-1 text-left"
+                >
+                  Delete Account
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* Settings menu */}
-          <div className="divide-y divide-gray-700">
-            <div className="px-4 py-3 flex items-center">
-              {theme === 'light' ? (
-                <Sun className="h-5 w-5 text-orange-500 mr-3" />
-              ) : (
-                <Moon className="h-5 w-5 text-orange-500 mr-3" />
-              )}
-              <button
-                onClick={toggleTheme}
-                className="text-white flex-1 text-left"
-              >
-                Theme
-              </button>
-              <span className="ml-auto text-gray-400">
-                {theme === 'light' ? 'Light' : 'Dark'}
-              </span>
-            </div>
-            <div className="px-4 py-3 flex items-center">
-              <Globe2 className="h-5 w-5 text-orange-500 mr-3" />
-              <button
-                onClick={() => setShowLanguageModal(true)}
-                className="text-white flex-1 text-left"
-              >
-                Language
-              </button>
-              <span className="ml-auto text-gray-400">
-                {language === 'en' ? 'English' : language === 'ru' ? 'Русский' : 'Español'}
-              </span>
-            </div>
-            <div className="px-4 py-3 flex items-center">
-              <KeyRound className="h-5 w-5 text-orange-500 mr-3" />
-              <button
-                onClick={() => setShowPasswordModal(true)}
-                className="text-white flex-1 text-left"
-              >
-                Change Password
-              </button>
-            </div>
-            <div className="px-4 py-3 flex items-center">
-              <Trash2 className="h-5 w-5 text-red-500 mr-3" />
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="text-white flex-1 text-left"
-              >
-                Delete Account
-              </button>
-            </div>
-          </div>
-        </div>
-
-
-        {/* Sign Out button */}
-        <button
-          onClick={handleSignOut}
-          disabled={loading}
-          className="w-full bg-gray-800 text-white py-3 rounded-lg flex items-center justify-center disabled:opacity-50"
-        >
-          <LogOut className="h-5 w-5 text-orange-500 mr-2" />
-          <span>{loading ? 'Signing out...' : 'Sign Out'}</span>
-        </button>
+        )}
+        {user && (
+          <button
+            onClick={handleSignOut}
+            disabled={loading}
+            className="w-full bg-gray-800 text-white py-3 rounded-lg flex items-center justify-center disabled:opacity-50 hover:bg-gray-700"
+          >
+            <LogOut className="h-5 w-5 text-orange-500 mr-2" />
+            <span>{(loading && "Signing out...") || "Sign Out"}</span>
+          </button>
+        )}
       </div>
 
-      {/* Language Modal */}
       {showLanguageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-white text-lg font-medium mb-4">Select Language</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-white text-lg font-medium mb-4">
+              Select Language
+            </h3>
             <div className="space-y-2">
               {languages.map((lang) => (
                 <button
                   key={lang.code}
                   onClick={() => {
-                    setLanguage(lang.code as 'en' | 'ru' | 'es');
+                    setLanguage(lang.code as "en" | "ru" | "es");
                     setShowLanguageModal(false);
                   }}
-                  className={`w-full text-left px-4 py-3 rounded-md ${
+                  className={`w-full text-left px-4 py-3 rounded-md transition-colors ${
                     language === lang.code
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-gray-700 text-white hover:bg-gray-600'
+                      ? "bg-orange-500 text-white font-semibold"
+                      : "bg-gray-700 text-white hover:bg-gray-600"
                   }`}
                 >
                   {lang.label}
@@ -324,7 +385,7 @@ const UserSettingsPage: React.FC = () => {
             </div>
             <button
               onClick={() => setShowLanguageModal(false)}
-              className="mt-4 w-full bg-gray-700 text-white py-2 rounded-md hover:bg-gray-600"
+              className="mt-6 w-full bg-gray-600 text-gray-300 py-2 rounded-md hover:bg-gray-500 transition-colors"
             >
               Cancel
             </button>
@@ -332,28 +393,24 @@ const UserSettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Password Change Modal */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-white text-lg font-medium mb-4">Change Password</h3>
-            <p className="text-gray-300 mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-white text-lg font-medium mb-4">
+              Change Password
+            </h3>
+            <p className="text-gray-300 mb-6">
               We'll send you an email with instructions to change your password.
             </p>
-            {error && (
-              <div className="bg-red-500 text-white px-4 py-2 rounded mb-4">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="bg-green-500 text-white px-4 py-2 rounded mb-4">
-                {success}
-              </div>
-            )}
+            {/* Отображение ошибок/успеха для смены пароля можно разместить здесь, если они специфичны для модалки */}
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setShowPasswordModal(false)}
-                className="px-4 py-2 text-white hover:text-gray-300"
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setError(null); // Сброс общих ошибок страницы при закрытии
+                  setSuccess(null);
+                }}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
                 disabled={loading}
               >
                 Cancel
@@ -361,32 +418,32 @@ const UserSettingsPage: React.FC = () => {
               <button
                 onClick={handlePasswordReset}
                 disabled={loading}
-                className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
+                className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors disabled:opacity-50"
               >
-                {loading ? 'Sending...' : 'Send Instructions'}
+                {loading ? "Sending..." : "Send Instructions"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Account Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-white text-lg font-medium mb-4">Delete Account</h3>
-            <p className="text-gray-300 mb-4">
-              Are you sure you want to delete your account? This action cannot be undone.
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-white text-lg font-medium mb-4">
+              Delete Account
+            </h3>
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to delete your account? This action cannot
+              be undone. All your data will be permanently removed.
             </p>
-            {error && (
-              <div className="bg-red-500 text-white px-4 py-2 rounded mb-4">
-                {error}
-              </div>
-            )}
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-white hover:text-gray-300"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setError(null); // Сброс общих ошибок
+                }}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
                 disabled={loading}
               >
                 Cancel
@@ -394,9 +451,9 @@ const UserSettingsPage: React.FC = () => {
               <button
                 onClick={handleDeleteAccount}
                 disabled={loading}
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {loading ? 'Deleting...' : 'Delete Account'}
+                {loading ? "Deleting..." : "Delete Account"}
               </button>
             </div>
           </div>

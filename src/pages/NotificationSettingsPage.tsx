@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import React, { useState, useEffect } from "react"; // Убедитесь, что useEffect импортирован
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const NotificationSettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -13,9 +13,10 @@ const NotificationSettingsPage: React.FC = () => {
     mentions: true,
     replies: true,
     subscriptions: true,
-    email_notifications: true
+    email_notifications: true,
   });
 
+  // Существующий useEffect для загрузки настроек
   useEffect(() => {
     if (user) {
       loadPreferences();
@@ -24,14 +25,44 @@ const NotificationSettingsPage: React.FC = () => {
     }
   }, [user]);
 
+  // НОВОЕ: useEffect для отправки заголовка в React Native приложение
+  useEffect(() => {
+    const pageTitle = "Notification Settings"; // Заголовок для этой страницы
+
+    console.log(
+      `[${pageTitle} Web Page] INFO: useEffect для отправки заголовка запущен (с небольшой задержкой).`,
+    );
+
+    const timerId = setTimeout(() => {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        console.log(
+          `[${pageTitle} Web Page] INFO: Отправляю заголовок "${pageTitle}" после задержки.`,
+        );
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({
+            type: "SET_NATIVE_HEADER_TITLE",
+            title: pageTitle,
+          }),
+        );
+      } else {
+        console.warn(
+          `[${pageTitle} Web Page] WARN: ReactNativeWebView.postMessage НЕ ДОСТУПЕН (после задержки).`,
+        );
+      }
+    }, 50); // Небольшая задержка в 50 миллисекунд
+
+    return () => clearTimeout(timerId); // Очистка таймера при размонтировании компонента
+  }, []); // Пустой массив зависимостей, чтобы выполнился один раз при монтировании
+
   const loadPreferences = async () => {
     if (!user?.id) return;
 
     try {
+      // setLoading(true); // Уже установлено при инициализации или в useEffect
       const { data, error } = await supabase
-        .from('profiles')
-        .select('notification_preferences')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("notification_preferences")
+        .eq("id", user.id)
         .single();
 
       if (error) throw error;
@@ -40,7 +71,7 @@ const NotificationSettingsPage: React.FC = () => {
         setPreferences(data.notification_preferences);
       }
     } catch (error) {
-      console.error('Error loading notification preferences:', error);
+      console.error("Error loading notification preferences:", error);
     } finally {
       setLoading(false);
     }
@@ -54,27 +85,28 @@ const NotificationSettingsPage: React.FC = () => {
       const newPreferences = { ...preferences, [key]: !preferences[key] };
 
       const { error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({ notification_preferences: newPreferences })
-        .eq('id', user.id);
+        .eq("id", user.id);
 
       if (error) throw error;
 
       setPreferences(newPreferences);
     } catch (error) {
-      console.error('Error updating notification preferences:', error);
+      console.error("Error updating notification preferences:", error);
     } finally {
       setSaving(false);
     }
   };
 
-  if (!user) {
+  if (!user && !loading) {
+    // Добавил !loading чтобы не показывать это пока идет начальная загрузка
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white text-center">
           <p>Please sign in to access notification settings</p>
-          <button 
-            onClick={() => navigate('/auth')}
+          <button
+            onClick={() => navigate("/auth")}
             className="mt-4 bg-orange-500 px-4 py-2 rounded-md"
           >
             Sign In
@@ -85,8 +117,10 @@ const NotificationSettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
-      <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
+    // Убрал pt-0 с общего контейнера, так как отступ для контента будет ниже
+    <div className="pb-16 bg-gray-900 min-h-screen">
+      {/* НОВОЕ: Добавляем CSS-класс 'web-page-header' к этому блоку хедера */}
+      <div className="web-page-header fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center">
           <button onClick={() => navigate(-1)} className="text-white">
             <ArrowLeft className="h-6 w-6" />
@@ -95,7 +129,9 @@ const NotificationSettingsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="px-4 pt-4">
+      {/* НОВОЕ: Добавляем класс 'main-content-area' и отступ сверху, чтобы компенсировать высоту fixed хедера.
+           Значение pt-16 (padding-top: 4rem или 64px) — это пример, подберите его под высоту вашего хедера. */}
+      <div className="main-content-area px-4 pt-6">
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
@@ -119,15 +155,15 @@ const NotificationSettingsPage: React.FC = () => {
                     </p>
                   </div>
                   <button
-                    onClick={() => handleToggle('mentions')}
+                    onClick={() => handleToggle("mentions")}
                     disabled={saving}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-                      preferences.mentions ? 'bg-orange-500' : 'bg-gray-700'
+                      preferences.mentions ? "bg-orange-500" : "bg-gray-700"
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        preferences.mentions ? 'translate-x-6' : 'translate-x-1'
+                        preferences.mentions ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -141,15 +177,15 @@ const NotificationSettingsPage: React.FC = () => {
                     </p>
                   </div>
                   <button
-                    onClick={() => handleToggle('replies')}
+                    onClick={() => handleToggle("replies")}
                     disabled={saving}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-                      preferences.replies ? 'bg-orange-500' : 'bg-gray-700'
+                      preferences.replies ? "bg-orange-500" : "bg-gray-700"
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        preferences.replies ? 'translate-x-6' : 'translate-x-1'
+                        preferences.replies ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -163,20 +199,23 @@ const NotificationSettingsPage: React.FC = () => {
                     </p>
                   </div>
                   <button
-                    onClick={() => handleToggle('subscriptions')}
+                    onClick={() => handleToggle("subscriptions")}
                     disabled={saving}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-                      preferences.subscriptions ? 'bg-orange-500' : 'bg-gray-700'
+                      preferences.subscriptions
+                        ? "bg-orange-500"
+                        : "bg-gray-700"
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        preferences.subscriptions ? 'translate-x-6' : 'translate-x-1'
+                        preferences.subscriptions
+                          ? "translate-x-6"
+                          : "translate-x-1"
                       }`}
                     />
                   </button>
                 </div>
-
               </div>
             </div>
 
@@ -196,15 +235,19 @@ const NotificationSettingsPage: React.FC = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => handleToggle('email_notifications')}
+                  onClick={() => handleToggle("email_notifications")}
                   disabled={saving}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-                    preferences.email_notifications ? 'bg-orange-500' : 'bg-gray-700'
+                    preferences.email_notifications
+                      ? "bg-orange-500"
+                      : "bg-gray-700"
                   }`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      preferences.email_notifications ? 'translate-x-6' : 'translate-x-1'
+                      preferences.email_notifications
+                        ? "translate-x-6"
+                        : "translate-x-1"
                     }`}
                   />
                 </button>

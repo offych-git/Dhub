@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Info, ChevronDown } from 'lucide-react';
-import { categories, categoryIcons } from '../data/mockData';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomSheet';
-import { useLanguage } from '../contexts/LanguageContext'; 
-import { useGlobalState } from '../contexts/GlobalStateContext';
-import { useAdmin } from '../hooks/useAdmin';
-import { useModeration } from '../contexts/ModerationContext';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Info, ChevronDown } from "lucide-react";
+import { categories, categoryIcons } from "../data/mockData";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
+import CategorySimpleBottomSheet from "../components/deals/CategorySimpleBottomSheet";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useGlobalState } from "../contexts/GlobalStateContext";
+import { useAdmin } from "../hooks/useAdmin";
+import { useModeration } from "../contexts/ModerationContext";
 
 interface PromoData {
   id: string;
@@ -26,7 +26,11 @@ interface AddPromoPageProps {
   autoApprove?: boolean;
 }
 
-const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoData, autoApprove = false }) => {
+const AddPromoPage: React.FC<AddPromoPageProps> = ({
+  isEditing = false,
+  promoData,
+  autoApprove = false,
+}) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -34,28 +38,59 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
   const { dispatch } = useGlobalState();
   const { isAdmin, isModerator } = useAdmin();
   const { addToModerationQueue } = useModeration();
+
+  useEffect(() => {
+    const pageTitle = "Add New Promo Code";
+
+    console.log(
+      `[Add New Promo Code Web] INFO: useEffect для отправки заголовка "${pageTitle}" запущен (с небольшой задержкой).`,
+    );
+
+    const timerId = setTimeout(() => {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        console.log(
+          `[Add New Promo Code Web] INFO: Отправляю заголовок "${pageTitle}" в React Native после задержки.`,
+        );
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({
+            type: "SET_NATIVE_HEADER_TITLE",
+            title: pageTitle,
+          }),
+        );
+      } else {
+        console.warn(
+          `[Add New Promo Code Web] WARN: ReactNativeWebView.postMessage НЕ ДОСТУПЕН (после задержки). Возможно, страница открыта не в WebView React Native.`,
+        );
+      }
+    }, 50);
+
+    return () => clearTimeout(timerId);
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);
   const [formData, setFormData] = useState({
-    promoCode: '',
-    title: '',
-    description: '',
-    category: '',
-    discountUrl: '',
-    expiryDate: ''
+    promoCode: "",
+    title: "",
+    description: "",
+    category: "",
+    discountUrl: "",
+    expiryDate: "",
   });
 
   useEffect(() => {
     if (isEditing && promoData) {
       setFormData({
-        promoCode: promoData.code || '',
-        title: promoData.title || '',
-        description: promoData.description || '',
-        category: promoData.category_id || '',
-        discountUrl: promoData.discount_url || '',
-        expiryDate: promoData.expires_at ? promoData.expires_at.split('T')[0] : ''
+        promoCode: promoData.code || "",
+        title: promoData.title || "",
+        description: promoData.description || "",
+        category: promoData.category_id || "",
+        discountUrl: promoData.discount_url || "",
+        expiryDate: promoData.expires_at
+          ? promoData.expires_at.split("T")[0]
+          : "",
       });
     }
   }, [isEditing, promoData]);
@@ -64,11 +99,12 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
   const categoryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const isFormValid = formData.promoCode.trim() !== '' &&
-      formData.title.trim() !== '' &&
-      formData.description.trim() !== '' &&
-      formData.category !== '' &&
-      formData.discountUrl.trim() !== '' &&
+    const isFormValid =
+      formData.promoCode.trim() !== "" &&
+      formData.title.trim() !== "" &&
+      formData.description.trim() !== "" &&
+      formData.category !== "" &&
+      formData.discountUrl.trim() !== "" &&
       (!formData.expiryDate || new Date(formData.expiryDate) > new Date());
 
     setIsValid(isFormValid);
@@ -88,7 +124,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
           category_id: formData.category,
           discount_url: formData.discountUrl,
           expires_at: formData.expiryDate || null,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         };
 
         console.log("Updating promo with autoApprove:", autoApprove);
@@ -97,37 +133,39 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
 
         // If autoApprove is true, update the status to approved and add moderator info
         if (autoApprove) {
-          updateData.status = 'approved';
+          updateData.status = "approved";
           updateData.moderator_id = user.id;
           updateData.moderated_at = new Date().toISOString();
 
           // Also update the moderation queue if coming from moderation
           const { error: queueError } = await supabase
-            .from('moderation_queue')
+            .from("moderation_queue")
             .update({
-              status: 'approved',
+              status: "approved",
               moderator_id: user.id,
-              moderated_at: new Date().toISOString()
+              moderated_at: new Date().toISOString(),
             })
-            .eq('item_id', promoData.id)
-            .eq('item_type', 'promo');
+            .eq("item_id", promoData.id)
+            .eq("item_type", "promo");
 
           if (queueError) {
-            console.error('Error updating moderation queue:', queueError);
+            console.error("Error updating moderation queue:", queueError);
           }
         }
 
         // Импортируем функцию executeWithRetry
         // Импорт не нужен, так как это в рамках одного компонента
-        console.log("Обновляем промокод через RPC для обхода ограничений политик безопасности");
+        console.log(
+          "Обновляем промокод через RPC для обхода ограничений политик безопасности",
+        );
 
         // Сначала обновляем данные промокода напрямую
         console.log("Выполняем прямое обновление данных промокода");
         const { data: updatedData, error } = await supabase
-          .from('promo_codes')
+          .from("promo_codes")
           .update(updateData)
-          .eq('id', promoData.id)
-          .select('*');  // Явно запрашиваем все поля
+          .eq("id", promoData.id)
+          .select("*"); // Явно запрашиваем все поля
 
         if (error) {
           console.error("Ошибка при прямом обновлении промокода:", error);
@@ -138,48 +176,62 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
 
         // Если требуется автоматическое одобрение, используем существующую RPC-функцию
         if (autoApprove) {
-          console.log("Обновляем статус промокода через RPC-функцию update_promo_status");
+          console.log(
+            "Обновляем статус промокода через RPC-функцию update_promo_status",
+          );
           try {
-            const { data: statusResult, error: statusError } = await supabase.rpc(
-              'update_promo_status',
-              { 
+            const { data: statusResult, error: statusError } =
+              await supabase.rpc("update_promo_status", {
                 promo_id: promoData.id,
-                new_status: 'approved',
+                new_status: "approved",
                 moderator_user_id: user.id,
-                new_moderation_note: 'Approved from moderation page'
-              }
+                new_moderation_note: "Approved from moderation page",
+              });
+
+            console.log(
+              "Результат обновления статуса через RPC:",
+              statusResult,
             );
 
-            console.log("Результат обновления статуса через RPC:", statusResult);
-
             if (statusError) {
-              console.error("Ошибка RPC вызова update_promo_status:", statusError);
+              console.error(
+                "Ошибка RPC вызова update_promo_status:",
+                statusError,
+              );
               console.error("Параметры вызова:", {
                 promo_id: promoData.id,
-                new_status: 'approved',
-                moderator_user_id: user.id
+                new_status: "approved",
+                moderator_user_id: user.id,
               });
               // Продолжаем выполнение, так как основные данные уже обновлены
             } else {
               console.log("Успешное обновление статуса через RPC-функцию");
             }
           } catch (rpcErr) {
-            console.error("Ошибка при вызове RPC-функции update_promo_status:", rpcErr);
+            console.error(
+              "Ошибка при вызове RPC-функции update_promo_status:",
+              rpcErr,
+            );
             // Попробуем обновить статус напрямую
 
-          console.log("Дополнительное обновление статуса промокода на approved напрямую");
+            console.log(
+              "Дополнительное обновление статуса промокода на approved напрямую",
+            );
             try {
               const { error: statusError } = await supabase
-                .from('promo_codes')
-                .update({ 
-                  status: 'approved',
+                .from("promo_codes")
+                .update({
+                  status: "approved",
                   moderator_id: user.id,
-                  moderated_at: new Date().toISOString() 
+                  moderated_at: new Date().toISOString(),
                 })
-                .eq('id', promoData.id);
+                .eq("id", promoData.id);
 
               if (statusError) {
-                console.error("Ошибка при обновлении статуса промокода:", statusError);
+                console.error(
+                  "Ошибка при обновлении статуса промокода:",
+                  statusError,
+                );
               } else {
                 console.log("Статус промокода успешно обновлен на approved");
               }
@@ -194,46 +246,52 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
           try {
             console.log("Обновляем статус в очереди модерации");
             const { error: queueUpdateError } = await supabase
-              .from('moderation_queue')
+              .from("moderation_queue")
               .update({
-                status: 'approved',
+                status: "approved",
                 moderator_id: user.id,
-                moderated_at: new Date().toISOString()
+                moderated_at: new Date().toISOString(),
               })
-              .eq('item_id', promoData.id)
-              .eq('item_type', 'promo');
+              .eq("item_id", promoData.id)
+              .eq("item_type", "promo");
 
             if (queueUpdateError) {
-              console.error("Ошибка при обновлении статуса в очереди модерации:", queueUpdateError);
+              console.error(
+                "Ошибка при обновлении статуса в очереди модерации:",
+                queueUpdateError,
+              );
             } else {
               console.log("Статус в очереди модерации успешно обновлен");
             }
           } catch (queueErr) {
-            console.error("Исключение при обновлении очереди модерации:", queueErr);
+            console.error(
+              "Исключение при обновлении очереди модерации:",
+              queueErr,
+            );
           }
         }
 
         // Fetch the updated record separately
         const { data: updatedPromo, error: fetchError } = await supabase
-          .from('promo_codes')
-          .select('*')
-          .eq('id', promoData.id)
+          .from("promo_codes")
+          .select("*")
+          .eq("id", promoData.id)
           .maybeSingle();
 
         if (fetchError) throw fetchError;
 
         // Dispatch update to global state
-        dispatch({ 
-          type: 'UPDATE_PROMO', 
-          payload: updatedPromo 
+        dispatch({
+          type: "UPDATE_PROMO",
+          payload: updatedPromo,
         });
 
         // If we came from moderation, go back to moderation queue
         if (autoApprove) {
-          setSuccess('Promo code updated and approved successfully');
-          setTimeout(() => navigate('/moderation'), 1000);
+          setSuccess("Promo code updated and approved successfully");
+          setTimeout(() => navigate("/moderation"), 1000);
         } else {
-          navigate('/promos');
+          navigate("/promos");
         }
       } else {
         // Используем значения из хука useAdmin
@@ -241,68 +299,73 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
 
         // Проверяем настройки модерации
         const { data: settings } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', 'moderation_enabled')
+          .from("system_settings")
+          .select("value")
+          .eq("key", "moderation_enabled")
           .single();
 
-        const moderationEnabled = settings?.value?.enabled && 
-                                 settings?.value?.types?.includes('promo');
+        const moderationEnabled =
+          settings?.value?.enabled && settings?.value?.types?.includes("promo");
 
         // Используем только допустимые значения: 'pending', 'approved', 'rejected'
         // В соответствии с ограничением в базе данных
-        const moderationStatus = isAdminOrModerator || !moderationEnabled ? 'approved' : 'pending';
+        const moderationStatus =
+          isAdminOrModerator || !moderationEnabled ? "approved" : "pending";
 
         const { data: promo, error: promoError } = await supabase
-        .from('promo_codes')
-        .insert({
-          code: formData.promoCode,
-          title: formData.title,
-          description: formData.description,
-          category_id: formData.category,
-          discount_url: formData.discountUrl,
-          expires_at: formData.expiryDate || null,
-          user_id: user?.id,
-          status: moderationStatus
-        })
-        .select()
-        .maybeSingle();
+          .from("promo_codes")
+          .insert({
+            code: formData.promoCode,
+            title: formData.title,
+            description: formData.description,
+            category_id: formData.category,
+            discount_url: formData.discountUrl,
+            expires_at: formData.expiryDate || null,
+            user_id: user?.id,
+            status: moderationStatus,
+          })
+          .select()
+          .maybeSingle();
 
         if (promoError) throw promoError;
 
         // Если требуется модерация, то добавляем в очередь модерации
-        if (moderationStatus === 'pending') {
+        if (moderationStatus === "pending") {
           const { error: queueError } = await supabase
-            .from('moderation_queue')
+            .from("moderation_queue")
             .insert({
               item_id: promo.id,
-              item_type: 'promo',
+              item_type: "promo",
               submitted_by: user?.id,
               submitted_at: new Date().toISOString(),
-              status: 'pending'
+              status: "pending",
             });
-            
+
           // Use the moderation context to add to the queue
           if (addToModerationQueue) {
             try {
-              await addToModerationQueue(promo.id, 'promo');
-              console.log('Промокод успешно добавлен в очередь модерации');
+              await addToModerationQueue(promo.id, "promo");
+              console.log("Промокод успешно добавлен в очередь модерации");
             } catch (error) {
-              console.error('Ошибка при добавлении промокода в очередь модерации:', error);
+              console.error(
+                "Ошибка при добавлении промокода в очередь модерации:",
+                error,
+              );
             }
           }
 
-          if (queueError) console.error('Error adding to moderation queue:', queueError);
+          if (queueError)
+            console.error("Error adding to moderation queue:", queueError);
 
           // Показываем пользователю сообщение о модерации
-          setSuccess('Промокод отправлен на модерацию');
-          setTimeout(() => navigate('/promos'), 2000);
+          setSuccess("Промокод отправлен на модерацию");
+          setTimeout(() => navigate("/promos"), 2000);
         } else {
-          navigate('/promos');
+          navigate("/promos");
         }
       }
     } catch (err: any) {
-      console.error('Error saving promo:', err);
+      console.error("Error saving promo:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -317,14 +380,14 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
+      <div className="web-page-header fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <button onClick={() => navigate(-1)} className="text-white">
               <ArrowLeft className="h-6 w-6" />
             </button>
             <h1 className="text-white text-lg font-medium ml-4">
-              {isEditing ? 'Edit Promo Code' : 'Add New Promo Code'}
+              {isEditing ? "Edit Promo Code" : "Add New Promo Code"}
             </h1>
           </div>
           <button className="text-white">
@@ -335,7 +398,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
 
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto pt-4 pb-24">
-        <div className="px-4">
+        <div className="main-content-area px-4 pt-6">
           {error && (
             <div className="bg-red-500 text-white px-4 py-3 rounded-md mb-4">
               {error}
@@ -355,7 +418,9 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
                 placeholder="Discount URL *"
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
                 value={formData.discountUrl}
-                onChange={(e) => setFormData({ ...formData, discountUrl: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, discountUrl: e.target.value })
+                }
               />
               <p className="text-gray-500 text-sm mt-1">
                 Add a link where users can find more information.
@@ -368,7 +433,9 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
                 placeholder="Promo Code *"
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
                 value={formData.promoCode}
-                onChange={(e) => setFormData({ ...formData, promoCode: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, promoCode: e.target.value })
+                }
               />
             </div>
 
@@ -378,7 +445,9 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
                 placeholder="Title *"
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
               />
             </div>
 
@@ -388,7 +457,9 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
                 rows={4}
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 resize-none"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
               />
             </div>
 
@@ -400,8 +471,12 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
               >
                 <span>
                   {formData.category
-                    ? (language === 'ru' ? categories.find(c => c.id === formData.category)?.name : t(formData.category))
-                    : language === 'ru' ? 'Выберите категорию' : 'Select Category'}
+                    ? language === "ru"
+                      ? categories.find((c) => c.id === formData.category)?.name
+                      : t(formData.category)
+                    : language === "ru"
+                      ? "Выберите категорию"
+                      : "Select Category"}
                 </span>
                 <ChevronDown className="h-5 w-5" />
               </button>
@@ -420,7 +495,9 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
                 type="date"
                 className="w-full bg-gray-800 text-white rounded-md px-4 py-3"
                 value={formData.expiryDate}
-                onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, expiryDate: e.target.value })
+                }
               />
               <p className="text-gray-500 text-sm mt-1">
                 Expired date (optional) - must be in the future
@@ -436,7 +513,9 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
                 )}
                 {formData.promoCode && (
                   <div className="mt-2 inline-block bg-gray-800 px-3 py-1 rounded border border-gray-700">
-                    <span className="text-orange-500 font-mono">{formData.promoCode}</span>
+                    <span className="text-orange-500 font-mono">
+                      {formData.promoCode}
+                    </span>
                   </div>
                 )}
                 {formData.description && (
@@ -447,43 +526,21 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({ isEditing = false, promoDat
                 type="submit"
                 disabled={loading || !isValid}
                 className={`w-full mt-4 py-3 rounded-md font-medium flex items-center justify-center ${
-                  isValid ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                  isValid
+                    ? "bg-orange-500 text-white"
+                    : "bg-gray-700 text-gray-400 cursor-not-allowed"
                 }`}
               >
                 {loading ? (
                   <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : isEditing ? (
+                  "Update Promo Code"
                 ) : (
-                  isEditing ? 'Update Promo Code' : 'Post Promo Code'
+                  "Post Promo Code"
                 )}
               </button>
             </div>
           </form>
-        </div>
-      </div>
-
-      {/* Submit Buttons - Fixed at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 p-4">
-        <div className="flex space-x-4">
-          <button
-            type="button"
-            onClick={() => navigate(isEditing ? '/promos' : -1)}
-            className="flex-1 bg-gray-800 text-white py-3 rounded-md font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading || !isValid}
-            className={`flex-1 py-3 rounded-md font-medium flex items-center justify-center ${
-              isValid ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {loading ? (
-              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              isEditing ? 'Save Changes' : 'Publish'
-            )}
-          </button>
         </div>
       </div>
     </div>
