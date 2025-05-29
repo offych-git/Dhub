@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext'; // Убедитесь, что путь правильный
+import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug'; // Убедитесь, что путь правильный
+import { supabase } from '../lib/supabase'; // Убедитесь, что путь правильный
 
 interface AuthPageProps {
   isResetPasswordPage?: boolean;
@@ -26,140 +26,99 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const [configValid, setConfigValid] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
+  useEffect(() => {
+    const newTitle = 'Страница Авторизации'; // Можете использовать ваш обычный заголовок для этой страницы
+    document.title = newTitle; 
+    console.log(`[WEBSITE /auth LOG] Компонент AuthPage.tsx смонтирован. Title установлен на: "${newTitle}"`);
+
+    // Отправка APP_CONTENT_READY в React Native приложение
+    if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
+      const timerId = setTimeout(() => {
+        console.log('[WEBSITE /auth LOG] Отправка APP_CONTENT_READY из AuthPage');
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'APP_CONTENT_READY' }));
+      }, 150); // Небольшая задержка
+      // return () => clearTimeout(timerId); 
+    }
+  }, []); 
+
   // Check for recovery token or signup confirmation on page load
   useEffect(() => {
     const checkForSpecialFlows = async () => {
-      // Parse URL for tokens and types
       const searchParams = new URLSearchParams(window.location.search);
       const token = searchParams.get('token');
       const type = searchParams.get('type');
 
-      console.log('Auth flow check:', {
+      console.log('[WEBSITE /auth LOG] Auth flow check (checkForSpecialFlows):', {
         fullUrl: window.location.href,
         search: window.location.search,
-
         token: token ? `${token.substring(0, 10)}...` : 'none',
         type: type || 'none',
         isResetPage: isResetPasswordPage
       });
 
-      // If this is a signup confirmation
       if (type === 'signup') {
         try {
-          console.log('Detected signup confirmation flow');
-
-          // Wait a short delay to make sure the auth state is updated
-
+          console.log('[WEBSITE /auth LOG] Detected signup confirmation flow');
           setTimeout(() => {
-            // Show success message
             setSuccessMessage('Регистрация успешно завершена! Переход на страницу профиля...');
-
-            // Redirect to profile page after a short delay to show the success message
             setTimeout(() => {
-              navigate('/profile', { replace: true
-});
+              navigate('/profile', { replace: true });
             }, 1500);
           }, 500);
-
-          return; // Exit early - no need to check other flows
+          return;
         } catch (err) {
-          console.error('Error handling signup flow:', err);
-setError('Произошла ошибка при подтверждении регистрации.');
+          console.error('[WEBSITE /auth LOG] Error handling signup flow:', err);
+          setError('Произошла ошибка при подтверждении регистрации.');
         }
       }
-      // If we have a recovery token
       else if (token && type === 'recovery') {
         try {
-          // Set immediately to show appropriate UI
           setIsResetPassword(true);
-setAccessToken(token);
-
-          // If not already on the reset password page, navigate there
+          setAccessToken(token);
           if (!isResetPasswordPage) {
-            console.log('Redirecting to reset password page with token');
-navigate('/auth/reset-password', {
+            console.log('[WEBSITE /auth LOG] Redirecting to reset password page with token');
+            navigate('/auth/reset-password', {
               replace: true,
               state: { token, type }
             });
-}
+          }
         } catch (err) {
-          console.error('Error handling recovery flow:', err);
-setError('Произошла ошибка при обработке ссылки сброса пароля.');
+          console.error('[WEBSITE /auth LOG] Error handling recovery flow:', err);
+          setError('Произошла ошибка при обработке ссылки сброса пароля.');
         }
       }
-      // Check for hash params (OAuth flow)
       else if (window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-const accessToken = hashParams.get('access_token');
+        const oauthAccessToken = hashParams.get('access_token'); 
 
-        if (accessToken) {
-          console.log('Found OAuth token in hash');
-// Handle OAuth token if needed
+        if (oauthAccessToken) { 
+          console.log('[WEBSITE /auth LOG] Found OAuth token in hash');
         }
       }
     };
-checkForSpecialFlows();
+    checkForSpecialFlows();
   }, [location, navigate, isResetPasswordPage]);
 
-  // Также проверяем состояние на наличие токенов, переданных при навигации
   useEffect(() => {
     if (location.state?.token) {
-      console.log('Found token in navigation state');
+      console.log('[WEBSITE /auth LOG] Found token in navigation state');
       setAccessToken(location.state.token);
       setIsResetPassword(true);
     }
   }, [location.state]);
 
-  // ВАЖНО: Этот useEffect был ЗАКОММЕНТИРОВАН, так как он, вероятно, ломает нативное поведение курсора на мобильных устройствах
-  // Добавляем обработчик для курсора в текстовых полях ввода для мобильных устройств
-  /*
+  /* Закомментированный useEffect для touchmove 
   useEffect(() => {
     const handleTouchMove = (event: TouchEvent) => {
-      // Получаем активный элемент
-      const activeElement = document.activeElement as HTMLInputElement;
-
-      // Проверяем, что это инпут и он имеет тип email, text или password
-      if (activeElement &&
-          (activeElement.tagName === 'INPUT') &&
-          (['email', 'text', 'password'].includes(activeElement.type))) {
-
-        // Получаем координаты касания
-        const touch = event.touches[0];
-        const touchX = touch.clientX;
-
-        // Получаем размеры и положение элемента
-        const rect = activeElement.getBoundingClientRect();
-        const leftPos = rect.left;
-        const width = rect.width;
-
-        // Рассчитываем относительную позицию в инпуте (от 0 до 1)
-        const positionRatio = Math.max(0, Math.min(1, (touchX - leftPos) / width));
-
-        // Получаем приблизительную позицию в тексте
-        const cursorPosition = Math.round(activeElement.value.length * positionRatio);
-        // Устанавливаем позицию курсора
-        try {
-          activeElement.setSelectionRange(cursorPosition, cursorPosition);
-        } catch(e) {
-          console.error("Ошибка установки позиции курсора:", e);
-        }
-
-        // Предотвращаем стандартное поведение для мобильных браузеров
-        event.preventDefault();
-      }
+      // ... код ...
     };
-
-    // Добавляем слушатель на все документе
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    // Очищаем слушатель при размонтировании
     return () => {
       document.removeEventListener('touchmove', handleTouchMove);
     };
   }, []);
   */
 
-
-  // Validate Supabase config
   useEffect(() => {
     const validateConfig = async () => {
       const configResult = validateSupabaseConfig();
@@ -169,53 +128,40 @@ checkForSpecialFlows();
         setError('Supabase configuration is missing or invalid. Please check your environment variables.');
         return;
       }
-
-      // Check auth status
       const authStatus = await checkAuthStatus();
-      console.log('Auth status check:',
-authStatus);
+      console.log('[WEBSITE /auth LOG] Auth status check (validateConfig):', authStatus);
     };
-
     validateConfig();
   }, []);
 
   const validateForm = () => {
-    // Trim the email and password to avoid whitespace issues
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
-    // For password reset with token
     if (isResetPassword && accessToken) {
       if (!trimmedPassword || trimmedPassword.length < 6) {
         setError('Пароль должен содержать не менее 6 символов');
         return false;
       }
-
       if (trimmedPassword !== confirmPassword.trim()) {
         setError('Пароли не совпадают');
         return false;
       }
-
       return true;
     }
 
-    // For other flows
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError('Пожалуйста, введите корректный email адрес');
       return false;
     }
-
     if (!isResetPassword && (!trimmedPassword || trimmedPassword.length < 6)) {
       setError('Пароль должен содержать не менее 6 символов');
       return false;
     }
-
-    // Update state with trimmed values
     setEmail(trimmedEmail);
     if (!isResetPassword) {
       setPassword(trimmedPassword);
     }
-
     return true;
   };
 
@@ -225,13 +171,11 @@ authStatus);
     if (!validateForm()) {
       return;
     }
-
     setLoading(true);
     try {
       console.log('Attempting to update password with token');
-      await updatePassword(password);
+      await updatePassword(password); 
       setSuccessMessage('Ваш пароль был успешно обновлен');
-      // Redirect to login page after password update
       setTimeout(() => {
         setIsResetPassword(false);
         setAccessToken(null);
@@ -249,19 +193,15 @@ authStatus);
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
-    // If we have a token and are on reset password page
     if (isResetPassword && accessToken) {
       handleUpdatePassword();
       return;
     }
-
     if (!validateForm()) {
       return;
     }
-
     setLoading(true);
     try {
-      // Debug information
       console.log(`Attempting to ${isResetPassword ? 'reset password' : isSignUp ? 'sign up' : 'sign in'} with email: ${email}`);
       if (isResetPassword && !accessToken) {
         await resetPassword(email);
@@ -271,18 +211,13 @@ authStatus);
         try {
           const result = await signUp(email, password);
           console.log('Sign up result:', result);
-
-          // Check for specific signup outcomes
           if (result?.user?.identities?.length === 0) {
-            // User already exists
             setError('Аккаунт с этим email уже существует. Пожалуйста, выполните вход.');
             setIsSignUp(false);
           } else if (result?.user?.confirmed_at) {
-            // Email already confirmed (rare case)
             setSuccessMessage('Аккаунт создан и подтвержден успешно!');
             setTimeout(() => navigate('/'), 2000);
           } else if (result?.user) {
-            // Standard case - email confirmation needed
             setSuccessMessage('Аккаунт создан! Пожалуйста, проверьте ваш email для подтверждения аккаунта перед входом.');
           } else {
             throw new Error('Регистрация не удалась с неизвестной ошибкой');
@@ -294,11 +229,9 @@ authStatus);
             setIsSignUp(false);
           } else {
             throw signupErr;
-            // Re-throw for the outer catch block
           }
         }
       } else {
-        // Sign In flow
         try {
           const signInResult = await signIn(email, password);
           console.log('Sign in successful:', signInResult);
@@ -310,13 +243,11 @@ authStatus);
             setError('Неверный email или пароль. Пожалуйста, проверьте данные и попробуйте снова.');
           } else {
             throw signInErr;
-            // Re-throw for the outer catch block
           }
         }
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      // Handle errors not caught in inner try/catch blocks
       if (err.code === 'invalid_credentials' ||
           err.message?.includes('invalid_credentials') ||
           err.message?.includes('Invalid login credentials')) {
@@ -348,6 +279,7 @@ authStatus);
     setSuccessMessage(null);
   };
 
+  // <<< ВОЗВРАЩАЕМ ВАШ ОРИГИНАЛЬНЫЙ JSX ДЛЯ СТРАНИЦЫ АВТОРИЗАЦИИ >>>
   return (
     <div className="min-h-screen bg-gray-900 px-4 py-8">
       <div className="max-w-md mx-auto">
@@ -401,7 +333,6 @@ rounded-md font-medium flex items-center justify-center mb-4"
         </div>
 
         <form onSubmit={handleEmailAuth} className="space-y-4">
-          {/* Show email field only if we don't have a token */}
           {(!accessToken || !isResetPassword) && (
             <div>
               <input
@@ -415,26 +346,12 @@ rounded-md font-medium flex items-center justify-center mb-4"
                   setEmail(e.target.value);
                   clearMessages();
                 }}
-                // ВАЖНО: onTouchStart и onTouchEnd ЗАКОММЕНТИРОВАНЫ, так как могут мешать нативному поведению
-                /*
-                onTouchStart={(e) => {
-                  // При касании делаем фокус на поле
-                  e.currentTarget.focus();
-                }}
-                onTouchEnd={(e) => {
-                  // Обработчик конца касания для лучшего UX
-                  const input = e.currentTarget;
-                  // Предотвращаем всплытие события, чтобы не сработал клик
-                  e.stopPropagation();
-                }}
-                */
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
                 required
               />
             </div>
           )}
 
-          {/* Show password field if not resetting password without token */}
           {(!isResetPassword || accessToken) && (
             <div className="relative">
               <input
@@ -446,32 +363,6 @@ rounded-md font-medium flex items-center justify-center mb-4"
                   setPassword(e.target.value);
                   clearMessages();
                 }}
-                // ВАЖНО: onTouchStart и onTouchEnd ЗАКОММЕНТИРОВАНЫ, так как могут мешать нативному поведению курсора на iOS
-                /*
-                onTouchStart={(e) => {
-                  // Делаем фокус на поле при касании
-                  const input = e.currentTarget;
-                  input.focus();
-
-                  // Устанавливаем режим редактирования текста
-                  if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
-                    // Специфичный код для iOS Safari
-                    setTimeout(() => {
-                      // Пытаемся вызвать нативное меню выбора позиции текста
-                      const touch = e.touches[0];
-                      const rect = input.getBoundingClientRect();
-                      const posX = (touch.clientX - rect.left) / rect.width;
-                      const pos = Math.floor(input.value.length * posX);
-
-                      input.setSelectionRange(pos, pos);
-                    }, 100);
-                  }
-                }}
-                onTouchEnd={(e) => {
-                  // Предотвращаем стандартное поведение конца касания
-                  e.stopPropagation();
-                }}
-                */
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 pr-10"
                 required
                 minLength={6}
@@ -490,18 +381,15 @@ rounded-md font-medium flex items-center justify-center mb-4"
                     <line x1="2" x2="22" y1="2" y2="22"></line>
                   </svg>
                 ) : (
-
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                   </svg>
-
                 )}
               </button>
             </div>
           )}
 
-          {/* Additional field to confirm password when resetting with token */}
           {accessToken && (
             <div className="relative">
               <input
@@ -513,32 +401,6 @@ rounded-md font-medium flex items-center justify-center mb-4"
                   setConfirmPassword(e.target.value);
                   clearMessages();
                 }}
-                // ВАЖНО: onTouchStart и onTouchEnd ЗАКОММЕНТИРОВАНЫ, так как могут мешать нативному поведению курсора на iOS
-                /*
-                onTouchStart={(e) => {
-                  // Делаем фокус на поле при касании
-                  const input = e.currentTarget;
-                  input.focus();
-
-                  // Устанавливаем режим редактирования текста
-                  if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
-                    // Специфичный код для iOS Safari
-                    setTimeout(() => {
-                      // Пытаемся вызвать нативное меню выбора позиции текста
-                      const touch = e.touches[0];
-                      const rect = input.getBoundingClientRect();
-                      const posX = (touch.clientX - rect.left) / rect.width;
-                      const pos = Math.floor(input.value.length * posX);
-
-                      input.setSelectionRange(pos, pos);
-                    }, 100);
-                  }
-                }}
-                onTouchEnd={(e) => {
-                  // Предотвращаем стандартное поведение конца касания
-                  e.stopPropagation();
-                }}
-                */
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 pr-10"
                 required
                 minLength={6}
@@ -548,7 +410,7 @@ rounded-md font-medium flex items-center justify-center mb-4"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
               >
-                {showPassword ?
+                 {showPassword ?
                   (
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
@@ -557,17 +419,14 @@ rounded-md font-medium flex items-center justify-center mb-4"
                     <line x1="2" x2="22" y1="2" y2="22"></line>
                   </svg>
                 ) : (
-
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                   </svg>
-
                 )}
               </button>
             </div>
           )}
-
 
           {!isResetPassword && (
             <div className="flex items-center justify-between">

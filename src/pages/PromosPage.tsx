@@ -1,14 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import {MessageSquare, Calendar, Heart, Share2, ExternalLink, Edit2, Clock } from 'lucide-react';
-import FilterBar from '../components/shared/FilterBar';
-import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import AdminActions from '../components/admin/AdminActions';
-import { useAdmin } from '../hooks/useAdmin';
-import { useGlobalState } from '../contexts/GlobalStateContext';
-import VoteControls from '../components/deals/VoteControls';
-import { useLanguage } from '../contexts/LanguageContext';
+import React, { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
+import {
+  MessageSquare,
+  Calendar,
+  Heart,
+  Share2,
+  ExternalLink,
+  Edit2,
+  Clock,
+} from "lucide-react";
+import FilterBar from "../components/shared/FilterBar";
+import {
+  useNavigate,
+  useSearchParams,
+  Link,
+  useLocation,
+} from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import AdminActions from "../components/admin/AdminActions";
+import { useAdmin } from "../hooks/useAdmin";
+import { useGlobalState } from "../contexts/GlobalStateContext";
+import VoteControls from "../components/deals/VoteControls";
+import { useLanguage } from "../contexts/LanguageContext";
+import { triggerNativeHaptic } from "../utils/nativeBridge";
 
 interface PromoCode {
   id: string;
@@ -42,7 +56,7 @@ const PromosPage: React.FC = () => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [searchParams] = useSearchParams();
-  const searchQuery = searchParams.get('q');
+  const searchQuery = searchParams.get("q");
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -63,8 +77,8 @@ const PromosPage: React.FC = () => {
   // Обработчик события восстановления фокуса на вкладке
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Обновляем список промокодов при возвращении к вкладке');
+      if (document.visibilityState === "visible") {
+        console.log("Обновляем список промокодов при возвращении к вкладке");
         setPage(1);
         setHasMore(true);
         setPromoCodes([]);
@@ -75,10 +89,10 @@ const PromosPage: React.FC = () => {
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [user]);
 
@@ -87,32 +101,36 @@ const PromosPage: React.FC = () => {
 
     try {
       const { data } = await supabase
-        .from('promo_favorites')
-        .select('promo_id')
-        .eq('user_id', user.id);
+        .from("promo_favorites")
+        .select("promo_id")
+        .eq("user_id", user.id);
 
       const favMap: Record<string, boolean> = {};
       if (data) {
-        data.forEach(fav => {
+        data.forEach((fav) => {
           favMap[fav.promo_id] = true;
         });
       }
       setFavorites(favMap);
     } catch (err) {
-      console.error('Error loading favorites:', err);
+      console.error("Error loading favorites:", err);
     }
   };
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000 &&
-          !isFetchingMore && hasMore) {
-        setPage(prev => prev + 1);
+      if (
+        window.innerHeight + document.documentElement.scrollTop >=
+          document.documentElement.offsetHeight - 1000 &&
+        !isFetchingMore &&
+        hasMore
+      ) {
+        setPage((prev) => prev + 1);
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [hasMore, isFetchingMore]);
 
   useEffect(() => {
@@ -128,50 +146,56 @@ const PromosPage: React.FC = () => {
       let isAdminOrModerator = false;
       if (user) {
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('user_status')
-          .eq('id', user.id)
+          .from("profiles")
+          .select("user_status")
+          .eq("id", user.id)
           .single();
 
-        isAdminOrModerator = ['admin', 'moderator', 'super_admin'].includes(profile?.user_status);
+        isAdminOrModerator = ["admin", "moderator", "super_admin"].includes(
+          profile?.user_status,
+        );
       }
 
       let query = supabase
-          .from('get_promos_with_stats')
-          .select('*')
-          .order('updated_at', {ascending: false});
+        .from("get_promos_with_stats")
+        .select("*")
+        .order("updated_at", { ascending: false })
+        .limit(100);
 
       let favoriteIds: Set<string> = new Set();
       if (user) {
-        const {data: favoritesData, error: favoritesError} = await supabase
-            .from('promo_favorites')
-            .select('promo_id')
-            .eq('user_id', user.id);
+        const { data: favoritesData, error: favoritesError } = await supabase
+          .from("promo_favorites")
+          .select("promo_id")
+          .eq("user_id", user.id);
 
         if (!favoritesError && favoritesData) {
-          favoriteIds = new Set(favoritesData.map(fav => fav.promo_id));
+          favoriteIds = new Set(favoritesData.map((fav) => fav.promo_id));
         }
       }
 
       let votedIds: Map<string, boolean> = new Map();
       if (user) {
-        const {data: votesData, error: votesError} = await supabase
-            .from('promo_votes')
-            .select('promo_id, vote_type')
-            .eq('user_id', user.id);
+        const { data: votesData, error: votesError } = await supabase
+          .from("promo_votes")
+          .select("promo_id, vote_type")
+          .eq("user_id", user.id);
 
         if (!votesError && votesData) {
-          votedIds = new Map(votesData.map(vote => [vote.promo_id, vote.vote_type]));
+          votedIds = new Map(
+            votesData.map((vote) => [vote.promo_id, vote.vote_type]),
+          );
         }
       }
 
       if (searchQuery) {
-        const terms = searchQuery.toLowerCase().split(' ').filter(Boolean);
+        const terms = searchQuery.toLowerCase().split(" ").filter(Boolean);
         if (terms.length) {
-          const filters = terms.map(term =>
-              `title.ilike.%${term}%,description.ilike.%${term}%,store_id.ilike.%${term}%`
+          const filters = terms.map(
+            (term) =>
+              `title.ilike.%${term}%,description.ilike.%${term}%,store_id.ilike.%${term}%`,
           );
-          query.or(filters.join(','));
+          query.or(filters.join(","));
         }
       }
 
@@ -179,13 +203,17 @@ const PromosPage: React.FC = () => {
       if (!isAdminOrModerator && user) {
         // Пользователи видят все одобренные промокоды (или без статуса) или свои собственные
         // Для своих промокодов показываем любые (включая отклоненные)
-        query = query.or(`status.eq.approved,status.is.null,user_id.eq.${user?.id}`);
+        query = query.or(
+          `status.eq.approved,status.is.null,user_id.eq.${user?.id}`,
+        );
 
         // Исключаем отклоненные промокоды других пользователей
         // Используем правильный синтаксис для фильтра not
         const userId = user?.id;
         if (userId) {
-          query = query.not('status', 'eq', 'rejected', { foreignTable: `user_id.neq.${userId}` });
+          query = query.not("status", "eq", "rejected", {
+            foreignTable: `user_id.neq.${userId}`,
+          });
         }
       } else if (!isAdminOrModerator && !user) {
         // Неавторизованные пользователи видят только одобренные промокоды или без статуса
@@ -194,52 +222,59 @@ const PromosPage: React.FC = () => {
       // Для админов и модераторов показываем все промокоды (фильтрация не применяется)
 
       query = query
-        // .order('popularity', { ascending: false })
+        // .order('created_at', { ascending: false })
         .range((page - 1) * 20, page * 20 - 1);
 
       const { data, error } = await query;
 
       if (error) throw error;
 
-      const promosWithVotes = await Promise.all([...(data || [])].map(async (promo) => {
-        const displayName =
-          promo.profiles?.display_name
-          || (promo.profiles?.email ? promo.profiles.email.split('@')[0] : 'Anonymous User');
-        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
-        const email = promo.profiles?.email || '';
-        return {
-          ...promo,
-          user: {
-            id: promo.profile_id || 'anonymous',
-            displayName: promo.display_name || promo.email?.split('@')[0] || 'Anonymous',
-            avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-              promo.display_name || promo.email?.split('@')[0] || 'Anonymous'
-            )}&background=random`,
-            email: promo.email?.split('@')[0] || 'Anonymous'
-          },
-          votes: promo.popularity || 0,
-          comments: promo.comment_count || 0,
-          userVote: votedIds.get(promo.id)
-        };
-      }));
+      const promosWithVotes = await Promise.all(
+        [...(data || [])].map(async (promo) => {
+          const displayName =
+            promo.profiles?.display_name ||
+            (promo.profiles?.email
+              ? promo.profiles.email.split("@")[0]
+              : "Anonymous User");
+          const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
+          const email = promo.profiles?.email || "";
+          console.log(promo);
+          console.log(votedIds.get(promo.id));
+          return {
+            ...promo,
+            user: {
+              id: promo.profiles?.id || "anonymous",
+              displayName,
+              avatarUrl,
+              email,
+            },
+            votes: promo.popularity || 0,
+            comments: promo.comment_count || 0,
+            userVote: votedIds.get(promo.id),
+          };
+        }),
+      );
 
       if (page === 1) {
         setPromoCodes(promosWithVotes);
       } else {
-        setPromoCodes(prev => [...prev, ...promosWithVotes]);
+        setPromoCodes((prev) => [...prev, ...promosWithVotes]);
       }
       setHasMore(promosWithVotes.length === 20);
     } catch (err: any) {
-      console.error('Error fetching promo codes:', err);
-      setError('Failed to load promo codes');
+      console.error("Error fetching promo codes:", err);
+      setError("Failed to load promo codes");
     } finally {
       setLoading(false);
       setIsFetchingMore(false);
     }
   };
 
-
-  const handleCopyCode = (e: React.MouseEvent, code: string, promoId: string) => {
+  const handleCopyCode = (
+    e: React.MouseEvent,
+    code: string,
+    promoId: string,
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     navigator.clipboard.writeText(code);
@@ -252,7 +287,7 @@ const PromosPage: React.FC = () => {
     e.stopPropagation();
 
     if (!user) {
-      navigate('/auth');
+      navigate("/auth");
       return;
     }
 
@@ -260,37 +295,39 @@ const PromosPage: React.FC = () => {
       if (favorites[promoId]) {
         // Remove from favorites
         await supabase
-          .from('promo_favorites')
+          .from("promo_favorites")
           .delete()
-          .eq('promo_id', promoId)
-          .eq('user_id', user.id);
+          .eq("promo_id", promoId)
+          .eq("user_id", user.id);
 
-        setFavorites(prev => {
+        setFavorites((prev) => {
           const newFavorites = { ...prev };
           delete newFavorites[promoId];
           return newFavorites;
         });
+        triggerNativeHaptic("impactLight"); // Легкий отклик
       } else {
         // Add to favorites
-        await supabase
-          .from('promo_favorites')
-          .insert({
-            promo_id: promoId,
-            user_id: user.id
-          });
+        await supabase.from("promo_favorites").insert({
+          promo_id: promoId,
+          user_id: user.id,
+        });
 
-        setFavorites(prev => ({
+        setFavorites((prev) => ({
           ...prev,
-          [promoId]: true
+          [promoId]: true,
         }));
+        triggerNativeHaptic("impactLight"); // Легкий отклик
       }
     } catch (err) {
-      console.error('Error toggling favorite:', err);
+      console.error("Error toggling favorite:", err);
     }
   };
 
   const formatTimeAgo = (dateString: string) => {
-    const minutes = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000);
+    const minutes = Math.floor(
+      (Date.now() - new Date(dateString).getTime()) / 60000,
+    );
     if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours}h`;
@@ -301,7 +338,7 @@ const PromosPage: React.FC = () => {
   const getStoreName = (url: string) => {
     try {
       const hostname = new URL(url).hostname;
-      return hostname.replace('www.', '').split('.')[0];
+      return hostname.replace("www.", "").split(".")[0];
     } catch {
       return url;
     }
@@ -312,21 +349,26 @@ const PromosPage: React.FC = () => {
     return new Date(date).toLocaleDateString();
   };
 
-  const handleFilterChange = (type: 'categories' | 'stores', ids: string[]) => {
-    if (type === 'categories') {
+  const handleFilterChange = (type: "categories" | "stores", ids: string[]) => {
+    if (type === "categories") {
       setSelectedCategories(ids);
     } else {
       setSelectedStores(ids);
     }
   };
 
-  const filteredPromoCodes = promoCodes.filter(promo => {
-    if (selectedCategories.length > 0 && !selectedCategories.includes(promo.category_id)) {
+  const filteredPromoCodes = promoCodes.filter((promo) => {
+    if (
+      selectedCategories.length > 0 &&
+      !selectedCategories.includes(promo.category_id)
+    ) {
       return false;
     }
     if (selectedStores.length > 0) {
       const storeName = getStoreName(promo.discount_url).toLowerCase();
-      if (!selectedStores.some(store => storeName.includes(store.toLowerCase()))) {
+      if (
+        !selectedStores.some((store) => storeName.includes(store.toLowerCase()))
+      ) {
         return false;
       }
     }
@@ -351,12 +393,10 @@ const PromosPage: React.FC = () => {
             <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : error ? (
-          <div className="text-red-500 text-center py-8">
-            {error}
-          </div>
+          <div className="text-red-500 text-center py-8">{error}</div>
         ) : filteredPromoCodes.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredPromoCodes.map(promo => (
+            {filteredPromoCodes.map((promo) => (
               <Link
                 key={promo.id}
                 to={`/promos/${promo.id}`}
@@ -367,57 +407,78 @@ const PromosPage: React.FC = () => {
                     <div className="text-gray-400 text-xs">
                       {formatTimeAgo(promo.created_at)}
                     </div>
-                    <VoteControls dealId={promo.id} popularity={promo.votes} userVoteType={promo.userVote} type="promo"/>
+                    <VoteControls
+                      dealId={promo.id}
+                      popularity={promo.votes}
+                      userVoteType={promo.userVote}
+                      type="promo"
+                    />
                     {/*<VoteControls dealId={promo.id} type="promo" />*/}
                   </div>
 
                   <div className="mb-2">
                     <div className="flex items-center">
-                      <h3 className="text-white font-medium line-clamp-1">{promo.title}</h3>
-                      {promo.status === 'pending' && (
+                      <h3 className="text-white font-medium line-clamp-1">
+                        {promo.title}
+                      </h3>
+                      {promo.status === "pending" && (
                         <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
-                          {t('common.statusPending')}
+                          {t("common.statusPending")}
                         </span>
                       )}
-                      {promo.status === 'rejected' && (
+                      {promo.status === "rejected" && (
                         <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
-                          {t('common.statusRejected')}
+                          {t("common.statusRejected")}
                         </span>
                       )}
-                      {promo.expires_at && new Date(promo.expires_at) < new Date() && (
-                        <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
-                          Expired
-                        </span>
-                      )}
+                      {promo.expires_at &&
+                        new Date(promo.expires_at) < new Date() && (
+                          <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
+                            Expired
+                          </span>
+                        )}
                     </div>
                   </div>
 
                   <div className="mb-2">
-                    <p className="text-gray-400 text-sm line-clamp-2">{promo.description}</p>
+                    <p className="text-gray-400 text-sm line-clamp-2">
+                      {promo.description}
+                    </p>
                   </div>
 
                   <div className="flex items-center space-x-2 mb-2">
                     <div className="bg-gray-700 px-2 py-1 rounded border border-gray-600">
                       {user ? (
-                        <span className="text-orange-500 font-mono text-sm">{promo.code}</span>
+                        <span className="text-orange-500 font-mono text-sm">
+                          {promo.code}
+                        </span>
                       ) : (
-                        <span className="italic text-gray-400 text-sm">Login to see code</span>
+                        <span className="italic text-gray-400 text-sm">
+                          Login to see code
+                        </span>
                       )}
                     </div>
                     {user && (
-                      <button 
+                      <button
                         className={`text-sm transition-colors duration-200 ${
-                          copiedCodeId === promo.id ? 'text-green-500' : 'text-orange-500'
+                          copiedCodeId === promo.id
+                            ? "text-green-500"
+                            : "text-orange-500"
                         }`}
                         onClick={(e) => handleCopyCode(e, promo.code, promo.id)}
                       >
-                        {copiedCodeId === promo.id ? 'Copied!' : 'Copy'}
+                        {copiedCodeId === promo.id ? "Copied!" : "Copy"}
                       </button>
                     )}
                     {promo.expires_at && (
-                      <div className="flex items-center text-gray-400 text-xs ml-auto" title="Expiration Date">
+                      <div
+                        className="flex items-center text-gray-400 text-xs ml-auto"
+                        title="Expiration Date"
+                      >
                         <Calendar className="h-3 w-3 mr-1" />
-                        <span>Expires {formatExpiryDate(promo.expires_at)}</span>
+                        <span>
+                          Expires {formatExpiryDate(promo.expires_at)}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -425,7 +486,7 @@ const PromosPage: React.FC = () => {
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center">
                       <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-700">
-                        <img 
+                        <img
                           src={promo.user.avatarUrl}
                           alt={promo.user.displayName}
                           className="w-full h-full object-cover"
@@ -438,9 +499,12 @@ const PromosPage: React.FC = () => {
                     <div className="flex items-center">
                       <button
                         onClick={(e) => toggleFavorite(e, promo.id)}
-                        className={`p-1 rounded-full ${favorites[promo.id] ? 'text-red-500' : 'text-gray-400'}`}
+                        className={`p-1 rounded-full ${favorites[promo.id] ? "text-red-500" : "text-gray-400"}`}
                       >
-                        <Heart className="h-4 w-4" fill={favorites[promo.id] ? 'currentColor' : 'none'} />
+                        <Heart
+                          className="h-4 w-4"
+                          fill={favorites[promo.id] ? "currentColor" : "none"}
+                        />
                       </button>
 
                       <div className="ml-3 text-gray-400 flex items-center">
@@ -448,7 +512,7 @@ const PromosPage: React.FC = () => {
                         <span className="text-xs">{promo.comments}</span>
                       </div>
 
-                      <button 
+                      <button
                         className="ml-3 text-orange-500 flex items-center"
                         onClick={(e) => {
                           e.preventDefault();
@@ -456,22 +520,27 @@ const PromosPage: React.FC = () => {
                           if (navigator.share) {
                             // Формируем правильный URL для конкретного промокода
                             const promoUrl = `${window.location.origin}/promos/${promo.id}`;
-                            navigator.share({
-                              title: promo.title,
-                              url: promoUrl
-                            }).catch(console.error);
+                            navigator
+                              .share({
+                                title: promo.title,
+                                url: promoUrl,
+                              })
+                              .catch(console.error);
                           } else {
                             // Формируем правильный URL для копирования
                             const promoUrl = `${window.location.origin}/promos/${promo.id}`;
                             navigator.clipboard.writeText(promoUrl);
-                            alert('Ссылка скопирована в буфер обмена!');
+                            alert("Ссылка скопирована в буфер обмена!");
                           }
                         }}
                       >
                         <Share2 className="h-4 w-4" />
                       </button>
-                      {user && user.id === promo.user.id && 
-                        new Date().getTime() - new Date(promo.created_at).getTime() < 24 * 60 * 60 * 1000 && (
+                      {user &&
+                        user.id === promo.user.id &&
+                        new Date().getTime() -
+                          new Date(promo.created_at).getTime() <
+                          24 * 60 * 60 * 1000 && (
                           <button
                             onClick={(e) => {
                               e.preventDefault();
@@ -482,15 +551,16 @@ const PromosPage: React.FC = () => {
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
-                        )
-                      }
+                        )}
                       <button className="ml-3 text-orange-500 flex items-center">
                         <span className="text-xs mr-1">View</span>
                         <ExternalLink className="h-3 w-3" />
                       </button>
 
                       {/* Индикатор модерации */}
-                      {(role === 'admin' || role === 'moderator' || (user && user.id === promo.user.id)) && (
+                      {(role === "admin" ||
+                        role === "moderator" ||
+                        (user && user.id === promo.user.id)) && (
                         <AdminActions
                           className="ml-3 text-orange-500 flex items-center"
                           onClick={(e) => e.stopPropagation()}

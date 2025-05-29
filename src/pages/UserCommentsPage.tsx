@@ -220,6 +220,8 @@ const UserCommentsPage: React.FC = () => {
                 id: comment.deals.store_id,
                 name: comment.deals.store_id, // Предполагаем, что имя совпадает с ID или будет получено позже
               },
+            
+              
               category: {
                 id: comment.deals.category_id,
                 name: comment.deals.category_id, // Аналогично

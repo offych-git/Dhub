@@ -13,6 +13,7 @@ import Comment from "../components/comments/Comment";
 import CommentInput from "../components/comments/CommentInput";
 import AdminActions from "../components/admin/AdminActions";
 import { highlightText } from "../utils/highlightText";
+import { triggerNativeHaptic } from "../utils/nativeBridge";
 
 const PromoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -306,6 +307,7 @@ const PromoDetailPage: React.FC = () => {
       }
 
       setIsFavorite(!isFavorite);
+      triggerNativeHaptic("impactLight");
     } catch (error) {
       console.error("Error toggling favorite:", error);
     }
@@ -476,7 +478,7 @@ const PromoDetailPage: React.FC = () => {
         </div>
 
         <div className="mt-4 flex items-center justify-between">
-          <VoteControls dealId={promo.id} type="promo" />
+          <VoteControls dealId={promo.id} type="promo" do_refresh={true} />
           <a
             href={promo.discount_url}
             target="_blank"

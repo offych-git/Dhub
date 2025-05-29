@@ -1,6 +1,81 @@
-// AppLayout.tsx (веб-сайт) - Восстановлены ссылки и кнопки в сайдбаре
-import React, { useState, useEffect } from "react";
-import { useNavigate, Outlet, Link } from "react-router-dom";
+// Расширяем Window, если это не сделано в глобальном файле d.ts
+declare global {
+  interface Window {
+    isNativeApp?: boolean;
+    ReactNativeWebView?: {
+      postMessage: (message: string) => void;
+    };
+    nativeAppResumed?: () => void;
+    // Функции для обновления данных, которые вы определите или уже используете
+    // Эти функции должны быть определены в вашем коде и, в идеале, использовать operationWithRetry
+    refreshDeals?: () => Promise<void>;
+    refreshPromoCodes?: () => Promise<void>;
+    refreshModerationData?: () => Promise<void>;
+    // ... другие функции обновления
+  }
+}
+
+// --- ОБНОВЛЕННАЯ ФУНКЦИЯ window.nativeAppResumed ---
+window.nativeAppResumed = async function () {
+  console.log(
+    "[WEB] App resumed signal received. Waiting briefly before data refresh...",
+  );
+
+  // Добавляем небольшую задержку (например, 50 мс), чтобы дать сети "проснуться"
+  await new Promise((resolve) => setTimeout(resolve, 50)); // Можете подобрать это значение
+
+  if (!navigator.onLine) {
+    console.warn(
+      "[WEB] Network is offline after resume delay. Skipping data refresh.",
+    );
+    // Можно отправить сообщение в RN, чтобы показать пользователю уведомление о сети, если нужно
+    // if (window.ReactNativeWebView) {
+    //   window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'NETWORK_STATUS', payload: { online: false } }));
+    // }
+    return;
+  }
+
+  console.log(
+    "[WEB] Network is online. Attempting to refresh critical data after resume delay...",
+  );
+
+  try {
+    // Вызовите здесь ваши функции для перезагрузки/обновления данных.
+    // Убедитесь, что эти функции существуют и доступны в window или импортированы и вызваны корректно.
+    // Они должны использовать operationWithRetry для надежности.
+
+    // Пример:
+    if (typeof window.refreshDeals === "function") {
+      console.log("[WEB] Calling refreshDeals() on resume...");
+      await window.refreshDeals();
+    }
+    if (typeof window.refreshPromoCodes === "function") {
+      console.log("[WEB] Calling refreshPromoCodes() on resume...");
+      await window.refreshPromoCodes();
+    }
+    if (typeof window.refreshModerationData === "function") {
+      console.log("[WEB] Calling refreshModerationData() on resume...");
+      await window.refreshModerationData();
+    }
+    // Добавьте вызовы других функций обновления данных, которые подвержены ошибкам при возобновлении
+
+    console.log("[WEB] Data refresh on resume attempted/completed.");
+  } catch (error) {
+    console.error(
+      "[WEB] Error during data refresh triggered by nativeAppResumed:",
+      error,
+    );
+  }
+};
+// --- КОНЕЦ ОБНОВЛЕННОЙ ФУНКЦИИ ---
+
+// Остальной код вашего AppLayout.tsx из артефакта web_applayout_app_content_ready_v1
+// (импорты, сам компонент AppLayout и т.д.)
+// Важно: Убедитесь, что useEffect, который отправлял APP_CONTENT_READY из AppLayout,
+// либо удален, либо его задержка (veryShortDelay) значительно меньше, чем у этого nativeAppResumed,
+// и он не будет конфликтовать. Идеально - если APP_CONTENT_READY шлют сами страницы.
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -8,22 +83,19 @@ import Header from "../ui/Header";
 import Navigation from "../ui/Navigation";
 import ScrollToTop from "../ui/ScrollToTop";
 import { LogIn, LogOut, Sun, Moon } from "lucide-react";
-
-// Расширяем Window
-declare global {
-  interface Window {
-    isNativeApp?: boolean;
-  }
-}
+import { triggerNativeHaptic } from "../../utils/nativeBridge";
 
 const AppLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showSiteChrome, setShowSiteChrome] = useState(true); // По умолчанию показываем
+  const [showSiteChrome, setShowSiteChrome] = useState(true);
+  const contentReadySentRef = useRef(false);
 
   const { t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const activeScreenPath = location.pathname + location.search;
 
   useEffect(() => {
     const checkEnvironment = () => {
@@ -39,35 +111,52 @@ const AppLayout: React.FC = () => {
         window.location.search,
       ).has("embedded");
 
-      console.log("[AppLayout Website] User Agent:", userAgent);
-      console.log(
-        "[AppLayout Website] window.isNativeApp (установлено из RN):",
-        window.isNativeApp,
-      );
-
-      if (window.isNativeApp) {
+      if (isLikelyGenericWebView || isEmbeddedViaParam) {
         setShowSiteChrome(false);
-        console.log(
-          "[AppLayout Website] Определено как НАШЕ RN приложение (isNativeApp=true). Хедер/футер сайта будут СКРЫТЫ.",
-        );
-      } else if (isLikelyGenericWebView || isEmbeddedViaParam) {
-        setShowSiteChrome(false);
-        console.log(
-          "[AppLayout Website] Определено как общий WebView или embedded. Хедер/футер сайта будут скрыты.",
-        );
       } else {
+        // В режиме isNativeApp, CSS будет скрывать хром.
+        // showSiteChrome=true позволит JS-логике компонентов хедера/футера работать (если они не проверяют window.isNativeApp напрямую для отключения)
+        // и сохранит вашу логику отступов pt-28.
         setShowSiteChrome(true);
+      }
+      if (window.isNativeApp) {
         console.log(
-          "[AppLayout Website] Определено как Standalone Browser. Хедер/футер сайта будут показаны.",
+          "[AppLayout Website] Detected OUR RN app (isNativeApp=true). CSS will hide chrome. showSiteChrome for JS logic remains true (unless other conditions met).",
         );
       }
     };
-
     checkEnvironment();
-    const timeoutId = setTimeout(checkEnvironment, 300);
-
-    return () => clearTimeout(timeoutId);
   }, []);
+
+  // Этот useEffect может быть не нужен, если конкретные страницы (DealsPage и т.д.)
+  // будут сами отправлять APP_CONTENT_READY. Если он остается как fallback,
+  // убедитесь, что он не конфликтует с сигналами от дочерних страниц.
+  useEffect(() => {
+    contentReadySentRef.current = false;
+    if (
+      window.isNativeApp &&
+      window.ReactNativeWebView &&
+      !contentReadySentRef.current // Проверка, чтобы отправить только один раз за этот цикл рендера/зависимостей
+    ) {
+      const initialLayoutReadyDelay = 150; // Очень короткая задержка
+
+      const timer = setTimeout(() => {
+        // Дополнительная проверка, так как дочерний компонент мог уже отправить сообщение
+        if (!contentReadySentRef.current) {
+          console.log(
+            `[AppLayout Website - Fallback/Initial Shell] Sending APP_CONTENT_READY after ${initialLayoutReadyDelay}ms for path:`,
+            activeScreenPath,
+          );
+          window.ReactNativeWebView?.postMessage(
+            JSON.stringify({ type: "APP_CONTENT_READY" }),
+          );
+          contentReadySentRef.current = true; // Помечаем, что AppLayout отправил (или попытался)
+        }
+      }, initialLayoutReadyDelay);
+
+      return () => clearTimeout(timer);
+    }
+  }, [user, theme, activeScreenPath]);
 
   const handleAuthClick = async () => {
     setIsSidebarOpen(false);
@@ -77,38 +166,36 @@ const AppLayout: React.FC = () => {
     }
     try {
       await signOut();
-      navigate("/"); // или '/auth' если хотите перенаправлять на страницу входа после выхода
+      navigate("/");
     } catch (error) {
       console.error("Sign out failed:", error);
     }
   };
 
-  console.log("[AppLayout Website] Rendering. showSiteChrome:", showSiteChrome);
-
   return (
     <div className={`min-h-screen relative`}>
-      <Header
-        onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        style={{ display: showSiteChrome ? "flex" : "none" }}
-      />
+      <div className="site-header-wrapper">
+        <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
+      </div>
 
-      <div className={showSiteChrome ? "pt-28" : "pt-0"}>
+      <div
+        className={`content-area-for-padding ${showSiteChrome ? "pt-28" : "pt-0"}`}
+      >
         <Outlet />
       </div>
 
-      {showSiteChrome && <Navigation />}
+      <div className="site-navigation-wrapper">
+        <Navigation />
+      </div>
 
       <ScrollToTop />
 
-      {/* Sidebar overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-
-      {/* Sidebar */}
       <div
         className={`fixed top-0 left-0 h-full w-64 bg-gray-800 z-30 transform transition-transform duration-300 ease-in-out flex flex-col ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -136,7 +223,6 @@ const AppLayout: React.FC = () => {
         <div className="p-4 border-b border-gray-700 flex-shrink-0">
           <h2 className="text-white text-xl font-bold">{t("common.menu")}</h2>
         </div>
-        {/* !!!!! ВОССТАНОВЛЕННЫЕ ССЫЛКИ !!!!! */}
         <div className="flex-1 overflow-y-auto">
           <nav className="space-y-2 p-4">
             <Link
@@ -160,16 +246,14 @@ const AppLayout: React.FC = () => {
             >
               {t("navigation.sweepstakes")}
             </Link>
-            {/* Добавьте сюда другие общие ссылки, если они были */}
-            {user && ( // Ссылки, доступные только авторизованным пользователям
+            {user && (
               <>
                 <Link
                   to="/saved"
                   className="block py-2 px-4 text-white hover:bg-gray-700 rounded-md"
                   onClick={() => setIsSidebarOpen(false)}
                 >
-                  {t("navigation.savedItems") || "Saved Items"}{" "}
-                  {/* Используем t() или фолбэк */}
+                  {t("navigation.savedItems") || "Saved Items"}
                 </Link>
                 <Link
                   to="/comments"
@@ -193,15 +277,16 @@ const AppLayout: React.FC = () => {
                   {t("navigation.notificationSettings") ||
                     "Notification Settings"}
                 </Link>
-                {/* Добавьте другие ссылки для авторизованных пользователей */}
               </>
             )}
           </nav>
         </div>
-        {/* !!!!! ВОССТАНОВЛЕННЫЕ КНОПКИ !!!!! */}
         <div className="p-4 border-t border-gray-700 flex-shrink-0 space-y-2">
           <button
-            onClick={toggleTheme}
+            onClick={() => {
+              toggleTheme();
+              triggerNativeHaptic("impactMedium");
+            }}
             className="w-full flex items-center justify-center py-2 px-4 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
           >
             {theme === "light" ? (

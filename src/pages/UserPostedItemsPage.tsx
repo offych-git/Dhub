@@ -1,14 +1,50 @@
-// UserPostedItemsPage.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Edit2, Search, Plus, X, Heart, Share2, ExternalLink, Calendar } from "lucide-react"; // Добавил недостающие иконки, если они используются
+import {
+  ArrowLeft,
+  MessageSquare,
+  Edit2,
+  Search,
+  Plus,
+  X,
+  Heart,
+  Share2,
+  ExternalLink,
+  Calendar,
+} from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import DealCard from "../components/deals/DealCard";
-import { Deal } from "../types";
+import { Deal } from "../types"; // Убедитесь, что Deal теперь имеет popularity: number | undefined, userVoteType?: boolean | null
 import VoteControls from "../components/deals/VoteControls";
 
 type SortOption = "newest" | "oldest" | "popular";
+
+// Тип Deal должен быть обновлен в ../types.ts:
+// export interface Deal {
+//   // ... все существующие поля ...
+//   id: string;
+//   title: string;
+//   currentPrice: number;
+//   originalPrice?: number;
+//   store: { id: string; name: string };
+//   category: { id: string; name: string };
+//   image: string;
+//   postedAt: { exact: string; relative: string }; // DealCard ожидает этот формат
+//   postedBy: { id: string; name: string; avatar?: string };
+//   comments: number;
+//   type: "deal" | "sweepstakes" | "promo"; // Добавляем "promo" если нужно для VoteControls через DealCard
+//   popularity: number; // ИЗМЕНЕНО НА NUMBER
+//   userVoteType?: boolean | null;
+//   isFavorite?: boolean;
+//   createdAt: string; // DealCard ожидает это
+//   status?: string;
+//   url?: string;
+//   description?: string;
+//   expires_at?: string;
+//   userComment?: any; // Если используется UserPostedItemsPage для фильтрации
+//   // добавьте другие поля, которые использует DealCard
+// }
 
 const formatCount = (count: number): string => {
   if (typeof count !== "number" || isNaN(count)) return "0";
@@ -21,12 +57,50 @@ const formatCount = (count: number): string => {
   return count.toString();
 };
 
+interface PromoItemFromDB {
+  // Тип данных, приходящих из таблицы promo_codes
+  id: string;
+  title: string;
+  code: string;
+  description?: string;
+  created_at: string;
+  user_id: string;
+  profiles: { id?: string; email?: string; display_name?: string };
+  promo_comments: { id: string }[]; // Предполагаем, что так приходит количество комментариев
+  discount_url?: string;
+  status?: string;
+  // Добавьте другие поля из вашей таблицы promo_codes
+}
+
+interface PromoItemForDisplay {
+  // Тип для состояния и передачи в VoteControls
+  id: string;
+  title: string;
+  code: string;
+  description?: string;
+  created_at: string; // Используется для formatTimeAgo_local
+  user_id: string;
+  profiles: {
+    id?: string;
+    email?: string;
+    display_name?: string;
+    avatar?: string;
+  };
+  comments: number; // Количество комментариев
+  popularity: number; // ИЗМЕНЕНО НА NUMBER
+  userVoteType?: boolean | null;
+  type: "promo"; // Для VoteControls
+  discount_url?: string;
+  status?: string;
+  // Добавьте другие поля, если они используются в JSX для промо
+}
+
 const UserPostedItemsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [deals, setDeals] = useState<Deal[]>([]);
-  const [promos, setPromos] = useState<any[]>([]);
+  const [promos, setPromos] = useState<PromoItemForDisplay[]>([]); // Используем новый тип
   const [sweepstakes, setSweepstakes] = useState<Deal[]>([]);
 
   const [dealCount, setDealCount] = useState(0);
@@ -43,39 +117,28 @@ const UserPostedItemsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
-  const [isReactNativeView, setIsReactNativeView] = useState(false); // Этот флаг уже был
+  const [isReactNativeView, setIsReactNativeView] = useState(false);
 
-  // ИЗМЕНЕННЫЙ useEffect для отправки заголовка и определения режима RN
   useEffect(() => {
-    const pageTitle = "My Posted Items"; // Заголовок для этой страницы (соответствует h1)
-    console.log(`[${pageTitle} Web Page] INFO: useEffect для отправки заголовка и определения RN режима запущен.`);
-
-    // Проверяем, есть ли ReactNativeWebView и postMessage
+    const pageTitle = "My Posted Items";
     if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-      setIsReactNativeView(true); // Устанавливаем, что мы в RN
-
-      // Отправляем заголовок с небольшой задержкой
+      setIsReactNativeView(true);
       const timerId = setTimeout(() => {
-        console.log(`[${pageTitle} Web Page] INFO: Отправляю заголовок "${pageTitle}" после задержки.`);
         window.ReactNativeWebView.postMessage(
           JSON.stringify({
             type: "SET_NATIVE_HEADER_TITLE",
             title: pageTitle,
           }),
         );
-      }, 50); // Задержка 50мс
-
-      return () => clearTimeout(timerId); // Очищаем таймер при размонтировании
+      }, 50);
+      return () => clearTimeout(timerId);
     } else {
       setIsReactNativeView(false);
-      console.warn(`[${pageTitle} Web Page] WARN: ReactNativeWebView.postMessage НЕ ДОСТУПЕН.`);
     }
-  }, []); // Пустой массив зависимостей, чтобы выполнилось один раз при монтировании
-
+  }, []);
 
   const loadAllCounts = useCallback(async () => {
     if (!user?.id) return;
-    console.log("[UserPostedItemsPage] Loading all counts...");
     try {
       const { count: dealsTotal } = await supabase
         .from("deals")
@@ -112,40 +175,49 @@ const UserPostedItemsPage: React.FC = () => {
       return;
     }
 
-    console.log(
-      `[UserPostedItemsPage] Loading items for tab: ${activeTab}, page: ${page}, sortBy: ${sortBy}`,
-    );
     if (page === 1) setLoading(true);
     else setIsFetchingMore(true);
 
     try {
-      let itemsToSet: any[] = [];
       const itemsPerPage = 20;
-      let query;
+      let baseQuery;
+      let voteTable: "deal_votes" | "promo_votes" = "deal_votes";
+      let itemIdColumnInVoteTable: "deal_id" | "promo_id" = "deal_id";
+      let itemTypePropForVoteControls: "deal" | "sweepstakes" | "promo" =
+        "deal"; // ИЗМЕНЕНИЕ: тип для VoteControls
 
       if (activeTab === "deals") {
-        query = supabase
+        baseQuery = supabase
           .from("deals")
           .select(
-            `*, profiles!deals_user_id_fkey(id, email, display_name), deal_comments(id)`,
-          )
+            `*, profiles!deals_user_id_fkey(id, email, display_name), deal_comments(count)`,
+          ) // Запрашиваем count комментариев
           .eq("user_id", user.id)
           .eq("type", "deal");
+        voteTable = "deal_votes";
+        itemIdColumnInVoteTable = "deal_id";
+        itemTypePropForVoteControls = "deal";
       } else if (activeTab === "sweepstakes") {
-        query = supabase
+        baseQuery = supabase
           .from("deals")
           .select(
-            `*, profiles!deals_user_id_fkey(id, email, display_name), deal_comments(id)`,
-          )
+            `*, profiles!deals_user_id_fkey(id, email, display_name), deal_comments(count)`,
+          ) // Запрашиваем count комментариев
           .eq("user_id", user.id)
           .eq("type", "sweepstakes");
+        voteTable = "deal_votes";
+        itemIdColumnInVoteTable = "deal_id";
+        itemTypePropForVoteControls = "sweepstakes"; // DealCard передаст это в VoteControls
       } else if (activeTab === "promos") {
-        query = supabase
+        baseQuery = supabase
           .from("promo_codes")
           .select(
-            `*, profiles!promo_codes_user_id_fkey(id, email, display_name), promo_comments(id)`, // Предполагаем, что внешний ключ promo_comments.promo_id на promo_codes.id
-          )
+            `*, profiles!promo_codes_user_id_fkey(id, email, display_name), promo_comments(count)`,
+          ) // Запрашиваем count комментариев
           .eq("user_id", user.id);
+        voteTable = "promo_votes";
+        itemIdColumnInVoteTable = "promo_id";
+        itemTypePropForVoteControls = "promo"; // ИЗМЕНЕНИЕ: VoteControls ожидает "promo"
       } else {
         setLoading(false);
         setIsFetchingMore(false);
@@ -154,115 +226,205 @@ const UserPostedItemsPage: React.FC = () => {
 
       switch (sortBy) {
         case "oldest":
-          query = query.order("created_at", { ascending: true });
+          baseQuery = baseQuery.order("created_at", { ascending: true });
           break;
         case "popular":
-          query = query
-            .order("vote_count", { ascending: false, nullsFirst: false })
-            .order("created_at", { ascending: false });
+          // Для сортировки по популярности, нужно чтобы 'vote_count' (или аналогичное поле)
+          // было в основной таблице (deals, promo_codes) или вычислялось на стороне БД.
+          // Если его нет, эта сортировка может быть неточной или не работать.
+          // Пока оставим сортировку по дате создания для "popular", если vote_count не доступен напрямую.
+          baseQuery = baseQuery.order("created_at", { ascending: false });
           break;
         default: // newest
-          query = query.order("created_at", { ascending: false });
+          baseQuery = baseQuery.order("created_at", { ascending: false });
           break;
       }
 
-      const { data, error } = await query.range(
+      const { data: primaryData, error: primaryError } = await baseQuery.range(
         (page - 1) * itemsPerPage,
         page * itemsPerPage - 1,
       );
-      if (error) throw error;
+
+      if (primaryError) throw primaryError;
+      if (!primaryData || primaryData.length === 0) {
+        setHasMore(false);
+        setLoading(false);
+        setIsFetchingMore(false);
+        if (page === 1) {
+          // Очищаем состояние, если на первой странице ничего не найдено
+          if (activeTab === "deals") setDeals([]);
+          else if (activeTab === "promos") setPromos([]);
+          else if (activeTab === "sweepstakes") setSweepstakes([]);
+        }
+        return;
+      }
+
+      const itemIds = primaryData.map((item: any) => item.id);
+      let itemsWithFullData: Array<Deal | PromoItemForDisplay> = [];
+
+      if (itemIds.length > 0) {
+        const { data: votesData, error: votesError } = await supabase
+          .from(voteTable)
+          .select(`${itemIdColumnInVoteTable}, user_id, vote_type`)
+          .in(itemIdColumnInVoteTable, itemIds);
+
+        if (votesError) {
+          console.error(`Error fetching votes from ${voteTable}:`, votesError);
+          // В случае ошибки голосов, можем продолжить с popularity = 0, userVoteType = null
+        }
+
+        itemsWithFullData = primaryData.map((item: any) => {
+          let currentItemVoteCount = 0; // Инициализируем как Number
+          let currentUserVoteForThisItem: boolean | null = null;
+          const currentUserId = user?.id;
+
+          if (votesData) {
+            votesData
+              .filter((vote) => vote[itemIdColumnInVoteTable] === item.id)
+              .forEach((vote) => {
+                currentItemVoteCount += vote.vote_type ? 1 : -1;
+                if (currentUserId && vote.user_id === currentUserId) {
+                  currentUserVoteForThisItem = vote.vote_type;
+                }
+              });
+          }
+
+          const profileData = item.profiles || {
+            id: user?.id,
+            display_name: user?.email?.split("@")[0] || "Anonymous",
+            email: user?.email,
+          };
+
+          const commonFields = {
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            createdAt: item.created_at,
+            postedAt: {
+              relative: formatTimeAgo_local(item.created_at),
+              exact: new Date(item.created_at).toLocaleString(),
+            },
+            postedBy: {
+              id: profileData.id || "anon",
+              name:
+                profileData.display_name ||
+                profileData.email?.split("@")[0] ||
+                "Anonymous",
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.display_name || profileData.email?.split("@")[0] || "A")}&background=random`,
+            },
+            comments:
+              activeTab === "promos"
+                ? item.promo_comments?.[0]?.count || 0
+                : item.deal_comments?.[0]?.count || 0,
+            popularity: currentItemVoteCount, // ИЗМЕНЕНИЕ: popularity теперь Number
+            userVoteType: currentUserVoteForThisItem,
+            type: item.type || itemTypePropForVoteControls, // Используем актуальный тип
+            isFavorite: false, // Добавьте реальную логику для избранного, если она есть
+            status: item.status || "approved",
+          };
+
+          if (activeTab === "deals" || activeTab === "sweepstakes") {
+            return {
+              ...commonFields,
+              currentPrice: parseFloat(item.current_price),
+              originalPrice: item.original_price
+                ? parseFloat(item.original_price)
+                : undefined,
+              store: { id: item.store_id, name: item.store_id }, // TODO: Получать имя магазина
+              category: { id: item.category_id, name: item.category_id }, // TODO: Получать имя категории
+              image: item.image_url,
+              url: item.deal_url,
+              expires_at: item.expires_at,
+            } as Deal;
+          } else {
+            // promos
+            return {
+              ...commonFields,
+              code: item.code,
+              discount_url: item.discount_url,
+            } as PromoItemForDisplay;
+          }
+        });
+      } else {
+        // Если нет itemIds, но есть primaryData (маловероятно, но для полноты)
+        // Просто преобразуем primaryData без информации о голосах
+        itemsWithFullData = primaryData.map((item: any) => {
+          const profileData = item.profiles || {
+            id: user?.id,
+            display_name: user?.email?.split("@")[0] || "Anonymous",
+            email: user?.email,
+          };
+          const commonFields = {
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            createdAt: item.created_at,
+            postedAt: {
+              relative: formatTimeAgo_local(item.created_at),
+              exact: new Date(item.created_at).toLocaleString(),
+            },
+            postedBy: {
+              id: profileData.id || "anon",
+              name:
+                profileData.display_name ||
+                profileData.email?.split("@")[0] ||
+                "Anonymous",
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.display_name || profileData.email?.split("@")[0] || "A")}&background=random`,
+            },
+            comments:
+              activeTab === "promos"
+                ? item.promo_comments?.[0]?.count || 0
+                : item.deal_comments?.[0]?.count || 0,
+            popularity: 0, // Голосов нет или не удалось загрузить
+            userVoteType: null,
+            type: item.type || itemTypePropForVoteControls,
+            isFavorite: false,
+            status: item.status || "approved",
+          };
+          if (activeTab === "deals" || activeTab === "sweepstakes") {
+            return {
+              ...commonFields,
+              currentPrice: parseFloat(item.current_price),
+              originalPrice: item.original_price
+                ? parseFloat(item.original_price)
+                : undefined,
+              store: { id: item.store_id, name: item.store_id },
+              category: { id: item.category_id, name: item.category_id },
+              image: item.image_url,
+              url: item.deal_url,
+              expires_at: item.expires_at,
+            } as Deal;
+          } else {
+            return {
+              ...commonFields,
+              code: item.code,
+              discount_url: item.discount_url,
+            } as PromoItemForDisplay;
+          }
+        });
+      }
 
       if (activeTab === "deals") {
-        itemsToSet =
-          data?.map((d: any) => ({ // Добавил : any для d
-            id: d.id,
-            title: d.title,
-            currentPrice: parseFloat(d.current_price),
-            originalPrice: d.original_price
-              ? parseFloat(d.original_price)
-              : undefined,
-            store: { id: d.store_id, name: d.store_id }, // Заполните name, если есть
-            category: { id: d.category_id, name: d.category_id }, // Заполните name, если есть
-            image: d.image_url,
-            postedAt: d.created_at, // Передаем строку, DealCard сам форматирует
-            popularity: d.vote_count || 0,
-            comments: d.deal_comments?.length || 0,
-            postedBy: {
-              id: d.profiles?.id || "anon",
-              name:
-                d.profiles?.display_name ||
-                d.profiles?.email?.split("@")[0] ||
-                "Anonymous",
-              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(d.profiles?.display_name || d.profiles?.email?.split("@")[0] || "A")}&background=random`,
-            },
-            description: d.description,
-            url: d.deal_url,
-            createdAt: d.created_at, // Добавил createdAt для DealCard
-            expires_at: d.expires_at,
-            type: "deal",
-          })) || [];
         setDeals((prev) =>
-          page === 1 ? itemsToSet : [...prev, ...itemsToSet],
+          page === 1
+            ? (itemsWithFullData as Deal[])
+            : [...prev, ...(itemsWithFullData as Deal[])],
         );
       } else if (activeTab === "sweepstakes") {
-        itemsToSet =
-          data?.map((d: any) => ({ // Добавил : any для d
-            id: d.id,
-            title: d.title,
-            currentPrice: parseFloat(d.current_price),
-            originalPrice: d.original_price
-              ? parseFloat(d.original_price)
-              : undefined,
-            store: { id: d.store_id, name: d.store_id },
-            category: { id: d.category_id, name: d.category_id },
-            image: d.image_url,
-            postedAt: d.created_at,
-            popularity: d.vote_count || 0,
-            comments: d.deal_comments?.length || 0,
-            postedBy: {
-              id: d.profiles?.id || "anon",
-              name:
-                d.profiles?.display_name ||
-                d.profiles?.email?.split("@")[0] ||
-                "Anonymous",
-              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(d.profiles?.display_name || d.profiles?.email?.split("@")[0] || "A")}&background=random`,
-            },
-            description: d.description,
-            url: d.deal_url,
-            createdAt: d.created_at,
-            expires_at: d.expires_at,
-            type: "sweepstakes",
-          })) || [];
         setSweepstakes((prev) =>
-          page === 1 ? itemsToSet : [...prev, ...itemsToSet],
+          page === 1
+            ? (itemsWithFullData as Deal[])
+            : [...prev, ...(itemsWithFullData as Deal[])],
         );
       } else if (activeTab === "promos") {
-        // Для промокодов, загрузка голосов может потребоваться отдельно, если они в другой таблице
-        // В этом примере предполагается, что vote_count есть в promo_codes или добавлен после
-        const promosWithVotes = data ? await Promise.all(data.map(async (p: any) => {
-            const { data: votesData, error: votesError } = await supabase
-                .from('promo_votes')
-                .select('vote_type')
-                .eq('promo_id', p.id);
-
-            let vote_count = 0;
-            if (votesData && !votesError) {
-                vote_count = votesData.reduce((acc, vote) => acc + (vote.vote_type ? 1 : -1), 0);
-            }
-            return { 
-                ...p, 
-                vote_count: vote_count,
-                profiles: p.profiles || { id: "anon", display_name: "Anonymous", email: "" },
-                promo_comments: p.promo_comments || [] // Убедимся, что это массив
-            };
-        })) : [];
-        itemsToSet = promosWithVotes;
         setPromos((prev) =>
-          page === 1 ? itemsToSet : [...prev, ...itemsToSet],
+          page === 1
+            ? (itemsWithFullData as PromoItemForDisplay[])
+            : [...prev, ...(itemsWithFullData as PromoItemForDisplay[])],
         );
       }
 
-      setHasMore(itemsToSet.length === itemsPerPage);
+      setHasMore(itemsWithFullData.length === itemsPerPage);
     } catch (error) {
       console.error("Error loading user items:", error);
       setHasMore(false);
@@ -270,7 +432,7 @@ const UserPostedItemsPage: React.FC = () => {
       setLoading(false);
       setIsFetchingMore(false);
     }
-  }, [user, activeTab, sortBy, page, hasMore]); // Убрал transformAndSetComments из зависимостей, т.к. он сам useCallback
+  }, [user, activeTab, sortBy, page, hasMore]);
 
   useEffect(() => {
     if (user) loadAllCounts();
@@ -283,30 +445,45 @@ const UserPostedItemsPage: React.FC = () => {
       setSweepstakes([]);
       setPage(1);
       setHasMore(true);
-      setLoading(true); // Устанавливаем true, чтобы показать лоадер при выходе и повторном входе
+      setLoading(true);
     }
   }, [user, loadAllCounts]);
 
   useEffect(() => {
     if (user) {
-      console.log(
-        `[Effect] Filters changed (user/sortBy/activeTab), current page: ${page}, new page will be 1 for tab: ${activeTab}`,
-      );
-      // Сбрасываем данные и страницу при смене фильтров
-      setPage(1); 
-      setHasMore(true); // Сбрасываем hasMore, чтобы загрузка началась заново
+      setPage(1);
+      setHasMore(true);
       if (activeTab === "deals") setDeals([]);
       else if (activeTab === "promos") setPromos([]);
       else if (activeTab === "sweepstakes") setSweepstakes([]);
-      // loadUserItems будет вызван следующим useEffect, который следит за page
     }
-  }, [user, sortBy, activeTab]); // page убран из зависимостей здесь, он управляет пагинацией
+  }, [user, sortBy, activeTab]);
 
   useEffect(() => {
-    if (user && hasMore) { // Добавил hasMore в условие
-      loadUserItems();
+    if (user) {
+      // Загружаем только если пользователь есть
+      // Проверяем, нужно ли загружать: если это первая страница ИЛИ если есть еще страницы (hasMore)
+      // ИЛИ если массив для текущей вкладки пуст (для первоначальной загрузки после смены вкладки)
+      const currentListIsEmpty =
+        (activeTab === "deals" && deals.length === 0) ||
+        (activeTab === "promos" && promos.length === 0) ||
+        (activeTab === "sweepstakes" && sweepstakes.length === 0);
+
+      if (page === 1 || hasMore || currentListIsEmpty) {
+        loadUserItems();
+      }
     }
-  }, [user, page, loadUserItems, hasMore]); // hasMore добавлено в зависимости
+  }, [
+    user,
+    page,
+    activeTab,
+    sortBy,
+    loadUserItems,
+    hasMore,
+    deals,
+    promos,
+    sweepstakes,
+  ]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -323,10 +500,11 @@ const UserPostedItemsPage: React.FC = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isFetchingMore, hasMore]);
 
-
-  const formatTimeAgo_local = (dateString?: string) => { // Переименовал, чтобы не конфликтовать с глобальной (если есть)
-    if (!dateString) return "";
+  const formatTimeAgo_local = (dateString?: string): string => {
+    if (!dateString) return "some time ago";
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "invalid date";
+
     const now = new Date();
     const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
     const minutes = Math.round(seconds / 60);
@@ -337,24 +515,24 @@ const UserPostedItemsPage: React.FC = () => {
     if (minutes < 1) return `${seconds}s ago`;
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
+    if (days < 30) return `${days}d ago`;
+    return date.toLocaleDateString(); // Для старых дат показываем полную дату
   };
 
   const handleDataRefreshNeeded = () => {
     loadAllCounts();
-    setPage(1); // Сброс на первую страницу приведет к перезагрузке через useEffects
-    setDeals([]); // Очищаем сразу для лучшего UX
-    setPromos([]);
-    setSweepstakes([]);
-    setHasMore(true);
+    if (page === 1) {
+      // Если мы уже на первой странице, setDeals([]) и т.д. в useEffect [user, sortBy, activeTab]
+      // уже очистили списки. Теперь нужно просто перезагрузить данные для первой страницы.
+      loadUserItems();
+    } else {
+      // Если мы не на первой странице, сброс setPage(1) вызовет нужные useEffect для очистки и загрузки.
+      setPage(1);
+    }
   };
 
   return (
-    // Убрал pt-0
-    <div className="min-h-screen bg-gray-900 pb-24"> 
-      {/* ИЗМЕНЕНО: Добавлен класс web-page-header к блоку хедера */}
-      {/* Существующая логика !isReactNativeView уже скрывает этот хедер в RN, 
-          но класс web-page-header нужен для глобального CSS правила, если isReactNativeView не успеет обновиться */}
+    <div className="min-h-screen bg-gray-900 pb-24">
       {!isReactNativeView && (
         <div className="web-page-header fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
           <div className="max-w-lg mx-auto">
@@ -384,18 +562,11 @@ const UserPostedItemsPage: React.FC = () => {
         </div>
       )}
 
-      {/* ИЗМЕНЕНО: Добавлен класс main-content-area. 
-           Отступ сверху управляется условным классом Tailwind в зависимости от isReactNativeView.
-           pt-16 (примерно 64px) используется, когда веб-хедер ВИДЕН (!isReactNativeView).
-           pt-4 используется, когда веб-хедер СКРЫТ в RN (isReactNativeView).
-           Глобальный CSS body.embedded-app .main-content-area { padding-top: 0 !important; } 
-           переопределит pt-4 на pt-0, если это необходимо. */}
       <div
-        className={`main-content-area relative mx-4 mb-3 ${!isReactNativeView ? "pt-6" : "pt-4"}`}
+        className={`main-content-area relative mx-4 mb-3 ${!isReactNativeView ? "pt-4" : "pt-4"}`} // Увеличил отступ для веб-хедера
       >
-
         <div className="flex justify-center pb-2 mb-4">
-          <div className="flex flex-nowrap items-center space-x-2 overflow-x-auto scrollbar-hide"> {/* Добавлен overflow-x-auto и scrollbar-hide */}
+          <div className="flex flex-nowrap items-center space-x-2 overflow-x-auto scrollbar-hide">
             <button
               className={`min-w-0 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${activeTab === "deals" ? "bg-orange-500 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700 transition-colors"}`}
               onClick={() => setActiveTab("deals")}
@@ -420,7 +591,6 @@ const UserPostedItemsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ... остальной JSX для отображения списков ... */}
         {loading &&
         page === 1 &&
         ((activeTab === "deals" && deals.length === 0) ||
@@ -440,20 +610,20 @@ const UserPostedItemsPage: React.FC = () => {
                 ? deals.map((deal) => (
                     <DealCard
                       key={`deal-${deal.id}`}
-                      deal={{
-                        ...deal,
-                        postedAt: { // Обеспечиваем нужный формат для DealCard
-                            relative: formatTimeAgo_local(deal.createdAt || deal.postedAt as string), // Используем createdAt если есть, иначе postedAt
-                            exact: new Date(deal.createdAt || deal.postedAt as string).toLocaleString(),
-                        }
-                      }}
+                      deal={deal}
                       onVoteChange={handleDataRefreshNeeded}
                     />
                   ))
                 : !loading &&
                   !isFetchingMore && (
                     <div className="text-center text-gray-500 py-8">
-                      No deals posted yet.
+                      No deals posted yet.{" "}
+                      <button
+                        onClick={() => navigate("/add-deal")}
+                        className="text-orange-500 hover:underline"
+                      >
+                        Post one!
+                      </button>
                     </div>
                   ))}
 
@@ -462,17 +632,7 @@ const UserPostedItemsPage: React.FC = () => {
                 ? sweepstakes.map((sweepstake) => (
                     <DealCard
                       key={`sweepstake-${sweepstake.id}`}
-                      deal={{
-                        ...sweepstake,
-                        postedAt: { // Обеспечиваем нужный формат для DealCard
-                            relative: formatTimeAgo_local(sweepstake.createdAt || sweepstake.postedAt as string),
-                            exact: new Date(sweepstake.createdAt || sweepstake.postedAt as string).toLocaleString(),
-                        },
-                        store: {
-                          ...sweepstake.store,
-                          name: sweepstake.store?.name || "", 
-                        },
-                      }}
+                      deal={sweepstake}
                       onVoteChange={handleDataRefreshNeeded}
                       hideFreeLabel={true}
                     />
@@ -480,7 +640,13 @@ const UserPostedItemsPage: React.FC = () => {
                 : !loading &&
                   !isFetchingMore && (
                     <div className="text-center text-gray-500 py-8">
-                      No sweepstakes posted yet.
+                      No sweepstakes posted yet.{" "}
+                      <button
+                        onClick={() => navigate("/add-sweepstakes")}
+                        className="text-orange-500 hover:underline"
+                      >
+                        Post one!
+                      </button>
                     </div>
                   ))}
 
@@ -489,10 +655,8 @@ const UserPostedItemsPage: React.FC = () => {
                 ? promos.map((promo) => (
                     <div
                       key={promo.id}
-                      onClick={() =>
-                        navigate(promo.id ? `/promos/${promo.id}` : "#")
-                      }
-                      className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 transition-colors cursor-pointer shadow-md"
+                      // onClick={() => navigate(promo.id ? `/promos/${promo.id}` : "#")} // Навигация при клике на карточку промо
+                      className="bg-gray-800 rounded-lg overflow-hidden shadow-md" // Убрал hover и cursor, т.к. есть кнопки внутри
                     >
                       <div className="p-4">
                         <div className="flex items-center justify-between mb-2">
@@ -507,13 +671,20 @@ const UserPostedItemsPage: React.FC = () => {
                             {formatTimeAgo_local(promo.created_at)}
                           </div>
                           <VoteControls
-                            dealId={promo.id} 
-                            type="promo_code" // Убедитесь, что VoteControls поддерживает этот тип
-                            initialVoteCount={promo.vote_count}
+                            dealId={promo.id}
+                            type={promo.type} // promo.type теперь "promo"
+                            popularity={promo.popularity as any} // Передаем Number, VoteControls ожидает bigint, но примет number если его useState(popularity || 0)
+                            userVoteType={promo.userVoteType as any} // Передаем boolean | null
                             onVoteChange={handleDataRefreshNeeded}
                           />
                         </div>
-                        <h3 className="text-white font-semibold text-lg line-clamp-1 mb-1">
+                        {/* Навигация по клику на заголовок */}
+                        <h3
+                          onClick={() =>
+                            navigate(promo.id ? `/promos/${promo.id}` : "#")
+                          }
+                          className="text-white font-semibold text-lg line-clamp-1 mb-1 cursor-pointer hover:text-orange-400"
+                        >
                           {promo.title}
                         </h3>
                         {promo.status === "pending" && (
@@ -551,78 +722,87 @@ const UserPostedItemsPage: React.FC = () => {
                         </div>
                         <div className="flex items-center justify-between text-xs text-gray-400 mt-3 pt-3 border-t border-gray-700">
                           <div className="flex items-center">
-                            {promo.profiles && ( // Проверяем наличие profiles
+                            {promo.profiles && (
                               <>
                                 <img
                                   src={
-                                    (promo.profiles as any).avatar || // Приводим к any для доступа к avatar, если структура неизвестна
-                                    `https://ui-avatars.com/api/?name=${encodeURIComponent((promo.profiles as any).display_name || (promo.profiles as any).email?.split("@")[0] || "A")}&background=random`
+                                    promo.profiles.avatar ||
+                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(promo.profiles.display_name || promo.profiles.email?.split("@")[0] || "A")}&background=random`
                                   }
-                                  alt={(promo.profiles as any).display_name || "User"}
+                                  alt={promo.profiles.display_name || "User"}
                                   className="w-5 h-5 rounded-full mr-1.5"
                                 />
                                 <span>
-                                  {(promo.profiles as any).display_name ||
-                                    (promo.profiles as any).email?.split("@")[0] ||
+                                  {promo.profiles.display_name ||
+                                    promo.profiles.email?.split("@")[0] ||
                                     "Anonymous"}
                                 </span>
                               </>
                             )}
                           </div>
                           <div className="flex items-center space-x-3">
-                             {/* Кнопки действий для промо */}
-                             {user && user.id === promo.user_id && (
-                                <button
-                                    onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    navigate(promo.id ? `/promos/${promo.id}/edit` : "#");
-                                    }}
-                                    className="text-orange-400 hover:text-orange-300 p-0.5"
-                                    title="Edit Promo"
-                                >
-                                    <Edit2 className="h-4 w-4" />
-                                </button>
-                                )}
-                            <button 
-                                className="text-gray-400 hover:text-orange-500 p-0.5"
-                                onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    const shareUrl = `${window.location.origin}/promos/${promo.id}`;
-                                    const cleanTitle = promo.title ? promo.title.replace(/<[^>]*>/g, "") : "";
-                                    if (navigator.share) {
-                                        navigator.share({ title: cleanTitle, text: `${cleanTitle}\n${shareUrl}`, url: shareUrl });
-                                    } else {
-                                        navigator.clipboard.writeText(`${cleanTitle}\n${shareUrl}`);
-                                        alert("Link copied to clipboard!");
-                                    }
+                            {user && user.id === promo.user_id && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  navigate(
+                                    promo.id ? `/promos/${promo.id}/edit` : "#",
+                                  );
                                 }}
-                                title="Share"
+                                className="text-orange-400 hover:text-orange-300 p-0.5"
+                                title="Edit Promo"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                            )}
+                            <button
+                              className="text-gray-400 hover:text-orange-500 p-0.5"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const shareUrl = `${window.location.origin}/promos/${promo.id}`;
+                                const cleanTitle = promo.title
+                                  ? promo.title.replace(/<[^>]*>/g, "")
+                                  : "";
+                                if (navigator.share) {
+                                  navigator.share({
+                                    title: cleanTitle,
+                                    text: `${cleanTitle}\n${shareUrl}`,
+                                    url: shareUrl,
+                                  });
+                                } else {
+                                  navigator.clipboard.writeText(
+                                    `${cleanTitle}\n${shareUrl}`,
+                                  );
+                                  alert("Link copied to clipboard!");
+                                }
+                              }}
+                              title="Share"
                             >
-                                <Share2 className="h-4 w-4" />
+                              <Share2 className="h-4 w-4" />
                             </button>
-                             <a 
-                                href={promo.discount_url || '#'} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-gray-400 hover:text-orange-500 p-0.5"
-                                title="Visit Store"
+                            <a
+                              href={promo.discount_url || "#"}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-gray-400 hover:text-orange-500 p-0.5"
+                              title="Visit Store"
                             >
-                                <ExternalLink className="h-4 w-4" />
+                              <ExternalLink className="h-4 w-4" />
                             </a>
                           </div>
                         </div>
                       </div>
-                      {promo.discount_url && ( // Кнопка Use Code, если есть discount_url
+                      {promo.discount_url && (
                         <a
-                            href={promo.discount_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="block bg-orange-600 hover:bg-orange-700 text-center text-white py-2.5 text-sm font-semibold transition-colors"
+                          href={promo.discount_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="block bg-orange-600 hover:bg-orange-700 text-center text-white py-2.5 text-sm font-semibold transition-colors"
                         >
-                            Use Code
+                          Use Code
                         </a>
                       )}
                     </div>
@@ -630,7 +810,13 @@ const UserPostedItemsPage: React.FC = () => {
                 : !loading &&
                   !isFetchingMore && (
                     <div className="text-center text-gray-500 py-8">
-                      No promos posted yet.
+                      No promos posted yet.{" "}
+                      <button
+                        onClick={() => navigate("/add-promo")}
+                        className="text-orange-500 hover:underline"
+                      >
+                        Post one!
+                      </button>
                     </div>
                   ))}
 
@@ -642,7 +828,7 @@ const UserPostedItemsPage: React.FC = () => {
             {!hasMore &&
               !loading &&
               !isFetchingMore &&
-              (dealCount > 0 || promoCount > 0 || sweepstakesCount > 0) && ( // Используем общие счетчики
+              (dealCount > 0 || promoCount > 0 || sweepstakesCount > 0) && (
                 <div className="text-center text-gray-600 py-8 text-sm">
                   You've reached the end.
                 </div>

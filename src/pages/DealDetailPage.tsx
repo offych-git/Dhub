@@ -15,6 +15,7 @@ import CommentInput from "../components/comments/CommentInput";
 import { getValidImageUrl, handleImageError } from "../utils/imageUtils";
 import { highlightText } from "../utils/highlightText";
 import VoteControls from "../components/deals/VoteControls.tsx";
+import { triggerNativeHaptic } from "../utils/nativeBridge";
 
 const DealDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -509,8 +510,8 @@ const DealDetailPage: React.FC = () => {
         }
 
         setIsFavorite(!isFavorite);
+        triggerNativeHaptic("impactLight");
     };
-
     // Define a type for comment tree nodes
     type CommentTreeNode = {
         id: string;
@@ -747,7 +748,7 @@ const DealDetailPage: React.FC = () => {
                         fullImg.className =
                             "max-w-full max-h-[90vh] object-contain";
                         fullImg.onError = handleImageError;
-                        fullImg.draggable = false; // Отключаем стандартное перетаскивание
+                        fullImg.draggable = false; // Отключаем стандартное перетаски �ание
 
                         // Добавляем обработчики событий касания для свайпов
                         let touchStartX = 0;

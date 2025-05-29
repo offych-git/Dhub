@@ -13,50 +13,51 @@
 }
 
 /* Base styling for light/dark theme */
+/* :root (first instance) was duplicated with different content in your original, merging what seems relevant */
 :root {
-  color-scheme: dark;
+  color-scheme: dark; /* Default to dark if not specified by .light/.dark class */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
-}
 
-/* Свойства для темной темы (по умолчанию) */
-:root {
+  /* CSS Variables for Dark Theme (can be overridden by .dark class for specificity or just serve as default) */
   --base-foreground: #ffffff;
   --base-background: #111827;
   --header-background: #1F2937;
   --card-background: #1F2937;
   --input-background: #374151;
   --border-color: #4B5563;
+  --text-color: #f5f5f5; /* Duplicated from .dark, good for default */
+  --text-muted: #9CA3AF; /* Duplicated from .dark, good for default */
+  --accent-color: #ff6b00; /* Duplicated from .dark, good for default */
 
-/* Styles for embedded app mode */
-body.embedded-app {
-  padding: 0;
-  margin: 0;
-  background-color: transparent;
-}
-
-/* Additional space at the bottom when navigation is hidden */
-body.embedded-app .min-h-screen {
-  padding-bottom: 1rem;
-}
-
-/* When app is embedded, make sure content takes full height */
-body.embedded-app #root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-  --text-color: #f5f5f5;
-  --text-muted: #9CA3AF;
-  --accent-color: #ff6b00;
+  /* Unified theme variables from your later :root definition */
+  --bg-primary: #111827;
+  --bg-secondary: #1F2937;
+  --text-primary: #FFFFFF;
+  --text-secondary: #9CA3AF;
+  --text-tertiary: #D1D5DB;
+  --accent: #F97316; /* Slightly different from --accent-color, ensure consistency if needed */
+  --button-bg: #374151;
+  --button-hover: #4B5563;
+  --search-bg: #374151;
+  --search-text: #FFFFFF;
+  --search-placeholder: #9CA3AF;
+  --category-bg: #374151;
+  --category-text: #FFFFFF;
+  --description-text: #D1D5DB;
+  --author-text: #D1D5DB;
+  --dropdown-bg: #1F2937;
+  --dropdown-hover: #374151;
+  --dropdown-border: #374151;
+  --input-bg: #374151; /* Redundant with --input-background, choose one or ensure consistency */
+  --input-border: #4B5563;
 }
 
 /* Свойства для светлой темы */
-.light {
+.light, :root.light { /* Apply to .light class or if html has .light */
   --base-foreground: #121212;
   --base-background: #f9f9f9;
   --header-background: #ffffff;
@@ -65,12 +66,34 @@ body.embedded-app #root {
   --border-color: #e0e0e0;
   --text-color: #333333;
   --text-muted: #666666;
-  --accent-color: #ff6b00;
+  /* --accent-color: #ff6b00; /* This was in your .light, ensure it matches --accent */
   color-scheme: light;
+
+  /* Unified theme variables for light theme */
+  --bg-primary: #F3F4F6;
+  --bg-secondary: #FFFFFF;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-tertiary: #6B7280;
+  --accent: #F97316; /* Ensure this is the intended accent for light mode */
+  --button-bg: #F3F4F6; /* Different from your older .light section's input-background, verify */
+  --button-hover: #E5E7EB;
+  --search-bg: #FFFFFF;
+  --search-text: #111827;
+  --search-placeholder: #6B7280;
+  --category-bg: #F3F4F6;
+  --category-text: #111827;
+  --description-text: #000000; /* Different from older .light's text-color, verify */
+  --author-text: #000000;
+  --dropdown-bg: #FFFFFF;
+  --dropdown-hover: #F3F4F6;
+  --dropdown-border: #E5E7EB;
+  --input-bg: #FFFFFF; /* Redundant with --input-background, choose one or ensure consistency */
+  --input-border: #E5E7EB;
 }
 
-/* Для явного указания темной темы */
-.dark {
+/* Для явного указания темной темы (если :root defaults aren't enough or need override) */
+.dark, :root.dark { /* Apply to .dark class or if html has .dark */
   --base-foreground: #ffffff;
   --base-background: #111827;
   --header-background: #1F2937;
@@ -79,115 +102,10 @@ body.embedded-app #root {
   --border-color: #4B5563;
   --text-color: #f5f5f5;
   --text-muted: #9CA3AF;
-  --accent-color: #ff6b00;
+  /* --accent-color: #ff6b00; /* Ensure it matches --accent */
   color-scheme: dark;
-}
 
-/* Ensure text displays properly in preview */
-.description-preview {
-  white-space: pre-wrap !important;
-  word-break: break-word;
-  color: #fff;
-}
-
-.description-text {
-  white-space: pre-wrap !important;
-  word-break: break-word;
-  color: #fff;
-}
-
-/* Унифицированные стили для описаний сделок */
-.description-text, .description-preview {
-  white-space: pre-line !important;
-  font-family: sans-serif !important;
-  font-size: 14px !important;
-  line-height: 1.5 !important;
-  color: var(--description-text) !important;
-}
-
-/* Сохраняем оригинальное форматирование текста */
-.description-text pre, .description-preview pre {
-  font-family: sans-serif !important;
-  white-space: pre !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-/* Стили для переносов строк */
-.description-text br, .description-preview br {
-  display: block !important;
-  content: '' !important;
-  margin-top: 0.75em !important; 
-}
-
-/* Пустые строки между блоками текста */
-.description-text br + br, .description-preview br + br {
-  display: block !important;
-  content: '' !important;
-  margin-top: 1.5em !important;
-}
-
-/* Дополнительная поддержка для пустых строк */
-.description-text p:empty, .description-preview p:empty {
-  height: 1em !important;
-  display: block !important;
-  margin: 0.75em 0 !important;
-}
-
-/* Стиль для новых блоков текста - без символа '>' */
-.description-text > br + br::after, 
-.description-preview > br + br::after {
-  content: '' !important;
-  display: inline-block !important;
-  margin-right: 0 !important;
-}
-
-.description-text p, .description-preview p {
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-/* Стили для URL в тексте */
-.description-text a, .description-preview a {
-  display: inline-block !important;
-  color: #f97316 !important; /* Оранжевый цвет для ссылок */
-  text-decoration: underline !important;
-  margin-bottom: 0 !important;
-  word-break: break-all !important;
-}
-
-/* Правильное форматирование текста */
-.description-text, .description-preview {
-  white-space: pre-line !important;
-  line-height: 1.5 !important;
-}
-
-/* Улучшенные отступы между параграфами */
-.description-text br + br, .description-preview br + br {
-  display: block !important;
-  content: '' !important;
-  margin-top: 0.75em !important;
-}
-
-/* Убираем лишние отступы после ссылок */
-.description-text a:last-child, .description-preview a:last-child {
-  margin-bottom: 0 !important;
-}
-
-/* Стили для превью описания в карточках сделок */
-.description-preview {
-  white-space: pre-wrap;
-  overflow: hidden;
-}
-
-.line-clamp-2 {
-  display: -webkit-box !important;
-  -webkit-box-orient: vertical !important;
-  -webkit-line-clamp: 2 !important;
-  overflow: hidden !important;
-}
-
-:root {
+  /* Re-apply unified dark variables if .dark class is used explicitly */
   --bg-primary: #111827;
   --bg-secondary: #1F2937;
   --text-primary: #FFFFFF;
@@ -210,241 +128,214 @@ body.embedded-app #root {
   --input-border: #4B5563;
 }
 
-:root.light {
-  --bg-primary: #F3F4F6;
-  --bg-secondary: #FFFFFF;
-  --text-primary: #111827;
-  --text-secondary: #4B5563;
-  --text-tertiary: #6B7280;
-  --button-bg: #F3F4F6;
-  --button-hover: #E5E7EB;
-  --search-bg: #FFFFFF;
-  --search-text: #111827;
-  --search-placeholder: #6B7280;
-  --category-bg: #F3F4F6;
-  --category-text: #111827;
-  --description-text: #000000;
-  --author-text: #000000;
-  --dropdown-bg: #FFFFFF;
-  --dropdown-hover: #F3F4F6;
-  --dropdown-border: #E5E7EB;
-  --input-bg: #FFFFFF;
-  --input-border: #E5E7EB;
-}
 
-/* Дополнительные стили для светлой темы */
-:root.light .bg-gray-800 {
-  background-color: var(--bg-secondary);
-}
-
-:root.light .bg-gray-700 {
-  background-color: var(--button-bg);
-}
-
-:root.light .border-gray-600 {
-  border-color: var(--input-border);
-}
-
-/* Стили для кнопок навигации в карусели в светлой теме */
-:root.light button.bg-black\/40 {
-  background-color: rgba(0, 0, 0, 0.4) !important;
-}
-
-:root.light button.bg-black\/40:hover {
-  background-color: rgba(0, 0, 0, 0.6) !important;
-}
-
-:root.light button.bg-black\/40 svg {
-  stroke: white !important;
-}
-
+/* Body default styles */
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  /* overflow: visible !important; /* From your original, be cautious with !important */
+  /* overflow-x: visible !important; */
+  /* overflow-y: visible !important; */
 }
 
-.bg-gray-900 {
-  background-color: var(--bg-primary);
+/* Styles for embedded app mode from your original index.css (prefixed with html.is-native-app) */
+/* These were originally on body.embedded-app, now targeting based on html.is-native-app */
+html.is-native-app body { /* Apply to body when in native app context */
+  padding: 0;
+  margin: 0;
+  background-color: transparent; /* If you want RN app background to show through */
 }
 
-.bg-gray-800 {
-  background-color: var(--bg-secondary);
+html.is-native-app .min-h-screen { /* Your class from AppLayout */
+  padding-bottom: 1rem; /* Or adjust as needed */
 }
 
-.bg-gray-700 {
-  background-color: var(--button-bg);
+html.is-native-app #root { /* Targeting #root element */
+  min-height: 100vh;
+  display: flex; /* Be cautious if not all content is flex-based */
+  flex-direction: column; /* Be cautious */
 }
 
-.hover\:bg-gray-700:hover {
-  background-color: var(--button-hover);
-}
-
-/* Специальные стили для карточек в светлой теме */
-:root.light .bg-gray-800.hover\:bg-gray-700:hover {
-  background-color: var(--button-hover);
-}
-
-/* Стили для обрамления поля комментариев в светлой теме */
-:root.light textarea.bg-gray-700 {
-  background-color: white;
-  border: 1px solid #E5E7EB;
-  color: #111827;
-}
-
-/* Обрамление контейнера комментариев в светлой теме */
-:root.light .relative > div > textarea.bg-gray-700 {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* Обрамление строки поиска в светлой теме */
-:root.light .flex.items-center.bg-gray-700.rounded-lg {
-  background-color: white;
-  border: 1px solid #E5E7EB;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* Изменение цвета текста и иконок поиска в светлой теме */
-:root.light .flex.items-center.bg-gray-700 .text-gray-400 {
-  color: #6B7280;
-}
-
-:root.light .search-input {
-  color: #111827;
-}
-
-/* Стили для информационной строки дисклеймера */
-:root.light .bg-\[\#c1c1c1\] {
-  background-color: #c1c1c1 !important;
-}
-
-:root.dark .bg-\[\#c1c1c1\].dark\:bg-gray-700\/90 {
-  background-color: rgba(55, 65, 81, 0.9) !important;
-}
-
-/* Исправление цветов всплывающих подсказок в светлой теме */
-:root.light .w-64.opacity-0 .bg-white,
-:root.light .w-64.opacity-0 .bg-gray-800 {
-  background-color: white !important;
-}
-
-:root.light .w-64.opacity-0 .border-t-white,
-:root.light .w-64.opacity-0 .border-t-gray-800 {
-  border-top-color: white !important;
-}
-
-:root.light .w-64.opacity-0 .border-b-white,
-:root.light .w-64.opacity-0 .border-b-gray-800 {
-  border-bottom-color: white !important;
-}
-
-:root.light .w-64.opacity-0 .font-medium.text-gray-900,
-:root.light .w-64.opacity-0 .font-medium.text-white {
-  color: #111827 !important;
-}
-
-:root.light .w-64.opacity-0 .text-gray-600,
-:root.light .w-64.opacity-0 .text-gray-300 {
-  color: #4B5563 !important;
-}
-
-/* Исправление контрастности бейджа статуса в светлой теме */
-:root.light .bg-gray-500\/20.text-gray-600 {
-  background-color: rgba(107, 114, 128, 0.3) !important;
-  color: #111827 !important;
-  font-weight: 500 !important;
-}
-
-.text-white {
-  color: var(--text-primary);
-}
-
-.text-gray-400 {
-  color: var(--text-secondary);
-}
-
-.text-gray-300 {
-  color: var(--text-tertiary);
-}
-
-.placeholder-gray-400::placeholder {
-  color: var(--search-placeholder);
-}
-
-/* Search bar styles */
-.search-input {
-  background-color: var(--search-bg);
-  color: var(--search-text);
-}
-
-/* Category styles */
-.category-item {
-  background-color: var(--category-bg);
-  color: var(--category-text);
-}
-
-/* Description text */
-.description-text {
-  color: var(--description-text);
-}
-
-/* Author name */
-.author-name {
-  color: var(--author-text);
-}
-
-/* Dropdown menu styles */
-.dropdown-menu {
-  background-color: var(--dropdown-bg);
-  border: 1px solid var(--dropdown-border);
-}
-
-.dropdown-item {
-  color: var(--text-primary);
-}
-
-.dropdown-item:hover {
-  background-color: var(--dropdown-hover);
-}
-
-/* Form input styles */
-.form-input {
-  background-color: var(--input-bg);
-  border: 1px solid var(--input-border);
-  color: var(--text-primary);
-}
-
-.form-input::placeholder {
-  color: var(--text-secondary);
-}
-
-/* Form select styles */
-.form-select {
-  background-color: var(--input-bg);
-  border: 1px solid var(--input-border);
-  color: var(--text-primary);
-}
-
-.form-select option {
-  background-color: var(--dropdown-bg);
-  color: var(--text-primary);
-}
-body, 
-#root, 
-.min-h-screen, /* Класс основного контейнера из AppLayout.tsx */
-header.bg-gray-900 { /* Класс вашего хедера */
-    overflow: visible !important;
-    overflow-x: visible !important;
-    overflow-y: visible !important;
-    /* Для отладки можно добавить рамку родителям, чтобы видеть их границы */
-    /* border: 1px dotted blue !important; */ 
-}
-body.embedded-app .page-content-header {
-  display: none !important; /* Скрываем элемент */
-}
-body.embedded-app .web-page-header {
+/* Hiding specific named headers if they exist, from your original index.css */
+html.is-native-app .page-content-header,
+html.is-native-app .web-page-header {
   display: none !important;
 }
 
-body.embedded-app .main-content-area {
-  padding-top: 6px !important;
+/* Padding adjustment from your original index.css - THIS MAY CONFLICT WITH AppLayout.tsx's pt-0 if not careful */
+/* html.is-native-app .main-content-area { */
+  /* padding-top: 6px !important; /* Reconsider if AppLayout.tsx's pt-0 is the sole controller for this area's top padding */
+/* } */
+
+
+/* ---- Стили для строки предупреждения ---- */
+.site-disclaimer-bar {
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  background-color: var(--button-bg, #374151);
+  color: var(--text-secondary, #9CA3AF);
+  position: relative; /* Ensures it's in the normal document flow */
 }
+
+:root.light .site-disclaimer-bar {
+  background-color: #c1c1c1; /* Your specified light theme color */
+  color: #333333; /* Ensure good contrast for light theme */
+}
+
+/* ---- Стили для режима встроенного приложения (is-native-app класс на <html>) ---- */
+
+/* Мгновенно скрываем обертку основного хедера сайта */
+html.is-native-app .site-header-wrapper {
+  display: none !important;
+}
+
+/* Мгновенно скрываем обертку футера/навигации (если она была бы в DOM при showSiteChrome=true) */
+html.is-native-app .site-navigation-wrapper {
+  display: none !important;
+}
+
+/*
+  ВАЖНО: НЕТ ПРАВИЛ для padding-top основного контента (.site-content-area или классов pt-28/pt-0) здесь.
+  Эти отступы полностью управляются классами "pt-28" / "pt-0"
+  в AppLayout.tsx в зависимости от состояния showSiteChrome, как вы и просили.
+*/
+
+
+/* Remaining utility styles from your original index.css */
+.bg-gray-900 { background-color: var(--bg-primary); }
+.bg-gray-800 { background-color: var(--bg-secondary); }
+.bg-gray-700 { background-color: var(--button-bg); }
+.hover\:bg-gray-700:hover { background-color: var(--button-hover); }
+:root.light .bg-gray-800.hover\:bg-gray-700:hover { background-color: var(--button-hover); }
+:root.light textarea.bg-gray-700 { background-color: white; border: 1px solid #E5E7EB; color: #111827; }
+:root.light .relative > div > textarea.bg-gray-700 { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
+:root.light .flex.items-center.bg-gray-700.rounded-lg { background-color: white; border: 1px solid #E5E7EB; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
+:root.light .flex.items-center.bg-gray-700 .text-gray-400 { color: #6B7280; } /* Icon color in search for light */
+:root.light .search-input { color: #111827; /* Text color in search for light */ }
+:root.light .bg-\[\#c1c1c1\] { background-color: #c1c1c1 !important; } /* Your disclaimer bg */
+:root.dark .bg-\[\#c1c1c1\].dark\:bg-gray-700\/90 { background-color: rgba(55, 65, 81, 0.9) !important; } /* Your disclaimer bg for dark, careful with specificity */
+
+.text-white { color: var(--text-primary); } /* General text color, now primary */
+.text-gray-400 { color: var(--text-secondary); }
+.text-gray-300 { color: var(--text-tertiary); } /* Added from your variables */
+.placeholder-gray-400::placeholder { color: var(--search-placeholder); }
+
+.search-input { background-color: var(--search-bg); color: var(--search-text); }
+.category-item { background-color: var(--category-bg); color: var(--category-text); }
+.description-text { color: var(--description-text); } /* From your variables */
+.author-name { color: var(--author-text); } /* From your variables */
+.dropdown-menu { background-color: var(--dropdown-bg); border: 1px solid var(--dropdown-border); }
+.dropdown-item { color: var(--text-primary); }
+.dropdown-item:hover { background-color: var(--dropdown-hover); }
+.form-input { background-color: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-primary); }
+.form-input::placeholder { color: var(--text-secondary); }
+.form-select { background-color: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-primary); }
+.form-select option { background-color: var(--dropdown-bg); color: var(--text-primary); }
+
+
+/* Ensure text displays properly in preview - from your original CSS */
+.description-preview {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  /* color: #fff; /* This was hardcoded, now uses var(--description-text) */
+  color: var(--description-text) !important;
+}
+
+/* .description-text was already defined with var(--description-text) */
+/* Унифицированные стили для описаний сделок */
+.description-text, .description-preview {
+  white-space: pre-line !important;
+  font-family: sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  /* color: var(--description-text) !important; /* Already set for .description-text */
+}
+
+.description-text pre, .description-preview pre {
+  font-family: sans-serif !important;
+  white-space: pre !important; /* Consider pre-wrap if long lines without breaks are an issue */
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.description-text br, .description-preview br {
+  display: block !important;
+  content: '' !important;
+  margin-top: 0.75em !important;
+}
+
+.description-text br + br, .description-preview br + br {
+  /* display: block !important; /* Redundant with above */
+  /* content: '' !important; */
+  margin-top: 1.5em !important; /* For double <br> to create paragraph-like space */
+}
+
+.description-text p:empty, .description-preview p:empty {
+  height: 1em !important;
+  display: block !important;
+  margin: 0.75em 0 !important;
+}
+
+.description-text > br + br::after,
+.description-preview > br + br::after {
+  content: '' !important;
+  display: inline-block !important;
+  margin-right: 0 !important;
+}
+
+.description-text p, .description-preview p {
+  margin: 0 !important; /* Consider small margin-bottom for paragraphs if needed */
+  padding: 0 !important;
+}
+
+.description-text a, .description-preview a {
+  display: inline-block !important;
+  color: var(--accent, #f97316) !important; /* Use accent variable */
+  text-decoration: underline !important;
+  margin-bottom: 0 !important;
+  word-break: break-all !important;
+}
+
+/* .description-text, .description-preview white-space and line-height already defined */
+/* .description-text br + br, .description-preview br + br margin-top already defined */
+
+.description-text a:last-child, .description-preview a:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Стили для превью описания в карточках сделок */
+/* .description-preview white-space already defined */
+.description-preview {
+  overflow: hidden; /* Good for line-clamp */
+}
+
+.line-clamp-2 {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  overflow: hidden !important;
+}
+
+/* Specific light theme overrides from your original file */
+:root.light .bg-gray-800 { background-color: var(--bg-secondary); } /* Should be fine */
+:root.light .bg-gray-700 { background-color: var(--button-bg); } /* Should be fine */
+:root.light .border-gray-600 { border-color: var(--input-border); }
+
+:root.light button.bg-black\/40 { background-color: rgba(0, 0, 0, 0.4) !important; }
+:root.light button.bg-black\/40:hover { background-color: rgba(0, 0, 0, 0.6) !important; }
+:root.light button.bg-black\/40 svg { stroke: white !important; }
+
+:root.light .w-64.opacity-0 .bg-white, /* These tooltip overrides seem very specific */
+:root.light .w-64.opacity-0 .bg-gray-800 { background-color: white !important; }
+:root.light .w-64.opacity-0 .border-t-white,
+:root.light .w-64.opacity-0 .border-t-gray-800 { border-top-color: white !important; }
+:root.light .w-64.opacity-0 .border-b-white,
+:root.light .w-64.opacity-0 .border-b-gray-800 { border-bottom-color: white !important; }
+:root.light .w-64.opacity-0 .font-medium.text-gray-900,
+:root.light .w-64.opacity-0 .font-medium.text-white { color: #111827 !important; }
+:root.light .w-64.opacity-0 .text-gray-600,
+:root.light .w-64.opacity-0 .text-gray-300 { color: #4B5563 !important; }
+:root.light .bg-gray-500\/20.text-gray-600 { background-color: rgba(107, 114, 128, 0.3) !important; color: #111827 !important; font-weight: 500 !important; }
+
+/* Removed the extra closing bracket `}` that was at the end of your provided index.css */
