@@ -1,183 +1,182 @@
-import React, { useState, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
-import { useNavigate, useLocation, useSearchParams, createSearchParams } from 'react-router-dom';
-import { useDebounce } from '../../hooks/useDebounce';
-import { supabase } from '../../lib/supabase';
-import { useLanguage } from '../../contexts/LanguageContext';
+import React, { useState, useEffect } from "react";
+import { Search, X } from "lucide-react";
+import {
+  useNavigate,
+  useLocation,
+  useSearchParams,
+  createSearchParams,
+} from "react-router-dom";
+import { useDebounce } from "../../hooks/useDebounce";
+import { supabase } from "../../lib/supabase";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const SearchBar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
   const [isSearching, setIsSearching] = useState(false);
   const [noResults, setNoResults] = useState(false);
   const { t } = useLanguage();
 
   // Синхронизируем searchTerm с URL при возвращении на страницу
   useEffect(() => {
-    const queryParam = searchParams.get('q') || '';
+    const queryParam = searchParams.get("q") || "";
     if (queryParam !== searchTerm) {
       setSearchTerm(queryParam);
     }
   }, [location.key]);
 
-  useEffect(() => {
-    if (debouncedSearch) {
-      setIsSearching(true);
-      setNoResults(false);
+  // Функция выполнения поиска
+  const performSearch = async (query: string) => {
+    if (!query.trim()) return;
 
-      const searchAllContent = async () => {
-        // Преобразуем поисковый запрос в формат, который поддерживает tsquery 
-        // Избегаем синтаксических ошибок при работе с кириллицей и короткими запросами
-        let searchTerms = debouncedSearch.trim().split(/\s+/).filter(Boolean);
+    console.log("SearchBar: Выполняем поиск с запросом:", query);
+    setIsSearching(true);
+    setNoResults(false);
 
-        // Если запрос слишком короткий или содержит некорректные символы для tsquery, 
-        // используем ILIKE вместо tsquery
-        let useILike = searchTerms.length === 0 || searchTerms.some(term => term.length < 2);
+    // Преобразуем поисковый запрос в формат, который поддерживает tsquery
+    // Избегаем синтаксических ошибок при работе с кириллицей и короткими запросами
+    let searchTerms = query.trim().split(/\s+/).filter(Boolean);
 
-        if (useILike) {
-          // Поиск через ILIKE выполняется прямо в компоненте без использования search_all_content
-          try {
-            // Поиск по deals
-            const { data: dealsResult, error: dealsError } = await supabase
-              .from('deals')
-              .select('id')
-              .or(`title.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%`);
+    // Если запрос слишком короткий или содержит некорректные символы для tsquery,
+    // используем ILIKE вместо tsquery
+    let useILike =
+      searchTerms.length === 0 || searchTerms.some((term) => term.length < 2);
 
-            if (dealsError) throw dealsError;
+    try {
+      if (useILike) {
+        // Поиск через ILIKE выполняется прямо в компоненте без использования search_all_content
+        // Поиск по deals
+        const { data: dealsResult, error: dealsError } = await supabase
+          .from("deals")
+          .select("id")
+          .or(`title.ilike.%${query}%,description.ilike.%${query}%`);
 
-            // Поиск по promos
-            const { data: promosResult, error: promosError } = await supabase
-              .from('promo_codes')
-              .select('id')
-              .or(`title.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%`);
+        if (dealsError) throw dealsError;
 
-            if (promosError) throw promosError;
+        // Поиск по promos
+        const { data: promosResult, error: promosError } = await supabase
+          .from("promo_codes")
+          .select("id")
+          .or(`title.ilike.%${query}%,description.ilike.%${query}%`);
 
-            // Формируем результаты в том же формате, как ожидается от search_all_content
-            const deals = new Set(dealsResult?.map(item => item.id) || []);
-            const promos = new Set(promosResult?.map(item => item.id) || []);
+        if (promosError) throw promosError;
 
-            // Проверяем, есть ли результаты поиска
-            const hasResults = deals.size > 0 || promos.size > 0;
-            setNoResults(!hasResults);
+        // Формируем результаты в том же формате, как ожидается от search_all_content
+        const deals = new Set(dealsResult?.map((item) => item.id) || []);
+        const promos = new Set(promosResult?.map((item) => item.id) || []);
 
-            const params = {
-              q: debouncedSearch,
-              deals: Array.from(deals).join(','),
-              promos: Array.from(promos).join(','),
-              timestamp: Date.now().toString(),
-              no_results: hasResults ? null : 'true'
-            };
-            setSearchParams(params);
-            setIsSearching(false);
+        // Проверяем, есть ли результаты поиска
+        const hasResults = deals.size > 0 || promos.size > 0;
+        setNoResults(!hasResults);
 
-          } catch (err) {
-            console.error('ILIKE search error:', err);
-            setIsSearching(false);
-          }
+        // Перенаправляем на страницу поиска с результатами
+        navigate(
+          `/search?q=${encodeURIComponent(query)}&deals=${Array.from(deals).join(",")}&promos=${Array.from(promos).join(",")}&timestamp=${Date.now()}${!hasResults ? "&no_results=true" : ""}`,
+        );
+      } else {
+        // Для нормальных запросов используем tsquery через функцию search_all_content
+        const searchQuery = searchTerms.join(" & ");
+
+        const { data: searchResults, error } = await supabase.rpc(
+          "search_all_content",
+          {
+            search_query: searchQuery,
+          },
+        );
+
+        if (error) {
+          console.error("Search error:", error);
+          setIsSearching(false);
           return;
         }
 
-        // Для нормальных запросов используем tsquery через функцию search_all_content
-        const searchQuery = searchTerms.join(' & ');
+        const deals = new Set();
+        const promos = new Set();
 
-        try {
-          const { data: searchResults, error } = await supabase.rpc('search_all_content', {
-            search_query: searchQuery
-          });
-
-          if (error) {
-            console.error('Search error:', error);
-            setIsSearching(false);
-            return;
+        searchResults?.forEach((result) => {
+          if (result.type === "deal" || result.type === "deal_comment") {
+            deals.add(result.id);
+          } else if (
+            result.type === "promo" ||
+            result.type === "promo_comment"
+          ) {
+            promos.add(result.id);
           }
+        });
 
-          const deals = new Set();
-          const promos = new Set();
+        // Проверяем, есть ли результаты поиска
+        const hasResults = deals.size > 0 || promos.size > 0;
+        setNoResults(!hasResults);
 
-          searchResults?.forEach(result => {
-            if (result.type === 'deal' || result.type === 'deal_comment') {
-              deals.add(result.id);
-            } else if (result.type === 'promo' || result.type === 'promo_comment') {
-              promos.add(result.id);
-            }
-          });
-
-          // Проверяем, есть ли результаты поиска
-          const hasResults = deals.size > 0 || promos.size > 0;
-          setNoResults(!hasResults);
-
-          const params = {
-            q: debouncedSearch,
-            deals: Array.from(deals).join(','),
-            promos: Array.from(promos).join(','),
-            timestamp: Date.now().toString(),
-            no_results: hasResults ? null : 'true'
-          };
-          setSearchParams(params);
-          setIsSearching(false);
-        } catch (error) {
-          console.error('Ошибка при поиске:', error);
-          setIsSearching(false);
-        }
-      };
-
-      // Добавляем обработку ошибок при вызове функции поиска
-      try {
-        searchAllContent();
-      } catch (err) {
-        console.error('Ошибка при выполнении поиска:', err);
-        setIsSearching(false);
+        // Перенаправляем на страницу поиска с результатами
+        navigate(
+          `/search?q=${encodeURIComponent(query)}&deals=${Array.from(deals).join(",")}&promos=${Array.from(promos).join(",")}&timestamp=${Date.now()}${!hasResults ? "&no_results=true" : ""}`,
+        );
       }
-    } else {
-      searchParams.delete('q');
-      searchParams.delete('deals');
-      searchParams.delete('promos');
-      searchParams.delete('no_results');
-      setSearchParams(searchParams);
-      setNoResults(false);
+    } catch (error) {
+      console.error("Ошибка при поиске:", error);
+    } finally {
+      setIsSearching(false);
     }
-  }, [debouncedSearch]);
+  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      performSearch(searchTerm.trim());
+    }
+  };
+
   const clearSearch = () => {
-    setSearchTerm('');
-    searchParams.delete('q');
-    searchParams.delete('deals');
-    searchParams.delete('promos');
+    setSearchTerm("");
+    searchParams.delete("q");
+    searchParams.delete("deals");
+    searchParams.delete("promos");
+    searchParams.delete("no_results");
     setSearchParams(searchParams);
   };
 
   return (
     <div className="relative mx-4 mt-3 mb-0">
-      <div className="flex items-center bg-gray-700 rounded-lg px-4 py-2">
-        <Search className="h-5 w-5 text-gray-400 mr-2" />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={handleSearch}
-          placeholder="Search deals, promos..."
-          className="search-input bg-transparent text-gray-300 placeholder-gray-400 outline-none flex-1"
-        />
-        {searchTerm && (
+      <form onSubmit={handleSearchSubmit} autoComplete="off">
+        <div className="flex items-center bg-gray-700 rounded-lg px-4 py-2">
+          <Search className="h-5 w-5 text-gray-400 mr-2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={handleSearch}
+            onInput={(e) =>
+              console.log("SearchBar: onInput event", e.currentTarget.value)
+            }
+            placeholder="Search deals, promos and sweepstakes"
+            className="search-input bg-transparent text-gray-300 placeholder-gray-400 outline-none flex-1 w-full"
+            autoComplete="off"
+            aria-label="Search"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="text-gray-400 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
           <button
-            onClick={clearSearch}
-            className="text-gray-400 hover:text-white"
+            type="submit"
+            className="ml-2 bg-orange-500 text-white px-3 py-1 rounded-md text-sm"
+            disabled={isSearching}
           >
-            <X className="h-5 w-5" />
+            {isSearching ? "Searching..." : "Search"}
           </button>
-        )}
-        {isSearching && (
-          <div className="h-4 w-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin ml-2"></div>
-        )}
-      </div>
-      {/* Блок "нет результатов" был удален */}
+        </div>
+      </form>
     </div>
   );
 };
