@@ -41,7 +41,7 @@ import FacebookDataDeletionPage from './pages/FacebookDataDeletionPage';
 
 
 // <<< ДОБАВЛЕН ИМПОРТ (УБЕДИТЕСЬ, ЧТО ПУТЬ ВЕРНЫЙ) >>>
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage'; 
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 
 import initGlobalInteractions from './utils/globalInteractions';
 import initWebViewConsole from './utils/webViewConsole';
@@ -67,7 +67,7 @@ function App() {
     }
 
     initGlobalInteractions();
-    initWebViewConsole(); 
+    initWebViewConsole();
 
     // Делаем клиент Supabase доступным глобально для injectedJavaScriptOnLoadString
     (window as any).supabase = supabase;
@@ -87,12 +87,15 @@ function App() {
         } else {
           console.error('[WEBSITE App.tsx] ReactNativeWebViewFramework.signalSupabaseReady still not found after delay.');
         }
-      }, 1500); 
-      // return () => clearTimeout(timeoutId); // Раскомментируйте, если нужно очищать таймер
+      }, 1500);
+      // Возвращаем функцию для очистки таймера при размонтировании компонента
+      return () => clearTimeout(timeoutId); // <--- ИЗМЕНЕНИЕ ЗДЕСЬ
     }
 
     return () => {
       document.body.classList.remove('embedded-app', 'standalone-browser');
+      // Если `signalSupabaseReady` был найден сразу, таймер не создавался,
+      // поэтому очистка нужна только в ветке `else`
     };
   }, []);
 
@@ -107,14 +110,12 @@ function App() {
                   <Route path="/auth" element={<AuthPage />} />
                   <Route path="/auth/reset-password" element={<AuthPage isResetPasswordPage={true} />} />
                   <Route path="/auth/callback" element={<AuthPage />} />
-                  {/* <Route path="/auth/reset-password" element={<AuthPage isResetPasswordPage={true} />} /> Был дубль, один убрал */}
-                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} /> {/* Теперь должно работать */}
+                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                   <Route element={<AppLayout />}>
                     <Route path="/" element={<DealsPage />} />
                     <Route path="/deals/:id" element={<DealDetailPage />} />
                     <Route path="/deals/new" element={<PrivateRoute><AddDealPage /></PrivateRoute>} />
                     <Route path="/deals/new-carousel" element={<PrivateRoute><AddDealPageNew /></PrivateRoute>} />
-                    {/* <Route path="/deals/:id/edit" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} /> Заменен на edit-carousel/:id ниже */}
                     <Route path="/edit-carousel/:id" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} />
                     <Route path="/promos/new" element={<PrivateRoute><AddPromoPage /></PrivateRoute>} />
                     <Route path="/promos" element={<PromosPage />} />
@@ -133,17 +134,14 @@ function App() {
                     <Route path="/user-settings" element={<PrivateRoute><UserSettingsPage /></PrivateRoute>} />
                     <Route path="/category/:categoryId" element={<CategoryItemsPage />} />
                     <Route path="/edit-deal/:id" element={<PrivateRoute><EditDealPage /></PrivateRoute>} />
-                    {/* <Route path="/edit-carousel/:id" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} /> Был дубль */}
                     <Route path="/edit-promo/:id" element={<PrivateRoute><EditPromoPage /></PrivateRoute>} />
                     <Route path="/edit-sweepstakes/:id" element={<PrivateRoute><EditSweepstakesPage /></PrivateRoute>} />
-                    {/* <Route path="/sweepstakes/:id/edit" element={<PrivateRoute><EditSweepstakesPage /></PrivateRoute>} /> Был дубль */}
                     <Route path="/moderation" element={<PrivateRoute><ModerationPage /></PrivateRoute>} />
                     <Route path="/moderation/settings" element={<PrivateRoute><ModerationSettingsPage /></PrivateRoute>} />
                     <Route path="/user-subscriptions" element={<PrivateRoute><UserSubscriptionsPage /></PrivateRoute>} />
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
-		 <Route path="/facebook-data-deletion" element={<FacebookDataDeletionPage />} />
-
+		                <Route path="/facebook-data-deletion" element={<FacebookDataDeletionPage />} />
                   </Route>
                 </Routes>
               </LanguageProvider>
