@@ -1,31 +1,33 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'; // Добавлен useRef
-import { useLocation, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useGlobalState } from '../contexts/GlobalStateContext';
-import { supabase } from '../lib/supabase';
-import Tabs from '../components/deals/Tabs';
-import FilterBar from '../components/shared/FilterBar';
-import DealCard from '../components/deals/DealCard';
-import { DEAL_SETTINGS } from '../config/settings';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext"; // ИСПРАВЛЕНО: Вернули оригинальный путь
+import { useLanguage } from "../contexts/LanguageContext";
+import { useGlobalState } from "../contexts/GlobalStateContext";
+import { supabase } from "../lib/supabase";
+import Tabs from "../components/deals/Tabs";
+import FilterBar from "../components/shared/FilterBar";
+import DealCard from "../components/deals/DealCard";
+import { DEAL_SETTINGS } from "../config/settings";
 
 const ITEMS_PER_PAGE = 20;
 
 const formatRelativeTime = (date: Date) => {
   const now = new Date();
-  const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-  if (diffInMinutes < 1) return 'just now';
-  if (diffInMinutes < 5) return '1m';
-  if (diffInMinutes < 15) return '5m';
-  if (diffInMinutes < 30) return '30m';
-  if (diffInMinutes < 60) return '1h';
-  if (diffInMinutes < 120) return '1h';
+  const diffInMinutes = Math.floor(
+    (now.getTime() - date.getTime()) / (1000 * 60),
+  );
+  if (diffInMinutes < 1) return "just now";
+  if (diffInMinutes < 5) return "1m";
+  if (diffInMinutes < 15) return "5m";
+  if (diffInMinutes < 30) return "30m";
+  if (diffInMinutes < 60) return "1h";
+  if (diffInMinutes < 120) return "1h";
   if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
   return `${Math.floor(diffInMinutes / 1440)}d`;
 };
 
 const DealsPage: React.FC = () => {
-  const initialTab = sessionStorage.getItem('activeDealsTab') || 'hot';
+  const initialTab = sessionStorage.getItem("activeDealsTab") || "hot";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
@@ -39,187 +41,287 @@ const DealsPage: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const searchQuery = searchParams.get('q') || '';
+  const searchQuery = searchParams.get("q") || "";
   const { state, dispatch } = useGlobalState();
   const deals = state.deals.items;
 
   const loadDeals = useCallback(
     async (isInitial = false, pageToLoad = 1) => {
-      console.log(`loadDeals called: isInitial=${isInitial}, pageToLoad=${pageToLoad}, currentGlobalItemsCount=${state.deals.items.length}`);
+      console.log(
+        `loadDeals called: isInitial=${isInitial}, pageToLoad=${pageToLoad}, activeTab=${activeTab}, currentGlobalItemsCount=${state.deals.items.length}`,
+      );
       if (isInitial) {
         setLoading(true);
       } else {
         setFetchingMore(true);
       }
       setError(null);
-      // dispatch({ type: 'SET_DEALS_LOADING', payload: true }); // Эта линия может быть избыточной, если есть setLoading и setFetchingMore
 
       try {
         const from = (pageToLoad - 1) * ITEMS_PER_PAGE;
-        const to = pageToLoad * ITEMS_PER_PAGE - 1;
+        const to = from + ITEMS_PER_PAGE - 1;
 
-        const query = supabase
-          .from('get_deals_with_stats')
-          .select('*')
-          .not('type', 'eq', 'sweepstakes')
-          .order('updated_at', { ascending: false })
-          .range(from, to);
+        let query = supabase
+          .from("get_deals_with_stats")
+          .select("*")
+          .not("type", "eq", "sweepstakes");
 
+        // Apply tab-specific ordering and filtering directly in the Supabase query
+        if (activeTab === "hot") {
+          // Assuming 'is_hot' is a boolean column or you have a popularity threshold in your DB
+          query = query
+            .or(
+              `is_hot.eq.true,popularity.gte.${DEAL_SETTINGS.hotThreshold || 10}`,
+            )
+            .order("popularity", { ascending: false }) // Order hot deals by popularity
+            .order("updated_at", { ascending: false }); // Then by updated_at for ties
+        } else if (activeTab === "discussed") {
+          query = query
+            .order("comment_count", { ascending: false }) // Order by comment count
+            .order("updated_at", { ascending: false }); // Then by updated_at
+        } else {
+          // 'new' tab or default
+          query = query.order("created_at", { ascending: false }); // Order by creation date
+        }
+
+        // Apply category and store filters
+        if (selectedCategories.length > 0) {
+          query = query.in("category_id", selectedCategories);
+        }
+        if (selectedStores.length > 0) {
+          query = query.in("store_id", selectedStores);
+        }
+
+        // Apply user/admin status filters
         let favoriteIds: Set<string> = new Set();
         if (user) {
-          const { data: favoritesData } = await supabase.from('deal_favorites').select('deal_id').eq('user_id', user.id);
-          if (favoritesData) favoriteIds = new Set(favoritesData.map(fav => fav.deal_id));
+          const { data: favoritesData } = await supabase
+            .from("deal_favorites")
+            .select("deal_id")
+            .eq("user_id", user.id);
+          if (favoritesData)
+            favoriteIds = new Set(favoritesData.map((fav) => fav.deal_id));
         }
         let votedIds: Map<string, boolean> = new Map();
         if (user) {
-          const { data: votesData } = await supabase.from('deal_votes').select('deal_id, vote_type').eq('user_id', user.id);
-          if (votesData) votedIds = new Map(votesData.map(vote => [vote.deal_id, vote.vote_type]));
+          const { data: votesData } = await supabase
+            .from("deal_votes")
+            .select("deal_id, vote_type")
+            .eq("user_id", user.id);
+          if (votesData)
+            votedIds = new Map(
+              votesData.map((vote) => [vote.deal_id, vote.vote_type]),
+            );
         }
-        const { data: profile } = user ? await supabase.from('profiles').select('user_status').eq('id', user.id).single() : { data: null };
-        const isAdminOrModerator = ['admin', 'moderator', 'super_admin'].includes(profile?.user_status);
+        const { data: profile } = user
+          ? await supabase
+              .from("profiles")
+              .select("user_status")
+              .eq("id", user.id)
+              .single()
+          : { data: null };
+        const isAdminOrModerator = [
+          "admin",
+          "moderator",
+          "super_admin",
+        ].includes(profile?.user_status);
 
-        if (!user) query.in('status', ['published', 'approved']);
-        else if (!isAdminOrModerator) query.or(`status.in.(published,approved),user_id.eq.${user.id}`);
+        if (!user) query = query.in("status", ["published", "approved"]);
+        else if (!isAdminOrModerator)
+          query = query.or(
+            `status.in.(published,approved),user_id.eq.${user.id}`,
+          );
 
+        // Apply search query
         if (searchQuery) {
-          const terms = searchQuery.toLowerCase().split(' ').filter(Boolean);
+          const terms = searchQuery.toLowerCase().split(" ").filter(Boolean);
           if (terms.length) {
-            const filters = terms.map(term => `title.ilike.%${term}%,description.ilike.%${term}%,store_id.ilike.%${term}%`);
-            query.or(filters.join(','));
+            const filters = terms.map(
+              (term) =>
+                `title.ilike.%${term}%,description.ilike.%${term}%,store_id.ilike.%${term}%`,
+            );
+            query = query.or(filters.join(","));
           }
         }
 
+        // Apply pagination range
+        query = query.range(from, to);
+
         const { data, error: fetchError } = await query;
-        console.log('Supabase response:', { dataLength: data?.length, fetchError });
+        console.log("Supabase response:", {
+          dataLength: data?.length,
+          fetchError,
+        });
         if (fetchError) throw fetchError;
 
-        const enrichedDeals = (data || []).map(deal => ({
-          id: deal.id, title: deal.title, type: deal.type,
+        const enrichedDeals = (data || []).map((deal) => ({
+          id: deal.id,
+          title: deal.title,
+          type: deal.type,
           currentPrice: parseFloat(deal.current_price),
-          originalPrice: deal.original_price ? parseFloat(deal.original_price) : undefined,
-          store: { id: deal.store_id, name: deal.store_id }, category: { id: deal.category_id, name: deal.category_id },
-          image: deal.image_url || 'https://via.placeholder.com/400x300?text=No+Image',
-          postedAt: { relative: formatRelativeTime(new Date(deal.created_at)), exact: new Date(deal.created_at).toLocaleString() },
-          popularity: deal.popularity || 0, userVoteType: votedIds.get(deal.id),
-          comments: deal.comment_count || 0, isFavorite: favoriteIds.has(deal.id),
-          postedBy: {
-            id: deal.profile_id || 'anonymous', name: deal.display_name || deal.email?.split('@')[0] || 'Anonymous',
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(deal.display_name || deal.email?.split('@')[0] || 'Anonymous')}&background=random`
+          originalPrice: deal.original_price
+            ? parseFloat(deal.original_price)
+            : undefined,
+          store: { id: deal.store_id, name: deal.store_id },
+          category: { id: deal.category_id, name: deal.category_id },
+          image:
+            deal.image_url ||
+            "https://via.placeholder.com/400x300?text=No+Image",
+          postedAt: {
+            relative: formatRelativeTime(new Date(deal.created_at)),
+            exact: new Date(deal.created_at).toLocaleString(),
           },
-          description: deal.description, url: deal.deal_url, createdAt: new Date(deal.created_at),
-          is_hot: deal.is_hot, expires_at: deal.expires_at, status: deal.status
+          popularity: deal.popularity || 0,
+          userVoteType: votedIds.get(deal.id),
+          comments: deal.comment_count || 0,
+          isFavorite: favoriteIds.has(deal.id),
+          postedBy: {
+            id: deal.profile_id || "anonymous",
+            name: deal.display_name || deal.email?.split("@")[0] || "Anonymous",
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(deal.display_name || deal.email?.split("@")[0] || "Anonymous")}&background=random`,
+          },
+          description: deal.description,
+          url: deal.deal_url,
+          createdAt: new Date(deal.created_at),
+          is_hot: deal.is_hot,
+          expires_at: deal.expires_at,
+          status: deal.status,
         }));
 
-        const currentDeals = state.deals.items; // Получаем актуальные deals из state для объединения
-        const uniqueNewDeals = enrichedDeals.filter(d => !currentDeals.find(existing => existing.id === d.id));
+        dispatch({
+          type: "UPDATE_DEALS",
+          payload: { items: enrichedDeals, isInitial },
+        });
 
-        const updatedDeals = isInitial ? enrichedDeals : [...currentDeals, ...uniqueNewDeals];
-
-        dispatch({ type: 'SET_DEALS', payload: updatedDeals });
-        setHasMore(enrichedDeals.length === ITEMS_PER_PAGE);
-
+        const shouldHaveMore = enrichedDeals.length === ITEMS_PER_PAGE;
+        console.log(
+          `Setting hasMore to ${shouldHaveMore}. Received ${enrichedDeals.length} items, expected ${ITEMS_PER_PAGE}`,
+        );
+        setHasMore(shouldHaveMore);
       } catch (err) {
-        console.error('Error fetching deals:', err);
-        setError('Failed to load deals');
+        console.error("Error fetching deals:", err);
+        setError("Failed to load deals");
       } finally {
-        // dispatch({ type: 'SET_DEALS_LOADING', payload: false }); // Убрал, т.к. есть setLoading/setFetchingMore
         setLoading(false);
         setFetchingMore(false);
-        console.log(`loadDeals finished: loading=${false}, fetchingMore=${false}, hasMore=${hasMore}`);
+        console.log(`loadDeals finished: loading=false, fetchingMore=false`);
       }
     },
-    [user, searchQuery, dispatch, state.deals.items] // state.deals.items здесь нужен для корректного объединения
+    [
+      user,
+      searchQuery,
+      activeTab,
+      selectedCategories,
+      selectedStores,
+      dispatch,
+    ],
   );
 
-  // Используем useRef для хранения последней версии loadDeals
   const loadDealsRef = useRef(loadDeals);
   useEffect(() => {
     loadDealsRef.current = loadDeals;
   }, [loadDeals]);
 
-
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    sessionStorage.setItem('activeDealsTab', tab);
-    // Загрузка будет вызвана через useEffect, зависящий от activeTab
+    sessionStorage.setItem("activeDealsTab", tab);
   };
 
-  const handleFilterChange = (type: 'categories' | 'stores', ids: string[]) => {
-    if (type === 'categories') setSelectedCategories(ids);
+  const handleFilterChange = (type: "categories" | "stores", ids: string[]) => {
+    if (type === "categories") setSelectedCategories(ids);
     else setSelectedStores(ids);
-    // Загрузка будет вызвана через useEffect, зависящий от selectedCategories/selectedStores
   };
 
-  // useEffect для начальной загрузки / смены фильтров / табов
   useEffect(() => {
-    console.log('Effect for initial load / filter change triggered. Resetting to page 1.');
+    console.log(
+      "Effect for initial load / filter change triggered. Resetting to page 1.",
+    );
     setPage(1);
-    setHasMore(true); // Важно сбросить hasMore
-    // setLoading(true); // loadDealsRef.current(true, 1) это сделает
+    setHasMore(true);
     loadDealsRef.current(true, 1);
-  }, [activeTab, selectedCategories, selectedStores, location.key, searchQuery, user?.id]); // УБРАН loadDeals из зависимостей
+  }, [
+    activeTab,
+    selectedCategories,
+    selectedStores,
+    location.key,
+    searchQuery,
+    user?.id,
+  ]);
 
-  // useEffect для пагинации
   useEffect(() => {
-    if (page > 1) {
-      console.log(`Effect for pagination triggered for page ${page}. FetchingMore: ${fetchingMore}`);
-      // `WorkspaceingMore` устанавливается в `handleScroll`
-      // Вызываем loadDeals только если действительно нужно (hasMore) и уже идет процесс подгрузки (fetchingMore)
-      if (hasMore && fetchingMore) {
-        loadDealsRef.current(false, page);
-      } else if (!hasMore && fetchingMore) {
-        // Если fetchingMore все еще true, но грузить больше нечего, просто сбрасываем флаг
-        setFetchingMore(false);
-      }
+    if (page > 1 && fetchingMore) {
+      console.log(
+        `Effect for pagination triggered for page ${page}. FetchingMore: ${fetchingMore}, hasMore: ${hasMore}`,
+      );
+      loadDealsRef.current(false, page);
+    } else if (page > 1 && !fetchingMore) {
+      console.log(
+        `Page ${page}: fetchingMore is false, pagination load already completed. hasMore: ${hasMore}`,
+      );
     }
-  }, [page, hasMore, fetchingMore]); // УБРАН loadDeals, ЗАВИСИМ от page, hasMore, fetchingMore
+  }, [page, fetchingMore, hasMore]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Tab became visible. Reloading deals (page 1).');
+      if (document.visibilityState === "visible") {
+        console.log("Tab became visible. Reloading deals (page 1).");
         setPage(1);
         setHasMore(true);
         loadDealsRef.current(true, 1);
       }
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []); // УБРАН loadDeals
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   const handleScroll = useCallback(() => {
     if (
-      window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100 &&
-      hasMore && !fetchingMore && !loading
+      window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.offsetHeight - 100 &&
+      hasMore &&
+      !fetchingMore &&
+      !loading
     ) {
-      console.log('Scroll threshold hit, preparing to load more. Current page before increment:', page);
+      console.log(
+        "Scroll threshold hit, preparing to load more. Current page before increment:",
+        page,
+        "hasMore:",
+        hasMore,
+        "fetchingMore:",
+        fetchingMore,
+        "loading:",
+        loading,
+      );
       setFetchingMore(true);
-      setPage(prevPage => prevPage + 1);
+      setPage((prevPage) => {
+        const nextPage = prevPage + 1;
+        console.log("Setting page from", prevPage, "to", nextPage);
+        return nextPage;
+      });
     }
-  }, [hasMore, fetchingMore, loading, page]); // page добавлен для актуального лога
+  }, [hasMore, fetchingMore, loading, page]);
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
-  // Клиентская фильтрация и сортировка (без изменений)
-  const filteredDeals = deals.filter((deal) => {
-      if (selectedCategories.length && !selectedCategories.includes(deal.category.id)) return false;
-      if (selectedStores.length && !selectedStores.includes(deal.store.id)) return false;
-      if (activeTab === 'hot') return deal.is_hot || (deal.popularity || 0) >= (DEAL_SETTINGS.hotThreshold || 10);
-      if (activeTab === 'free') return deal.currentPrice === 0;
-      return true;
-    })
-    .sort((a, b) => {
-      if (activeTab === 'discussed') return (b.comments || 0) - (a.comments || 0) || b.createdAt.getTime() - a.createdAt.getTime();
-      return b.createdAt.getTime() - a.createdAt.getTime();
-    });
+  // Client-side sorting is still okay here as it's applied to the already fetched and filtered data.
+  // The 'hot' filtering is now done on the server, so no client-side 'hot' filter needed.
+  const displayedDeals = deals.sort((a, b) => {
+    if (activeTab === "discussed")
+      return (
+        (b.comments || 0) - (a.comments || 0) ||
+        b.createdAt.getTime() - a.createdAt.getTime()
+      );
+    return b.createdAt.getTime() - a.createdAt.getTime(); // Default sort for 'new' and 'hot' (if no specific hot sorting in DB)
+  });
 
   const translations = {
-    en: 'Nothing found for your query',
-    ru: 'Ничего не найдено по вашему запросу',
-    es: 'Nada encontrado para su consulta'
+    en: "Nothing found for your query",
+    ru: "Ничего не найдено по вашему запросу",
+    es: "Nada encontrado para su consulta",
   };
 
   return (
@@ -228,36 +330,57 @@ const DealsPage: React.FC = () => {
         We may get paid by brands for deals, including promoted items.
       </div>
       <Tabs activeTab={activeTab} onTabChange={handleTabChange} />
-      <FilterBar selectedCategories={selectedCategories} selectedStores={selectedStores} onFilterChange={handleFilterChange} />
+      <FilterBar
+        selectedCategories={selectedCategories}
+        selectedStores={selectedStores}
+        onFilterChange={handleFilterChange}
+      />
 
       {loading && page === 1 && !error ? (
-        <div className="flex justify-center items-center py-8" data-testid="main-loader">
+        <div
+          className="flex justify-center items-center py-8"
+          data-testid="main-loader"
+        >
           <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : error ? (
         <div className="text-red-500 text-center py-8">{error}</div>
-      ) : filteredDeals.length > 0 ? (
+      ) : displayedDeals.length > 0 ? (
         <div className="divide-y divide-gray-800">
-          {filteredDeals.map(deal => (
-            <DealCard key={deal.id} deal={deal} onVoteChange={() => {
-              console.log('Vote changed, reloading deals (page 1).');
-              setPage(1);
-              setHasMore(true);
-              loadDealsRef.current(true, 1); // Используем ref
-            }} />
+          {displayedDeals.map((deal) => (
+            <DealCard
+              key={deal.id}
+              deal={deal}
+              onVoteChange={() => {
+                console.log("Vote changed, reloading deals (page 1).");
+                setPage(1);
+                setHasMore(true);
+                loadDealsRef.current(true, 1);
+              }}
+            />
           ))}
           {fetchingMore && (
-             <div className="flex justify-center items-center py-4" data-testid="pagination-loader">
-               <div className="h-6 w-6 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-             </div>
+            <div
+              className="flex justify-center items-center py-4"
+              data-testid="pagination-loader"
+            >
+              <div className="h-6 w-6 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
           )}
         </div>
       ) : (
-        !loading && !fetchingMore && <div className="text-gray-400 text-center py-8">
-          {searchQuery
-            ? translations[t('locale') as keyof typeof translations] || translations.ru
-            : t('common.no_items_in_category', 'Нет элементов в выбранной категории')}
-        </div>
+        !loading &&
+        !fetchingMore && (
+          <div className="text-gray-400 text-center py-8">
+            {searchQuery
+              ? translations[t("locale") as keyof typeof translations] ||
+                translations.ru
+              : t(
+                  "common.no_items_in_category",
+                  "Нет элементов в выбранной категории",
+                )}
+          </div>
+        )
       )}
     </div>
   );

@@ -139,6 +139,8 @@ const PromosPage: React.FC = () => {
     }
   }, [page]);
 
+  const ITEMS_PER_PAGE = 20;
+
   const fetchPromoCodes = async () => {
     setLoading(true);
     try {
@@ -159,8 +161,7 @@ const PromosPage: React.FC = () => {
       let query = supabase
         .from("get_promos_with_stats")
         .select("*")
-        .order("updated_at", { ascending: false })
-        .limit(100);
+        .order("updated_at", { ascending: false });
 
       let favoriteIds: Set<string> = new Set();
       if (user) {
@@ -223,7 +224,10 @@ const PromosPage: React.FC = () => {
 
       query = query
         // .order('created_at', { ascending: false })
-        .range((page - 1) * 20, page * 20 - 1);
+        .range(
+          (page - 1) * ITEMS_PER_PAGE,
+          (page - 1) * ITEMS_PER_PAGE + ITEMS_PER_PAGE - 1,
+        );
 
       const { data, error } = await query;
 
@@ -243,10 +247,13 @@ const PromosPage: React.FC = () => {
           return {
             ...promo,
             user: {
-              id: promo.profiles?.id || "anonymous",
-              displayName,
-              avatarUrl,
-              email,
+              id: promo.profile_id || "anonymous",
+              displayName:
+                promo.display_name || promo.email?.split("@")[0] || "Anonymous",
+              avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                promo.display_name || promo.email?.split("@")[0] || "Anonymous",
+              )}&background=random`,
+              email: promo.email?.split("@")[0] || "Anonymous",
             },
             votes: promo.popularity || 0,
             comments: promo.comment_count || 0,
@@ -260,7 +267,7 @@ const PromosPage: React.FC = () => {
       } else {
         setPromoCodes((prev) => [...prev, ...promosWithVotes]);
       }
-      setHasMore(promosWithVotes.length === 20);
+      setHasMore(promosWithVotes.length === ITEMS_PER_PAGE);
     } catch (err: any) {
       console.error("Error fetching promo codes:", err);
       setError("Failed to load promo codes");
