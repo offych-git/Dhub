@@ -79,6 +79,10 @@ const DealsPage: React.FC = () => {
           query = query
             .order("comment_count", { ascending: false }) // Order by comment count
             .order("updated_at", { ascending: false }); // Then by updated_at
+        } else if (activeTab === "free") {
+          query = query
+            .eq("current_price", 0)
+            .order("created_at", { ascending: false }); // Order by creation date
         } else {
           // 'new' tab or default
           query = query.order("created_at", { ascending: false }); // Order by creation date
