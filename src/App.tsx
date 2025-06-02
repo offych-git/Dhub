@@ -37,6 +37,8 @@ import ModerationPage from './pages/ModerationPage';
 import ModerationSettingsPage from './pages/ModerationSettingsPage';
 import UserSubscriptionsPage from './pages/UserSubscriptionsPage';
 import SearchPage from './pages/SearchPage';
+import FacebookDataDeletionPage from './pages/FacebookDataDeletionPage';
+
 
 // <<< ДОБАВЛЕН ИМПОРТ (УБЕДИТЕСЬ, ЧТО ПУТЬ ВЕРНЫЙ) >>>
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'; 
@@ -140,6 +142,8 @@ function App() {
                     <Route path="/user-subscriptions" element={<PrivateRoute><UserSubscriptionsPage /></PrivateRoute>} />
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
+		 <Route path="/facebook-data-deletion" element={<FacebookDataDeletionPage />} />
+
                   </Route>
                 </Routes>
               </LanguageProvider>
