@@ -18,7 +18,7 @@ const EditDealPage: React.FC = () => {
   const { dispatch } = useGlobalState();
   const { role } = useAdmin();
   const { addToModerationQueue } = useModeration();
-  const isFromModeration = location.pathname.includes('moderation') || location.search.includes('from=moderation');
+  const isFromModeration = new URLSearchParams(location.search).get('from') === 'moderation';
 
   // Логи для отладки
   console.log("EditDealPage - Компонент инициализирован с параметрами:");
