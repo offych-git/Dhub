@@ -188,10 +188,11 @@ const DealsPage: React.FC = () => {
           status: deal.status,
         }));
 
-        dispatch({
-          type: "UPDATE_DEALS",
-          payload: { items: enrichedDeals, isInitial },
-        });
+        const currentDeals = state.deals.items;
+        const uniqueNewDeals = enrichedDeals.filter(d => !currentDeals.find(existing => existing.id === d.id));
+        const updatedDeals = isInitial ? enrichedDeals : [...currentDeals, ...uniqueNewDeals];
+
+        dispatch({ type: 'SET_DEALS', payload: updatedDeals });
 
         const shouldHaveMore = enrichedDeals.length === ITEMS_PER_PAGE;
         console.log(
