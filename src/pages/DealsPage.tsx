@@ -43,7 +43,7 @@ const DealsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("q") || "";
   const { state, dispatch } = useGlobalState();
-  const deals = state.deals.items;
+  // const deals = state.deals.items;
 
   const loadDeals = useCallback(
     async (isInitial = false, pageToLoad = 1) => {
@@ -192,11 +192,20 @@ const DealsPage: React.FC = () => {
           status: deal.status,
         }));
 
-        const currentDeals = state.deals.items;
-        const uniqueNewDeals = enrichedDeals.filter(d => !currentDeals.find(existing => existing.id === d.id));
-        const updatedDeals = isInitial ? enrichedDeals : [...currentDeals, ...uniqueNewDeals];
+        if (!enrichedDeals.length && !isInitial) {
+          console.log("Received 0 new deals on pagination — skipping state update");
+          setHasMore(false);
+          return;
+        }
 
-        dispatch({ type: 'SET_DEALS', payload: updatedDeals });
+        const currentDeals = state.deals.items;
+        const updatedDeals = isInitial ? enrichedDeals : [...currentDeals, ...enrichedDeals];
+
+        if (isInitial) {
+          dispatch({ type: "SET_DEALS", payload: enrichedDeals });
+        } else {
+          dispatch({ type: "APPEND_DEALS", payload: enrichedDeals });
+        }
 
         const shouldHaveMore = enrichedDeals.length === ITEMS_PER_PAGE;
         console.log(
@@ -314,7 +323,7 @@ const DealsPage: React.FC = () => {
 
   // Client-side sorting is still okay here as it's applied to the already fetched and filtered data.
   // The 'hot' filtering is now done on the server, so no client-side 'hot' filter needed.
-  const displayedDeals = deals.sort((a, b) => {
+  const displayedDeals = state.deals.items.sort((a, b) => {
     if (activeTab === "discussed")
       return (
         (b.comments || 0) - (a.comments || 0) ||
