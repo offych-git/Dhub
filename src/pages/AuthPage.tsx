@@ -92,7 +92,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         const oauthAccessToken = hashParams.get('access_token'); 
 
         if (oauthAccessToken) { 
-          console.log('[WEBSITE /auth LOG] Found OAuth token in hash');
+          console.log('[WEBSITE /auth LOG] Found OAuth token in hash, redirecting to home');
+          navigate('/', { replace: true });
         }
       }
     };
