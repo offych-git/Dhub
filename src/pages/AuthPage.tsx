@@ -12,7 +12,7 @@ interface AuthPageProps {
 const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signUp, signInWithFacebook, resetPassword, updatePassword } = useAuth();
+  const { signIn, signUp, signInWithFacebook, resetPassword, updatePassword, user } = useAuth(); // Добавил user из useAuth для проверки сессии
   const [isSignUp, setIsSignUp] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(isResetPasswordPage);
   const [email, setEmail] = useState('');
@@ -26,22 +26,22 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const [configValid, setConfigValid] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
+  // useEffect для установки заголовка и отправки сообщения в React Native
   useEffect(() => {
-    const newTitle = 'Страница Авторизации'; // Можете использовать ваш обычный заголовок для этой страницы
-    document.title = newTitle; 
-    console.log(`[WEBSITE /auth LOG] Компонент AuthPage.tsx смонтирован. Title установлен на: "${newTitle}"`);
+    const newTitle = 'Страница Авторизации';
+    document.title = newTitle;
+    console.log(`[WEBSITE /auth LOG] Компонент AuthPage.tsx смонтирован. Title установлен на: "${newTitle}"`); //
 
-    // Отправка APP_CONTENT_READY в React Native приложение
     if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
       const timerId = setTimeout(() => {
         console.log('[WEBSITE /auth LOG] Отправка APP_CONTENT_READY из AuthPage');
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'APP_CONTENT_READY' }));
-      }, 150); // Небольшая задержка
-      // return () => clearTimeout(timerId); 
+      }, 150);
+      // return () => clearTimeout(timerId); // Закомментировано, так как в оригинале тоже закомментировано
     }
-  }, []); 
+  }, []);
 
-  // Check for recovery token or signup confirmation on page load
+  // useEffect для проверки специальных потоков (сброс пароля, OAuth callback)
   useEffect(() => {
     const checkForSpecialFlows = async () => {
       const searchParams = new URLSearchParams(window.location.search);
@@ -56,6 +56,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         isResetPage: isResetPasswordPage
       });
 
+      // Логика подтверждения регистрации
       if (type === 'signup') {
         try {
           console.log('[WEBSITE /auth LOG] Detected signup confirmation flow');
@@ -65,12 +66,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
               navigate('/profile', { replace: true });
             }, 1500);
           }, 500);
-          return;
+          return; // Важно выйти, чтобы не обрабатывать далее как OAuth
         } catch (err) {
           console.error('[WEBSITE /auth LOG] Error handling signup flow:', err);
           setError('Произошла ошибка при подтверждении регистрации.');
         }
       }
+      // Логика сброса пароля
       else if (token && type === 'recovery') {
         try {
           setIsResetPassword(true);
@@ -87,39 +89,75 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
           setError('Произошла ошибка при обработке ссылки сброса пароля.');
         }
       }
+      // ОБНОВЛЕННАЯ ЛОГИКА ДЛЯ ОБРАБОТКИ OAUTH CALLBACK
       else if (window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const oauthAccessToken = hashParams.get('access_token'); 
+        const oauthAccessToken = hashParams.get('access_token');
+        // Возможно, вам понадобится и refresh_token, но Supabase SDK обычно обрабатывает его сам
+        // const oauthRefreshToken = hashParams.get('refresh_token');
 
-        if (oauthAccessToken) { 
-          console.log('[WEBSITE /auth LOG] Found OAuth token in hash, redirecting to home');
-          navigate('/', { replace: true });
+        if (oauthAccessToken) {
+          console.log('[WEBSITE /auth LOG] Found OAuth token in hash, attempting to verify session.'); //
+          setLoading(true);
+          try {
+            // Supabase SDK автоматически парсит hash и устанавливает сессию.
+            // Нам нужно просто убедиться, что сессия установлена.
+            // Лучший способ - дождаться обновления состояния через onAuthStateChange
+            // или явно запросить текущую сессию.
+
+            // Дожидаемся, пока Supabase обработает токены из URL-хеша и установит сессию
+            // Supabase SDK обычно делает это ОЧЕНЬ быстро.
+            // Дадим ему небольшую задержку, чтобы он успел это сделать,
+            // и затем проверим состояние сессии.
+            setTimeout(async () => {
+              const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+              if (session) {
+                console.log('[WEBSITE /auth LOG] Supabase session successfully established from OAuth callback. Redirecting to home.');
+                setSuccessMessage('Вход через Facebook успешно выполнен!');
+                // Чистим хэш, чтобы избежать повторной обработки при обновлении страницы
+                window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                navigate('/', { replace: true }); // Перенаправляем на главную страницу
+              } else if (sessionError) {
+                console.error('[WEBSITE /auth LOG] Error getting Supabase session after OAuth:', sessionError);
+                setError('Ошибка при установке сессии после Facebook входа: ' + sessionError.message);
+                // Чистим хэш
+                window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                navigate('/auth', { replace: true }); // Возвращаем на страницу авторизации при ошибке
+              } else {
+                console.warn('[WEBSITE /auth LOG] OAuth token found, but Supabase session not immediately established.'); //
+                setError('Вход через Facebook не удался. Пожалуйста, попробуйте снова.'); //
+                // Чистим хэш
+                window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                navigate('/auth', { replace: true }); //
+              }
+              setLoading(false);
+            }, 100); // Небольшая задержка, чтобы дать Supabase время обработать
+          } catch (err: any) {
+            console.error('[WEBSITE /auth LOG] Error processing OAuth token:', err);
+            setError('Произошла ошибка при входе через Facebook: ' + (err.message || 'Неизвестная ошибка'));
+            setLoading(false);
+            // Чистим хэш
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+            navigate('/auth', { replace: true });
+          }
         }
       }
     };
-    checkForSpecialFlows();
-  }, [location, navigate, isResetPasswordPage]);
 
+    checkForSpecialFlows();
+  }, [location, navigate, isResetPasswordPage, user]); // Добавил user в зависимости, чтобы реагрировать на изменения в AuthContext
+
+  // useEffect для получения токена из navigation state
   useEffect(() => {
     if (location.state?.token) {
-      console.log('[WEBSITE /auth LOG] Found token in navigation state');
+      console.log('[WEBSITE /auth LOG] Found token in navigation state'); //
       setAccessToken(location.state.token);
       setIsResetPassword(true);
     }
   }, [location.state]);
 
-  /* Закомментированный useEffect для touchmove 
-  useEffect(() => {
-    const handleTouchMove = (event: TouchEvent) => {
-      // ... код ...
-    };
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    return () => {
-      document.removeEventListener('touchmove', handleTouchMove);
-    };
-  }, []);
-  */
-
+  // useEffect для валидации конфигурации Supabase и проверки статуса аутентификации
   useEffect(() => {
     const validateConfig = async () => {
       const configResult = validateSupabaseConfig();
@@ -130,12 +168,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         return;
       }
       const authStatus = await checkAuthStatus();
-      console.log('[WEBSITE /auth LOG] Auth status check (validateConfig):', authStatus);
+      console.log('[WEBSITE /auth LOG] Auth status check (validateConfig):', authStatus); //
     };
     validateConfig();
   }, []);
 
   const validateForm = () => {
+    // ... (без изменений) ...
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
@@ -167,6 +206,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   };
 
   const handleUpdatePassword = async () => {
+    // ... (без изменений) ...
     setError(null);
     setSuccessMessage(null);
     if (!validateForm()) {
@@ -175,7 +215,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     setLoading(true);
     try {
       console.log('Attempting to update password with token');
-      await updatePassword(password); 
+      await updatePassword(password);
       setSuccessMessage('Ваш пароль был успешно обновлен');
       setTimeout(() => {
         setIsResetPassword(false);
@@ -191,6 +231,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
+    // ... (без изменений) ...
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
@@ -236,6 +277,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         try {
           const signInResult = await signIn(email, password);
           console.log('Sign in successful:', signInResult);
+          // navigate('/') не нужен здесь, так как AuthContext должен это делать
+          // при изменении состояния аутентификации.
         } catch (signInErr: any) {
           console.error('Specific sign in error:', signInErr);
           if (signInErr.message?.includes('incorrect') ||
@@ -268,10 +311,17 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   };
 
   const handleFacebookAuth = async () => {
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
     try {
       await signInWithFacebook();
+      // После вызова signInWithFacebook(), Supabase перенаправит пользователя.
+      // Дальнейшая логика обработки будет в useEffect, когда пользователь вернется.
     } catch (err: any) {
-      setError(err.message);
+      console.error('Facebook Auth initiation error:', err);
+      setError(err.message || 'Не удалось начать аутентификацию через Facebook.');
+      setLoading(false);
     }
   };
 
@@ -312,11 +362,17 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         {!isResetPassword && (
           <button
             onClick={handleFacebookAuth}
-            className="w-full bg-blue-600 text-white py-3 px-4
-rounded-md font-medium flex items-center justify-center mb-4"
+            disabled={loading} // Отключаем кнопку при загрузке
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium flex items-center justify-center mb-4"
           >
-            <Facebook className="h-5 w-5 mr-2" />
-            Продолжить с Facebook
+            {loading ? (
+              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <>
+                <Facebook className="h-5 w-5 mr-2" />
+                Продолжить с Facebook
+              </>
+            )}
           </button>
         )}
 
@@ -437,8 +493,7 @@ rounded-md font-medium flex items-center justify-center mb-4"
                   id="remember-me"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-orange-500 rounded border-gray-700
-bg-gray-800"
+                  className="h-4 w-4 text-orange-500 rounded border-gray-700 bg-gray-800"
                 />
                 <label htmlFor="remember-me" className="ml-2 text-gray-400">
                   Запомнить меня
