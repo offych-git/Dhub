@@ -11,7 +11,7 @@ import {
   Shield,
   Info,
 } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext"; // Используем useAuth для получения user
+import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAdmin } from "../hooks/useAdmin";
@@ -33,14 +33,14 @@ const ModerationCount: React.FC = () => {
 };
 
 const ProfilePage: React.FC = () => {
-  const { user } = useAuth(); // Получаем user из AuthContext
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [originalName, setOriginalName] = useState("");
   const [savedItemsCount, setSavedItemsCount] = useState(0);
-  const [profile, setProfile] = useState<any>(null); // Для хранения всего объекта профиля
+  const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({
     dealsCount: 0,
     promosCount: 0,
@@ -72,7 +72,8 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const calculateUserStatus = async (stats: {
+  // ИСПРАВЛЕНО: Обернули calculateUserStatus в useCallback
+  const calculateUserStatus = useCallback(async (stats: {
     dealsCount: number;
     commentsCount: number;
   }) => {
@@ -106,14 +107,12 @@ const ProfilePage: React.FC = () => {
       console.error("Error calculating user status:", error);
       return "Newcomer";
     }
-  };
+  }, [user, supabase]); // Зависимости для useCallback: user и supabase
 
-  // useEffect для вызова loadUserProfile
   useEffect(() => {
     if (user) {
       loadUserProfile();
     } else {
-      // Сброс данных профиля, если пользователь не залогинен
       setDisplayName("");
       setOriginalName("");
       setProfile(null);
@@ -121,7 +120,7 @@ const ProfilePage: React.FC = () => {
       setStats({ dealsCount: 0, promosCount: 0, commentsCount: 0 });
       setSavedItemsCount(0);
     }
-  }, [user]); // Зависимость от user
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -187,11 +186,8 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  // loadUserProfile в ProfilePage теперь только ЧИТАЕТ.
-  // Инициализация профиля перенесена в AuthPage.tsx
   const loadUserProfile = useCallback(async () => {
     if (!user?.id) {
-      // Уже обработано в useEffect, но для безопасности
       setDisplayName('Гость');
       setOriginalName('Гость');
       setProfile(null);
@@ -202,28 +198,25 @@ const ProfilePage: React.FC = () => {
     try {
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("display_name, user_status, email") // Добавили email для полноты данных, если нужно
+        .select("display_name, user_status, email")
         .eq("id", user.id)
-        .maybeSingle(); // Используем maybeSingle, чтобы избежать ошибок при отсутствии профиля
+        .maybeSingle();
 
-      // Если есть ошибка, отличная от отсутствия строк
       if (profileError && profileError.code) {
         console.error("Error loading profile from DB in ProfilePage:", profileError);
-        throw profileError; // Пробрасываем реальные ошибки
+        throw profileError;
       }
 
-      // Определяем отображаемое имя (приоритет: из БД -> из user_metadata -> из email)
       const name = profileData?.display_name 
-                   || user.user_metadata?.full_name // Имя от Facebook/OAuth
-                   || user.user_metadata?.name // Альтернативное имя от OAuth
+                   || user.user_metadata?.full_name 
+                   || user.user_metadata?.name 
                    || user.email?.split("@")[0] 
                    || '';
 
-      setProfile(profileData || null); // profileData может быть null, если профиля нет
+      setProfile(profileData || null);
       setDisplayName(name);
       setOriginalName(name);
 
-      // Логика установки userStatus (админ/модератор)
       if (profileData?.user_status === "admin" || profileData?.user_status === "super_admin") {
         console.log("User is admin or super_admin:", profileData.user_status);
         setUserStatus("Admin");
@@ -231,11 +224,9 @@ const ProfilePage: React.FC = () => {
         console.log("User is moderator:", profileData.user_status);
         setUserStatus("Moderator");
       }
-      // Если не админ/модератор, статус будет рассчитан в loadUserStats
 
     } catch (err: any) {
       console.error("Catch error loading profile in ProfilePage:", err);
-      // Fallback на случай общей ошибки загрузки профиля
       const fallbackName = user?.user_metadata?.full_name 
                            || user?.user_metadata?.name 
                            || user?.email?.split('@')[0] 
@@ -245,8 +236,7 @@ const ProfilePage: React.FC = () => {
       setProfile(null);
       setUserStatus('Ошибка загрузки');
     }
-  }, [user, supabase]); // Зависимости для useCallback
-
+  }, [user, supabase]);
 
   const loadUserStats = async () => {
     if (!user) return;
@@ -279,7 +269,7 @@ const ProfilePage: React.FC = () => {
       };
 
       setStats(newStats);
-      const status = await calculateUserStatus(newStats);
+      const status = await calculateUserStatus(newStats); // calculateUserStatus теперь стабилен
       setUserStatus(status);
     } catch (err) {
       console.error("Error loading user stats:", err);
@@ -290,7 +280,6 @@ const ProfilePage: React.FC = () => {
     setIsEditingName(true);
   };
 
-  // handleNameSave остается, так как он обновляет существующее имя
   const handleNameSave = async () => {
     if (!user) return;
 
@@ -341,6 +330,9 @@ const ProfilePage: React.FC = () => {
       }
     }
   };
+  
+  // Функция handleSendTestEmail и импорт sendNotificationEmail удалены, как и кнопка в JSX
+
 
   return (
     <div className="pb-8 pt-0 bg-gray-900 min-h-screen">
@@ -435,6 +427,9 @@ const ProfilePage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Тестовая кнопка для EMAIL удалена */}
+
 
         <div className="bg-gray-800 rounded-lg p-4 mb-6">
           <div className="grid grid-cols-2 gap-4">
