@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext'; // Убедитесь, что путь правильный
-import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug'; // Убедитесь, что путь правильный
-import { supabase } from '../lib/supabase'; // Убедитесь, что путь правильный
+import { useAuth } from '../contexts/AuthContext';
+import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug';
+import { supabase } from '../lib/supabase';
 
 interface AuthPageProps {
   isResetPasswordPage?: boolean;
@@ -12,7 +12,7 @@ interface AuthPageProps {
 const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signUp, signInWithFacebook, resetPassword, updatePassword, user } = useAuth(); // Добавил user из useAuth для проверки сессии
+  const { signIn, signUp, signInWithFacebook, resetPassword, updatePassword, user } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(isResetPasswordPage);
   const [email, setEmail] = useState('');
@@ -26,22 +26,19 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const [configValid, setConfigValid] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  // useEffect для установки заголовка и отправки сообщения в React Native
   useEffect(() => {
     const newTitle = 'Страница Авторизации';
     document.title = newTitle;
-    console.log(`[WEBSITE /auth LOG] Компонент AuthPage.tsx смонтирован. Title установлен на: "${newTitle}"`); //
+    console.log(`[WEBSITE /auth LOG] Компонент AuthPage.tsx смонтирован. Title установлен на: "${newTitle}"`);
 
     if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
       const timerId = setTimeout(() => {
         console.log('[WEBSITE /auth LOG] Отправка APP_CONTENT_READY из AuthPage');
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'APP_CONTENT_READY' }));
       }, 150);
-      // return () => clearTimeout(timerId); // Закомментировано, так как в оригинале тоже закомментировано
     }
   }, []);
 
-  // useEffect для проверки специальных потоков (сброс пароля, OAuth callback)
   useEffect(() => {
     const checkForSpecialFlows = async () => {
       const searchParams = new URLSearchParams(window.location.search);
@@ -56,7 +53,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         isResetPage: isResetPasswordPage
       });
 
-      // Логика подтверждения регистрации
       if (type === 'signup') {
         try {
           console.log('[WEBSITE /auth LOG] Detected signup confirmation flow');
@@ -66,14 +62,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
               navigate('/profile', { replace: true });
             }, 1500);
           }, 500);
-          return; // Важно выйти, чтобы не обрабатывать далее как OAuth
+          return;
         } catch (err) {
           console.error('[WEBSITE /auth LOG] Error handling signup flow:', err);
           setError('Произошла ошибка при подтверждении регистрации.');
         }
-      }
-      // Логика сброса пароля
-      else if (token && type === 'recovery') {
+      } else if (token && type === 'recovery') {
         try {
           setIsResetPassword(true);
           setAccessToken(token);
@@ -88,56 +82,110 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
           console.error('[WEBSITE /auth LOG] Error handling recovery flow:', err);
           setError('Произошла ошибка при обработке ссылки сброса пароля.');
         }
-      }
-      // ОБНОВЛЕННАЯ ЛОГИКА ДЛЯ ОБРАБОТКИ OAUTH CALLBACK
-      else if (window.location.hash) {
+      } else if (window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const oauthAccessToken = hashParams.get('access_token');
-        // Возможно, вам понадобится и refresh_token, но Supabase SDK обычно обрабатывает его сам
-        // const oauthRefreshToken = hashParams.get('refresh_token');
 
         if (oauthAccessToken) {
-          console.log('[WEBSITE /auth LOG] Found OAuth token in hash, attempting to verify session.'); //
+          console.log('[WEBSITE /auth LOG] Found OAuth token in hash, attempting to verify session.');
           setLoading(true);
           try {
-            // Supabase SDK автоматически парсит hash и устанавливает сессию.
-            // Нам нужно просто убедиться, что сессия установлена.
-            // Лучший способ - дождаться обновления состояния через onAuthStateChange
-            // или явно запросить текущую сессию.
-
-            // Дожидаемся, пока Supabase обработает токены из URL-хеша и установит сессию
-            // Supabase SDK обычно делает это ОЧЕНЬ быстро.
-            // Дадим ему небольшую задержку, чтобы он успел это сделать,
-            // и затем проверим состояние сессии.
             setTimeout(async () => {
               const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-              if (session) {
-                console.log('[WEBSITE /auth LOG] Supabase session successfully established from OAuth callback. Redirecting to home.');
+              if (session && session.user) {
+                console.log('[WEBSITE /auth LOG] Supabase session successfully established from OAuth callback. User ID:', session.user.id);
                 setSuccessMessage('Вход через Facebook успешно выполнен!');
-                // Чистим хэш, чтобы избежать повторной обработки при обновлении страницы
+
+                // --- НАЧАЛО НОВОЙ ЛОГИКИ ИНИЦИАЛИЗАЦИИ ПРОФИЛЯ ---
+                console.log('--- AuthPage: Запуск инициализации профиля после OAuth ---');
+                try {
+                  const currentUser = session.user;
+                  const { data: profileData, error: profileFetchError } = await supabase
+                    .from('profiles')
+                    .select('display_name, email, user_status')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                  if (profileFetchError && profileFetchError.code !== 'PGRST116') {
+                    console.error('--- AuthPage: Ошибка при получении профиля для инициализации:', profileFetchError);
+                    throw profileFetchError;
+                  }
+
+                  if (profileData) {
+                    console.log('--- AuthPage: Профиль уже существует для пользователя', currentUser.id);
+                  } else {
+                    console.log('--- AuthPage: Профиль не найден, создаем новый для пользователя', currentUser.id);
+
+                    const nameFromFacebook = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name;
+                    const nameFromEmail = currentUser.email?.split('@')[0];
+                    let initialDisplayName = 'Пользователь';
+
+                    if (nameFromFacebook) {
+                      initialDisplayName = nameFromFacebook;
+                    } else if (nameFromEmail) {
+                      initialDisplayName = nameFromEmail;
+                    }
+
+                    if (!currentUser.email) {
+                        console.error('--- AuthPage: ОШИБКА: email пользователя отсутствует для создания профиля.');
+                        setError('Не удалось создать профиль: email не предоставлен.');
+                        setLoading(false);
+                        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                        navigate('/auth', { replace: true });
+                        return;
+                    }
+
+                    console.log(`--- AuthPage: Создание профиля с именем: "${initialDisplayName}", email: "${currentUser.email}"`);
+
+                    const { error: upsertError } = await supabase
+                      .from('profiles')
+                      .upsert({ 
+                        id: currentUser.id, 
+                        display_name: initialDisplayName, 
+                        email: currentUser.email 
+                      }, { onConflict: 'id' });
+
+                    if (upsertError) {
+                      console.error('--- AuthPage: ОШИБКА UPSERT при создании профиля:', upsertError);
+                      setError('Ошибка при создании профиля: ' + upsertError.message);
+                      setLoading(false);
+                      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                      navigate('/auth', { replace: true });
+                      return;
+                    } else {
+                      console.log('--- AuthPage: Профиль успешно создан в базе данных для пользователя', currentUser.id);
+                    }
+                  }
+                } catch (profileInitError) {
+                  console.error('--- AuthPage: Критическая ошибка инициализации профиля:', profileInitError);
+                  setError('Произошла критическая ошибка при инициализации профиля.');
+                  setLoading(false);
+                  window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                  navigate('/auth', { replace: true });
+                  return;
+                }
+                // --- КОНЕЦ НОВОЙ ЛОГИКИ ИНИЦИАЛИЗАЦИИ ПРОФИЛЯ ---
+
                 window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                navigate('/', { replace: true }); // Перенаправляем на главную страницу
+                navigate('/', { replace: true });
               } else if (sessionError) {
                 console.error('[WEBSITE /auth LOG] Error getting Supabase session after OAuth:', sessionError);
                 setError('Ошибка при установке сессии после Facebook входа: ' + sessionError.message);
-                // Чистим хэш
                 window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                navigate('/auth', { replace: true }); // Возвращаем на страницу авторизации при ошибке
+                navigate('/auth', { replace: true });
               } else {
-                console.warn('[WEBSITE /auth LOG] OAuth token found, but Supabase session not immediately established.'); //
-                setError('Вход через Facebook не удался. Пожалуйста, попробуйте снова.'); //
-                // Чистим хэш
+                console.warn('[WEBSITE /auth LOG] OAuth token found, but Supabase session not immediately established.');
+                setError('Вход через Facebook не удался. Пожалуйста, попробуйте снова.');
                 window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                navigate('/auth', { replace: true }); //
+                navigate('/auth', { replace: true });
               }
               setLoading(false);
-            }, 100); // Небольшая задержка, чтобы дать Supabase время обработать
+            }, 100);
           } catch (err: any) {
             console.error('[WEBSITE /auth LOG] Error processing OAuth token:', err);
             setError('Произошла ошибка при входе через Facebook: ' + (err.message || 'Неизвестная ошибка'));
             setLoading(false);
-            // Чистим хэш
             window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
             navigate('/auth', { replace: true });
           }
@@ -146,18 +194,16 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     };
 
     checkForSpecialFlows();
-  }, [location, navigate, isResetPasswordPage, user]); // Добавил user в зависимости, чтобы реагрировать на изменения в AuthContext
+  }, [location, navigate, isResetPasswordPage, user]);
 
-  // useEffect для получения токена из navigation state
   useEffect(() => {
     if (location.state?.token) {
-      console.log('[WEBSITE /auth LOG] Found token in navigation state'); //
+      console.log('[WEBSITE /auth LOG] Found token in navigation state');
       setAccessToken(location.state.token);
       setIsResetPassword(true);
     }
   }, [location.state]);
 
-  // useEffect для валидации конфигурации Supabase и проверки статуса аутентификации
   useEffect(() => {
     const validateConfig = async () => {
       const configResult = validateSupabaseConfig();
@@ -168,13 +214,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         return;
       }
       const authStatus = await checkAuthStatus();
-      console.log('[WEBSITE /auth LOG] Auth status check (validateConfig):', authStatus); //
+      console.log('[WEBSITE /auth LOG] Auth status check (validateConfig):', authStatus);
     };
     validateConfig();
   }, []);
 
   const validateForm = () => {
-    // ... (без изменений) ...
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
@@ -206,7 +251,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   };
 
   const handleUpdatePassword = async () => {
-    // ... (без изменений) ...
     setError(null);
     setSuccessMessage(null);
     if (!validateForm()) {
@@ -231,7 +275,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
-    // ... (без изменений) ...
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
@@ -277,8 +320,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         try {
           const signInResult = await signIn(email, password);
           console.log('Sign in successful:', signInResult);
-          // navigate('/') не нужен здесь, так как AuthContext должен это делать
-          // при изменении состояния аутентификации.
         } catch (signInErr: any) {
           console.error('Specific sign in error:', signInErr);
           if (signInErr.message?.includes('incorrect') ||
@@ -316,8 +357,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     setSuccessMessage(null);
     try {
       await signInWithFacebook();
-      // После вызова signInWithFacebook(), Supabase перенаправит пользователя.
-      // Дальнейшая логика обработки будет в useEffect, когда пользователь вернется.
     } catch (err: any) {
       console.error('Facebook Auth initiation error:', err);
       setError(err.message || 'Не удалось начать аутентификацию через Facebook.');
@@ -330,7 +369,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     setSuccessMessage(null);
   };
 
-  // <<< ВОЗВРАЩАЕМ ВАШ ОРИГИНАЛЬНЫЙ JSX ДЛЯ СТРАНИЦЫ АВТОРИЗАЦИИ >>>
   return (
     <div className="min-h-screen bg-gray-900 px-4 py-8">
       <div className="max-w-md mx-auto">
@@ -362,7 +400,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         {!isResetPassword && (
           <button
             onClick={handleFacebookAuth}
-            disabled={loading} // Отключаем кнопку при загрузке
+            disabled={loading}
             className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium flex items-center justify-center mb-4"
           >
             {loading ? (
