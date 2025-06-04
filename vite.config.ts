@@ -10,4 +10,7 @@ export default defineConfig({
   preview: {
     historyApiFallback: true,
   },
+  build: {
+    sourcemap: true, 
+  },
 });
