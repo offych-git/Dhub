@@ -1000,7 +1000,7 @@ useEffect(() => {
                <button
                 type="submit" // Важно для отправки формы из этого места, если футер скрыт
                 disabled={loading || !isValid}
-                className={`w-full mt-4 py-3 rounded-md font-medium flex items-center justify-center sm:hidden ${ /* Скрываем на sm и больше, если есть футер */ }
+                className={`w-full mt-4 py-3 rounded-md font-medium flex items-center justify-center sm:hidden ${ /* Скрываем на sm и больше, если есть футер */ ''}
                   isValid ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}
                 // onClick={handleSubmit} // onClick на кнопке типа submit не обязателен, если есть form onSubmit
