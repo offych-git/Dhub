@@ -597,7 +597,7 @@ const UserPostedItemsPage: React.FC = () => {
                     <div className="text-center text-gray-500 py-8">
                       No deals posted yet.{" "}
                       <button
-                        onClick={() => navigate("/add-deal")}
+                        onClick={() => navigate("/deals/new-carousel")}
                         className="text-orange-500 hover:underline"
                       >
                         Post one!
@@ -619,7 +619,7 @@ const UserPostedItemsPage: React.FC = () => {
                     <div className="text-center text-gray-500 py-8">
                       No sweepstakes posted yet.{" "}
                       <button
-                        onClick={() => navigate("/add-sweepstakes")}
+                        onClick={() => navigate("/sweepstakes/new")}
                         className="text-orange-500 hover:underline"
                       >
                         Post one!
@@ -786,7 +786,7 @@ const UserPostedItemsPage: React.FC = () => {
                     <div className="text-center text-gray-500 py-8">
                       No promos posted yet.{" "}
                       <button
-                        onClick={() => navigate("/add-promo")}
+                        onClick={() => navigate("/promos/new")}
                         className="text-orange-500 hover:underline"
                       >
                         Post one!
