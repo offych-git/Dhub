@@ -16,9 +16,10 @@ interface AddDealPageProps {
   isEditing?: boolean;
   dealId?: string;
   initialData?: any;
+  autoApprove?: boolean;
 }
 
-const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, initialData }) => {
+const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, initialData, autoApprove = false }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { dispatch } = useGlobalState(); // Added dispatch
@@ -508,6 +509,38 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
                 if (newDealId) {
                   console.log('Добавляем сделку в очередь модерации:', newDealId);
                   await addToModerationQueue(newDealId, 'deal');
+                }
+              }
+
+              // If autoApprove is true, update the status to approved and add moderator info
+              if (autoApprove) {
+                dealData.status = "approved";
+                dealData.moderator_id = user.id;
+                dealData.moderated_at = new Date().toISOString();
+
+                // Mark deals as stale before updating
+                if (dispatch) {
+                  dispatch({ type: 'MARK_DEALS_STALE' });
+                }
+                result = await supabase
+                  .from('deals')
+                  .update(dealData)
+                  .eq('id', dealId);
+                if (result.error) throw result.error;
+
+                // Also update the moderation queue if coming from moderation
+                const { error: queueError } = await supabase
+                  .from("moderation_queue")
+                  .update({
+                    status: "approved",
+                    moderator_id: user.id,
+                    moderated_at: new Date().toISOString(),
+                  })
+                  .eq("item_id", dealId)
+                  .eq("item_type", "deal");
+
+                if (queueError) {
+                  console.error("Error updating moderation queue:", queueError);
                 }
               }
 

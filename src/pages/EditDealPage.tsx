@@ -176,7 +176,7 @@ const EditDealPage: React.FC = () => {
   };
 
   // Отключаем автоматическое одобрение для редактирования
-  const autoApprove = false;
+  const autoApprove = isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin');
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">
@@ -196,12 +196,13 @@ const EditDealPage: React.FC = () => {
         </button>
         <h1 className="text-2xl font-bold text-white">Edit Deal</h1>
       </div>
-      <AddDealPage 
-        isEditing={true} 
-        dealId={id} 
-        initialData={dealData} 
+      <AddDealPage
+        isEditing={true}
+        dealId={id}
+        initialData={dealData}
         autoApprove={autoApprove}
-        onSave={handleAddToModeration}
+        // onSave={handleAddToModeration}
+        onSave={(id) => handleAddToModeration(id)}
       />
     </div>
   );
