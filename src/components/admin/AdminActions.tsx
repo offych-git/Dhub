@@ -189,6 +189,19 @@ const AdminActions: React.FC<AdminActionsProps> = ({ type, id, userId, createdAt
 
   return (
     <div className={`flex gap-2 ${className || ''}`}>
+      {/* Edit button for admins */}
+      {(role === 'admin' || role === 'moderator' || role === 'super_admin') && 
+       (type === 'deal' || type === 'promo' || type === 'sweepstakes') && (
+        <button
+          onClick={handleEdit}
+          className="text-blue-500 hover:text-blue-700 text-xs flex items-center gap-1 rounded-md"
+          aria-label={`Edit ${type}`}
+        >
+          <Edit className="h-4 w-4" />
+          Edit
+        </button>
+      )}
+      
       <button
         onClick={(e) => {
           e.preventDefault();
