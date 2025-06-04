@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAdmin } from "../hooks/useAdmin";
 import { useModeration } from "../contexts/ModerationContext";
+import { sendNotificationEmail } from '../utils/emailService'; // ДОБАВЛЕНО: Импорт функции отправки email
 
 // Компонент для отображения количества элементов в очереди модерации
 const ModerationCount: React.FC = () => {
@@ -108,12 +109,10 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  // useEffect для вызова loadUserProfile
   useEffect(() => {
     if (user) {
       loadUserProfile();
     } else {
-      // Сброс данных профиля, если пользователь не залогинен
       setDisplayName("");
       setOriginalName("");
       setProfile(null);
@@ -121,7 +120,7 @@ const ProfilePage: React.FC = () => {
       setStats({ dealsCount: 0, promosCount: 0, commentsCount: 0 });
       setSavedItemsCount(0);
     }
-  }, [user]); // Зависимость от user
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -187,11 +186,8 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  // loadUserProfile в ProfilePage теперь только ЧИТАЕТ.
-  // Инициализация профиля перенесена в AuthPage.tsx
   const loadUserProfile = useCallback(async () => {
     if (!user?.id) {
-      // Уже обработано в useEffect, но для безопасности
       setDisplayName('Гость');
       setOriginalName('Гость');
       setProfile(null);
@@ -202,28 +198,25 @@ const ProfilePage: React.FC = () => {
     try {
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("display_name, user_status, email") // Добавили email для полноты данных, если нужно
+        .select("display_name, user_status, email")
         .eq("id", user.id)
-        .maybeSingle(); // Используем maybeSingle, чтобы избежать ошибок при отсутствии профиля
+        .maybeSingle();
 
-      // Если есть ошибка, отличная от отсутствия строк
       if (profileError && profileError.code) {
         console.error("Error loading profile from DB in ProfilePage:", profileError);
-        throw profileError; // Пробрасываем реальные ошибки
+        throw profileError;
       }
 
-      // Определяем отображаемое имя (приоритет: из БД -> из user_metadata -> из email)
       const name = profileData?.display_name 
-                   || user.user_metadata?.full_name // Имя от Facebook/OAuth
-                   || user.user_metadata?.name // Альтернативное имя от OAuth
+                   || user.user_metadata?.full_name 
+                   || user.user_metadata?.name 
                    || user.email?.split("@")[0] 
                    || '';
 
-      setProfile(profileData || null); // profileData может быть null, если профиля нет
+      setProfile(profileData || null);
       setDisplayName(name);
       setOriginalName(name);
 
-      // Логика установки userStatus (админ/модератор)
       if (profileData?.user_status === "admin" || profileData?.user_status === "super_admin") {
         console.log("User is admin or super_admin:", profileData.user_status);
         setUserStatus("Admin");
@@ -231,22 +224,19 @@ const ProfilePage: React.FC = () => {
         console.log("User is moderator:", profileData.user_status);
         setUserStatus("Moderator");
       }
-      // Если не админ/модератор, статус будет рассчитан в loadUserStats
 
     } catch (err: any) {
       console.error("Catch error loading profile in ProfilePage:", err);
-      // Fallback на случай общей ошибки загрузки профиля
       const fallbackName = user?.user_metadata?.full_name 
                            || user?.user_metadata?.name 
-                           || user?.email?.split('@')[0] 
+                           || user?.email?.split("@")[0] 
                            || 'Пользователь';
       setDisplayName(fallbackName);
       setOriginalName(fallbackName);
       setProfile(null);
       setUserStatus('Ошибка загрузки');
     }
-  }, [user, supabase]); // Зависимости для useCallback
-
+  }, [user, supabase]);
 
   const loadUserStats = async () => {
     if (!user) return;
@@ -290,7 +280,6 @@ const ProfilePage: React.FC = () => {
     setIsEditingName(true);
   };
 
-  // handleNameSave остается, так как он обновляет существующее имя
   const handleNameSave = async () => {
     if (!user) return;
 
@@ -341,6 +330,34 @@ const ProfilePage: React.FC = () => {
       }
     }
   };
+
+  // --- ДОБАВЛЕНО: ФУНКЦИЯ ДЛЯ ОТПРАВКИ ТЕСТОВОГО EMAIL ---
+  const handleSendTestEmail = async () => {
+    if (!user?.email) {
+      setError('Email пользователя не найден для отправки тестового письма.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await sendNotificationEmail({
+        to: user.email, // Отправить письмо текущему залогиненному пользователю
+        subject: 'Тестовое уведомление от WeDealz',
+        html: '<p>Привет! Это <strong>тестовое уведомление</strong> от вашего сайта WeDealz.</p><p>Если вы это читаете, рассылка работает!</p>',
+        from: 'notifications@wedealz.com', // ОБЯЗАТЕЛЬНО: используйте адрес с верифицированного домена
+      });
+      setSuccess('Тестовое письмо отправлено успешно! Проверьте почту (включая спам).');
+      console.log('Тестовое письмо отправлено успешно!');
+    } catch (err) {
+      console.error('Не удалось отправить тестовое письмо:', err);
+      setError('Ошибка при отправке тестового письма: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setLoading(false);
+      setTimeout(() => { setError(null); setSuccess(null); }, 5000); // Очистить сообщения через 5 секунд
+    }
+  };
+  // --- КОНЕЦ ДОБАВЛЕННОЙ ФУНКЦИИ ---
 
   return (
     <div className="pb-8 pt-0 bg-gray-900 min-h-screen">
@@ -435,6 +452,29 @@ const ProfilePage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* --- ДОБАВЛЕНА КНОПКА ДЛЯ ТЕСТА EMAIL --- */}
+        {user?.email && ( // Показываем кнопку, только если email пользователя доступен
+          <button
+            onClick={handleSendTestEmail}
+            disabled={loading}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: loading ? '#6B7280' : '#F97316', // Оранжевый или серый при загрузке
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              marginTop: '10px',
+              marginBottom: '20px',
+              width: '100%'
+            }}
+          >
+            {loading ? 'Отправка...' : 'Отправить тестовое письмо'}
+          </button>
+        )}
+        {/* --- КОНЕЦ КНОПКИ ТЕСТА EMAIL --- */}
+
 
         <div className="bg-gray-800 rounded-lg p-4 mb-6">
           <div className="grid grid-cols-2 gap-4">
