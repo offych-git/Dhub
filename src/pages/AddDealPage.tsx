@@ -1,3 +1,4 @@
+alert('ЗАГРУЖЕН AddDealPage.tsx из src/components/deals'); 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Bold, Italic, Underline as UnderlineIcon, List, Image as ImageIcon, Link as LinkIcon, Info, ChevronDown, X, Plus } from 'lucide-react';
