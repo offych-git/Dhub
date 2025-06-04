@@ -22,6 +22,8 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
   const { user } = useAuth();
   const navigate = useNavigate();
   const { dispatch } = useGlobalState(); // Added dispatch
+  // Импортируем хук модерации для использования в компоненте
+  const { addToModerationQueue } = useModeration();
   const [availableStores, setAvailableStores] = useState<{id: string, name: string, url: string}[]>([]);
   const [isStoreBottomSheetOpen, setIsStoreBottomSheetOpen] = useState(false);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
@@ -443,9 +445,6 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
               };
 
               console.log('Отправляем данные сделки:', dealData);
-
-              // Импортируем хук модерации для использования в компоненте
-              const { addToModerationQueue } = useModeration();
               
               let imageUrl = null;
 
