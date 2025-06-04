@@ -1,4 +1,3 @@
-alert('ЗАГРУЖЕН AddDealPageNew.tsx из src/pages');
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {

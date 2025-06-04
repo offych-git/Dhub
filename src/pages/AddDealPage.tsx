@@ -1,4 +1,3 @@
-alert('ЗАГРУЖЕН AddDealPage.tsx из src/components/deals'); 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Bold, Italic, Underline as UnderlineIcon, List, Image as ImageIcon, Link as LinkIcon, Info, ChevronDown, X, Plus } from 'lucide-react';
@@ -465,7 +464,9 @@ useEffect(() => {
             // После создания, если не autoApprove (которого нет для новых по умолчанию)
             // или если роль не админ/модератор, добавляем в очередь модерации
             // Функция addToModerationQueue сама проверит, нужно ли добавлять или авто-одобрить
-            await addToModerationQueue(newDeal.id, 'deal');
+            // await addToModerationQueue(newDeal.id, 'deal');
+    console.log('ВРЕМЕННО: Вызов addToModerationQueue пропущен для теста');
+
             navigate(`/deals/${newDeal.id}`);
         } else {
             throw new Error('Failed to create deal, no data returned.');
