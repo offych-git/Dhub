@@ -130,7 +130,6 @@ const ProfilePage: React.FC = () => {
     }
   }, [user]); // Run loadSavedItemsCount when 'user' changes
 
-
   const loadSavedItemsCount = async () => {
     if (!user) return;
 
@@ -191,10 +190,10 @@ const ProfilePage: React.FC = () => {
   // --- MODIFIED loadUserProfile function ---
   const loadUserProfile = useCallback(async () => {
     if (!user?.id) {
-      setDisplayName('Гость');
-      setOriginalName('Гость');
+      setDisplayName("Гость");
+      setOriginalName("Гость");
       setProfile(null);
-      setUserStatus('Гость'); // Set guest status explicitly
+      setUserStatus("Гость"); // Set guest status explicitly
       return;
     }
 
@@ -205,49 +204,98 @@ const ProfilePage: React.FC = () => {
         .eq("id", user.id)
         .single();
 
-      if (profileError && profileError.code !== 'PGRST116') {
+      // PGRST116 means "0 rows returned", which is normal for a new user
+      if (profileError && profileError.code !== "PGRST116") {
         throw profileError;
       }
 
-      let finalDisplayName = '';
-      const nameFromFacebook = user.user_metadata?.full_name || user.user_metadata?.name;
+      let finalDisplayName = "";
+      const nameFromFacebook =
+        user.user_metadata?.full_name || user.user_metadata?.name;
+      const nameFromProfileDB = profileData?.display_name;
+      const nameFromEmail = user.email?.split("@")[0];
 
-      // 1. **Highest Priority:** Name from Facebook
+      // **ЛОГИКА ОПРЕДЕЛЕНИЯ ОТОБРАЖАЕМОГО ИМЕНИ (DISPLAY_NAME) С ПРИОРИТЕТОМ:**
+      // 1. Имя от Facebook (наивысший приоритет)
       if (nameFromFacebook) {
         finalDisplayName = nameFromFacebook;
       }
-      // 2. If no name from Facebook, fallback to email
-      else if (user.email) {
-        finalDisplayName = user.email.split('@')[0];
+      // 2. Имя из нашей базы данных profiles.display_name (если имени от Facebook нет)
+      else if (nameFromProfileDB) {
+        finalDisplayName = nameFromProfileDB;
       }
-      // 3. Last resort if no info is available
+      // 3. Имя, сгенерированное из email (если ни Facebook, ни база данных не дали имени)
+      else if (nameFromEmail) {
+        finalDisplayName = nameFromEmail;
+      }
+      // 4. Крайний случай, если информации нет
       else {
-        finalDisplayName = 'Пользователь';
+        finalDisplayName = "Пользователь";
       }
 
       setDisplayName(finalDisplayName);
       setOriginalName(finalDisplayName);
       setProfile(profileData || {}); // Set profile data (can be null for new user)
 
-      // **KEY STEP: Save the determined name to profiles.display_name.**
-      // This will happen if profiles.display_name is empty, OR if the
-      // name we just determined (finalDisplayName) is different from what's in the DB.
-      // This ensures the Facebook name is written and remains primary until user changes it.
-      if (!profileData?.display_name || profileData?.display_name !== finalDisplayName) {
+      // **ЛОГИКА СОХРАНЕНИЯ ИМЕНИ В БАЗУ ДАННЫХ (ПЕРСИСТЕНТНОСТЬ):**
+      let nameToPersist: string | null = null;
+
+      // Если есть имя от Facebook:
+      // Мы хотим его сохранить, если в базе его нет ИЛИ если оно отличается от того, что в базе.
+      // Это обеспечит, что имя от Facebook будет записано и обновлено.
+      if (nameFromFacebook) {
+        if (!nameFromProfileDB || nameFromProfileDB !== nameFromFacebook) {
+          nameToPersist = nameFromFacebook;
+        }
+      }
+      // Если имени от Facebook нет, НО в базе данных display_name пусто:
+      // Тогда мы хотим сохранить имя, сгенерированное из email (если оно есть).
+      // Это НЕ перезапишет существующее имя в базе, если оно было установлено пользователем.
+      else if (!nameFromProfileDB) {
+        if (nameFromEmail) {
+          nameToPersist = nameFromEmail;
+        }
+        // Если и имени от Facebook нет, и email нет, и display_name в базе пусто,
+        // тогда сохраняем "Пользователь" (или что-то по умолчанию), чтобы избежать повторных проверок.
+        else {
+          nameToPersist = "Пользователь";
+        }
+      }
+      // Если nameFromProfileDB уже существует И нет nameFromFacebook,
+      // то nameToPersist останется null, и upsert не будет выполнен,
+      // что предотвратит перезапись имени из email.
+
+      if (nameToPersist && profileData?.display_name !== nameToPersist) {
+        // Дополнительная проверка, чтобы не записывать то же самое
         const { error: upsertError } = await supabase
-          .from('profiles')
-          .upsert({ id: user.id, display_name: finalDisplayName }, { onConflict: 'id' }); // Use upsert for create or update
+          .from("profiles")
+          .upsert(
+            { id: user.id, display_name: nameToPersist },
+            { onConflict: "id" },
+          );
         if (upsertError) {
-          console.error('Error saving/updating name in profile:', upsertError);
+          console.error(
+            "Ошибка при сохранении/обновлении имени в профиле:",
+            upsertError,
+          );
         } else {
-          console.log('Profile name successfully updated/created in DB.');
-          // Update the profile state to reflect the new display_name from DB
-          setProfile(prev => ({ ...prev, display_name: finalDisplayName }));
+          console.log(
+            "Имя профиля успешно обновлено/создано в базе данных:",
+            nameToPersist,
+          );
+          // Обновляем состояние profile, чтобы оно отражало новое display_name из DB
+          setProfile((prev) => ({ ...prev, display_name: nameToPersist }));
+          // Также обновляем displayName и originalName, чтобы не было расхождений после записи
+          setDisplayName(nameToPersist);
+          setOriginalName(nameToPersist);
         }
       }
 
       // Set user status based on fetched profile data
-      if (profileData?.user_status === "admin" || profileData?.user_status === "super_admin") {
+      if (
+        profileData?.user_status === "admin" ||
+        profileData?.user_status === "super_admin"
+      ) {
         console.log("User is admin or super_admin:", profileData.user_status);
         setUserStatus("Admin");
       } else if (profileData?.user_status === "moderator") {
@@ -257,18 +305,18 @@ const ProfilePage: React.FC = () => {
       // Note: If profileData?.user_status is null/undefined for a new user,
       // the status will be "Newcomer" by default, and `calculateUserStatus`
       // (called by loadUserStats) will refine it based on contributions.
-
     } catch (err: any) {
       console.error("Error loading profile:", err.message);
       // Fallback names in case of profile loading error, but user object is present
-      const fallbackName = user?.user_metadata?.full_name
-                         || user?.user_metadata?.name
-                         || user?.email?.split('@')[0]
-                         || 'Пользователь';
+      const fallbackName =
+        user?.user_metadata?.full_name ||
+        user?.user_metadata?.name ||
+        user?.email?.split("@")[0] ||
+        "Пользователь";
       setDisplayName(fallbackName);
       setOriginalName(fallbackName);
       setProfile(null); // Ensure profile is null if an error occurs
-      setUserStatus('Ошибка загрузки'); // Indicate loading error status
+      setUserStatus("Ошибка загрузки"); // Indicate loading error status
     }
   }, [user, supabase]); // Dependencies for useCallback
 
@@ -654,17 +702,17 @@ const ProfilePage: React.FC = () => {
               role === "moderator" ||
               role === "admin" ||
               role === "super_admin") && (
-                <div className="px-4 py-3 flex items-center">
-                  <Shield className="h-5 w-5 text-orange-500 mr-3" />
-                  <button
-                    onClick={() => navigate("/moderation")}
-                    className="text-white flex-1 text-left"
-                  >
-                    Модерация
-                  </button>
-                  <ModerationCount />
-                </div>
-              )}
+              <div className="px-4 py-3 flex items-center">
+                <Shield className="h-5 w-5 text-orange-500 mr-3" />
+                <button
+                  onClick={() => navigate("/moderation")}
+                  className="text-white flex-1 text-left"
+                >
+                  Модерация
+                </button>
+                <ModerationCount />
+              </div>
+            )}
           </div>
         </div>
       </div>
