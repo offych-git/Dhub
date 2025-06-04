@@ -100,7 +100,7 @@ const UserPostedItemsPage: React.FC = () => {
   const { user } = useAuth();
 
   const [deals, setDeals] = useState<Deal[]>([]);
-  const [promos, setPromos] = useState<PromoItemForDisplay[]>([]); // Используем новый тип
+  const [promos, setPromos] = useState<PromoItemForDisplay[]>([]);
   const [sweepstakes, setSweepstakes] = useState<Deal[]>([]);
 
   const [dealCount, setDealCount] = useState(0);
@@ -114,7 +114,7 @@ const UserPostedItemsPage: React.FC = () => {
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Сохраняем true для начальной загрузки
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [isReactNativeView, setIsReactNativeView] = useState(false);
@@ -166,15 +166,17 @@ const UserPostedItemsPage: React.FC = () => {
 
   const loadUserItems = useCallback(async () => {
     if (!user?.id) {
-      setLoading(false);
+      setLoading(false); // Убедимся, что лоадер выключен, если нет пользователя
       setIsFetchingMore(false);
       return;
     }
+    // Если это не первая страница и больше нет данных, просто выходим
     if (!hasMore && page > 1) {
       setIsFetchingMore(false);
       return;
     }
 
+    // Лоадер для первой загрузки или когда fetchingMore уже активен
     if (page === 1) setLoading(true);
     else setIsFetchingMore(true);
 
@@ -184,14 +186,14 @@ const UserPostedItemsPage: React.FC = () => {
       let voteTable: "deal_votes" | "promo_votes" = "deal_votes";
       let itemIdColumnInVoteTable: "deal_id" | "promo_id" = "deal_id";
       let itemTypePropForVoteControls: "deal" | "sweepstakes" | "promo" =
-        "deal"; // ИЗМЕНЕНИЕ: тип для VoteControls
+        "deal";
 
       if (activeTab === "deals") {
         baseQuery = supabase
           .from("deals")
           .select(
             `*, profiles!deals_user_id_fkey(id, email, display_name), deal_comments(count)`,
-          ) // Запрашиваем count комментариев
+          )
           .eq("user_id", user.id)
           .eq("type", "deal");
         voteTable = "deal_votes";
@@ -202,23 +204,24 @@ const UserPostedItemsPage: React.FC = () => {
           .from("deals")
           .select(
             `*, profiles!deals_user_id_fkey(id, email, display_name), deal_comments(count)`,
-          ) // Запрашиваем count комментариев
+          )
           .eq("user_id", user.id)
           .eq("type", "sweepstakes");
         voteTable = "deal_votes";
         itemIdColumnInVoteTable = "deal_id";
-        itemTypePropForVoteControls = "sweepstakes"; // DealCard передаст это в VoteControls
+        itemTypePropForVoteControls = "sweepstakes";
       } else if (activeTab === "promos") {
         baseQuery = supabase
           .from("promo_codes")
           .select(
             `*, profiles!promo_codes_user_id_fkey(id, email, display_name), promo_comments(count)`,
-          ) // Запрашиваем count комментариев
+          )
           .eq("user_id", user.id);
         voteTable = "promo_votes";
         itemIdColumnInVoteTable = "promo_id";
-        itemTypePropForVoteControls = "promo"; // ИЗМЕНЕНИЕ: VoteControls ожидает "promo"
+        itemTypePropForVoteControls = "promo";
       } else {
+        // Если activeTab не соответствует ничему, выключаем лоадер
         setLoading(false);
         setIsFetchingMore(false);
         return;
@@ -229,11 +232,7 @@ const UserPostedItemsPage: React.FC = () => {
           baseQuery = baseQuery.order("created_at", { ascending: true });
           break;
         case "popular":
-          // Для сортировки по популярности, нужно чтобы 'vote_count' (или аналогичное поле)
-          // было в основной таблице (deals, promo_codes) или вычислялось на стороне БД.
-          // Если его нет, эта сортировка может быть неточной или не работать.
-          // Пока оставим сортировку по дате создания для "popular", если vote_count не доступен напрямую.
-          baseQuery = baseQuery.order("created_at", { ascending: false });
+          baseQuery = baseQuery.order("created_at", { ascending: false }); // Пока так
           break;
         default: // newest
           baseQuery = baseQuery.order("created_at", { ascending: false });
@@ -246,17 +245,17 @@ const UserPostedItemsPage: React.FC = () => {
       );
 
       if (primaryError) throw primaryError;
+
+      // Если данных нет, нет и последующих страниц
       if (!primaryData || primaryData.length === 0) {
         setHasMore(false);
-        setLoading(false);
-        setIsFetchingMore(false);
+        // Если это была первая страница, очищаем списки
         if (page === 1) {
-          // Очищаем состояние, если на первой странице ничего не найдено
           if (activeTab === "deals") setDeals([]);
           else if (activeTab === "promos") setPromos([]);
           else if (activeTab === "sweepstakes") setSweepstakes([]);
         }
-        return;
+        return; // Важно выйти здесь
       }
 
       const itemIds = primaryData.map((item: any) => item.id);
@@ -270,11 +269,10 @@ const UserPostedItemsPage: React.FC = () => {
 
         if (votesError) {
           console.error(`Error fetching votes from ${voteTable}:`, votesError);
-          // В случае ошибки голосов, можем продолжить с popularity = 0, userVoteType = null
         }
 
         itemsWithFullData = primaryData.map((item: any) => {
-          let currentItemVoteCount = 0; // Инициализируем как Number
+          let currentItemVoteCount = 0;
           let currentUserVoteForThisItem: boolean | null = null;
           const currentUserId = user?.id;
 
@@ -316,10 +314,10 @@ const UserPostedItemsPage: React.FC = () => {
               activeTab === "promos"
                 ? item.promo_comments?.[0]?.count || 0
                 : item.deal_comments?.[0]?.count || 0,
-            popularity: currentItemVoteCount, // ИЗМЕНЕНИЕ: popularity теперь Number
+            popularity: currentItemVoteCount,
             userVoteType: currentUserVoteForThisItem,
-            type: item.type || itemTypePropForVoteControls, // Используем актуальный тип
-            isFavorite: false, // Добавьте реальную логику для избранного, если она есть
+            type: item.type || itemTypePropForVoteControls,
+            isFavorite: false,
             status: item.status || "approved",
           };
 
@@ -330,14 +328,13 @@ const UserPostedItemsPage: React.FC = () => {
               originalPrice: item.original_price
                 ? parseFloat(item.original_price)
                 : undefined,
-              store: { id: item.store_id, name: item.store_id }, // TODO: Получать имя магазина
-              category: { id: item.category_id, name: item.category_id }, // TODO: Получать имя категории
+              store: { id: item.store_id, name: item.store_id },
+              category: { id: item.category_id, name: item.category_id },
               image: item.image_url,
               url: item.deal_url,
               expires_at: item.expires_at,
             } as Deal;
           } else {
-            // promos
             return {
               ...commonFields,
               code: item.code,
@@ -346,8 +343,6 @@ const UserPostedItemsPage: React.FC = () => {
           }
         });
       } else {
-        // Если нет itemIds, но есть primaryData (маловероятно, но для полноты)
-        // Просто преобразуем primaryData без информации о голосах
         itemsWithFullData = primaryData.map((item: any) => {
           const profileData = item.profiles || {
             id: user?.id,
@@ -375,7 +370,7 @@ const UserPostedItemsPage: React.FC = () => {
               activeTab === "promos"
                 ? item.promo_comments?.[0]?.count || 0
                 : item.deal_comments?.[0]?.count || 0,
-            popularity: 0, // Голосов нет или не удалось загрузить
+            popularity: 0,
             userVoteType: null,
             type: item.type || itemTypePropForVoteControls,
             isFavorite: false,
@@ -429,14 +424,25 @@ const UserPostedItemsPage: React.FC = () => {
       console.error("Error loading user items:", error);
       setHasMore(false);
     } finally {
+      // Гарантируем, что setLoading(false) всегда вызывается
       setLoading(false);
       setIsFetchingMore(false);
     }
-  }, [user, activeTab, sortBy, page, hasMore]);
+  }, [user, activeTab, sortBy, page, hasMore]); // Убрал deals, promos, sweepstakes из зависимостей
 
+  // ЭТОТ useEffect теперь только переключает "первую загрузку"
   useEffect(() => {
-    if (user) loadAllCounts();
-    else {
+    if (user) {
+      loadAllCounts();
+      setPage(1); // Сбрасываем страницу на 1 при смене пользователя или вкладки
+      setHasMore(true); // Сбрасываем hasMore на true для новой загрузки
+      // Очищаем списки, чтобы гарантировать полную перезагрузку
+      setDeals([]);
+      setPromos([]);
+      setSweepstakes([]);
+      setLoading(true); // Устанавливаем loading в true для новой загрузки
+    } else {
+      // Если пользователя нет, все сбрасываем
       setDealCount(0);
       setPromoCount(0);
       setSweepstakesCount(0);
@@ -445,45 +451,20 @@ const UserPostedItemsPage: React.FC = () => {
       setSweepstakes([]);
       setPage(1);
       setHasMore(true);
-      setLoading(true);
+      setLoading(false); // Здесь loading false, т.к. нет пользователя
     }
-  }, [user, loadAllCounts]);
+  }, [user, loadAllCounts, activeTab, sortBy]); // Добавил activeTab и sortBy, чтобы сброс происходил при смене сортировки/вкладки
 
+  // ЭТОТ useEffect теперь отвечает только за запуск loadUserItems при изменении page, user, activeTab, sortBy
   useEffect(() => {
-    if (user) {
-      setPage(1);
-      setHasMore(true);
-      if (activeTab === "deals") setDeals([]);
-      else if (activeTab === "promos") setPromos([]);
-      else if (activeTab === "sweepstakes") setSweepstakes([]);
+    // Запускаем loadUserItems только если user есть И (это первая страница ИЛИ есть еще данные)
+    // hasMore в данном useEffect не должен быть в зависимостях
+    // потому что изменение hasMore не должно приводить к запуску loadUserItems,
+    // оно лишь влияет на то, будет ли loadUserItems вызван при следующем скролле
+    if (user && (page === 1 || hasMore || (deals.length === 0 && activeTab === 'deals') || (promos.length === 0 && activeTab === 'promos') || (sweepstakes.length === 0 && activeTab === 'sweepstakes'))) {
+      loadUserItems();
     }
-  }, [user, sortBy, activeTab]);
-
-  useEffect(() => {
-    if (user) {
-      // Загружаем только если пользователь есть
-      // Проверяем, нужно ли загружать: если это первая страница ИЛИ если есть еще страницы (hasMore)
-      // ИЛИ если массив для текущей вкладки пуст (для первоначальной загрузки после смены вкладки)
-      const currentListIsEmpty =
-        (activeTab === "deals" && deals.length === 0) ||
-        (activeTab === "promos" && promos.length === 0) ||
-        (activeTab === "sweepstakes" && sweepstakes.length === 0);
-
-      if (page === 1 || hasMore || currentListIsEmpty) {
-        loadUserItems();
-      }
-    }
-  }, [
-    user,
-    page,
-    activeTab,
-    sortBy,
-    loadUserItems,
-    hasMore,
-    deals,
-    promos,
-    sweepstakes,
-  ]);
+  }, [user, page, activeTab, sortBy, loadUserItems]); // hasMore убран из зависимостей
 
   useEffect(() => {
     const handleScroll = () => {
@@ -491,14 +472,15 @@ const UserPostedItemsPage: React.FC = () => {
         window.innerHeight + document.documentElement.scrollTop >=
           document.documentElement.offsetHeight - 500 &&
         !isFetchingMore &&
-        hasMore
+        hasMore &&
+        !loading // Добавил проверку на !loading, чтобы не пытаться загружать, пока идет первая загрузка
       ) {
         setPage((prevPage) => prevPage + 1);
       }
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [isFetchingMore, hasMore]);
+  }, [isFetchingMore, hasMore, loading]); // Добавил loading в зависимости
 
   const formatTimeAgo_local = (dateString?: string): string => {
     if (!dateString) return "some time ago";
@@ -522,12 +504,13 @@ const UserPostedItemsPage: React.FC = () => {
   const handleDataRefreshNeeded = () => {
     loadAllCounts();
     if (page === 1) {
-      // Если мы уже на первой странице, setDeals([]) и т.д. в useEffect [user, sortBy, activeTab]
-      // уже очистили списки. Теперь нужно просто перезагрузить данные для первой страницы.
-      loadUserItems();
+      setDeals([]);
+      setPromos([]);
+      setSweepstakes([]);
+      setLoading(true);
+      setPage(1); // Гарантируем, что сброс страницы на 1 вызовет загрузку
     } else {
-      // Если мы не на первой странице, сброс setPage(1) вызовет нужные useEffect для очистки и загрузки.
-      setPage(1);
+      setPage(1); // Если не на первой странице, сброс page вызовет useEffect
     }
   };
 
@@ -563,7 +546,7 @@ const UserPostedItemsPage: React.FC = () => {
       )}
 
       <div
-        className={`main-content-area relative mx-4 mb-3 ${!isReactNativeView ? "pt-4" : "pt-4"}`} // Увеличил отступ для веб-хедера
+        className={`main-content-area relative mx-4 mb-3 ${!isReactNativeView ? "pt-4" : "pt-4"}`}
       >
         <div className="flex justify-center pb-2 mb-4">
           <div className="flex flex-nowrap items-center space-x-2 overflow-x-auto scrollbar-hide">
@@ -591,11 +574,7 @@ const UserPostedItemsPage: React.FC = () => {
           </div>
         </div>
 
-        {loading &&
-        page === 1 &&
-        ((activeTab === "deals" && deals.length === 0) ||
-          (activeTab === "promos" && promos.length === 0) ||
-          (activeTab === "sweepstakes" && sweepstakes.length === 0)) ? (
+        {loading && page === 1 ? (
           <div className="flex justify-center items-center py-12">
             <div className="h-10 w-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
           </div>
@@ -614,8 +593,7 @@ const UserPostedItemsPage: React.FC = () => {
                       onVoteChange={handleDataRefreshNeeded}
                     />
                   ))
-                : !loading &&
-                  !isFetchingMore && (
+                : (
                     <div className="text-center text-gray-500 py-8">
                       No deals posted yet.{" "}
                       <button
@@ -637,8 +615,7 @@ const UserPostedItemsPage: React.FC = () => {
                       hideFreeLabel={true}
                     />
                   ))
-                : !loading &&
-                  !isFetchingMore && (
+                : (
                     <div className="text-center text-gray-500 py-8">
                       No sweepstakes posted yet.{" "}
                       <button
@@ -655,8 +632,7 @@ const UserPostedItemsPage: React.FC = () => {
                 ? promos.map((promo) => (
                     <div
                       key={promo.id}
-                      // onClick={() => navigate(promo.id ? `/promos/${promo.id}` : "#")} // Навигация при клике на карточку промо
-                      className="bg-gray-800 rounded-lg overflow-hidden shadow-md" // Убрал hover и cursor, т.к. есть кнопки внутри
+                      className="bg-gray-800 rounded-lg overflow-hidden shadow-md"
                     >
                       <div className="p-4">
                         <div className="flex items-center justify-between mb-2">
@@ -672,13 +648,12 @@ const UserPostedItemsPage: React.FC = () => {
                           </div>
                           <VoteControls
                             dealId={promo.id}
-                            type={promo.type} // promo.type теперь "promo"
-                            popularity={promo.popularity as any} // Передаем Number, VoteControls ожидает bigint, но примет number если его useState(popularity || 0)
-                            userVoteType={promo.userVoteType as any} // Передаем boolean | null
+                            type={promo.type}
+                            popularity={promo.popularity as any}
+                            userVoteType={promo.userVoteType as any}
                             onVoteChange={handleDataRefreshNeeded}
                           />
                         </div>
-                        {/* Навигация по клику на заголовок */}
                         <h3
                           onClick={() =>
                             navigate(promo.id ? `/promos/${promo.id}` : "#")
@@ -807,8 +782,7 @@ const UserPostedItemsPage: React.FC = () => {
                       )}
                     </div>
                   ))
-                : !loading &&
-                  !isFetchingMore && (
+                : (
                     <div className="text-center text-gray-500 py-8">
                       No promos posted yet.{" "}
                       <button
