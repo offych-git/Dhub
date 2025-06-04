@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext'; // Убедитесь, что путь правильный
+import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug'; // Убедитесь, что путь правильный
+import { supabase } from '../lib/supabase'; // Убедитесь, что путь правильный
 
 interface AuthPageProps {
   isResetPasswordPage?: boolean;
@@ -12,7 +12,7 @@ interface AuthPageProps {
 const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signUp, signInWithFacebook, resetPassword, updatePassword, user } = useAuth();
+  const { signIn, signUp, signInWithFacebook, resetPassword, updatePassword } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(isResetPasswordPage);
   const [email, setEmail] = useState('');
@@ -27,18 +27,21 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const newTitle = 'Страница Авторизации';
-    document.title = newTitle;
+    const newTitle = 'Страница Авторизации'; // Можете использовать ваш обычный заголовок для этой страницы
+    document.title = newTitle; 
     console.log(`[WEBSITE /auth LOG] Компонент AuthPage.tsx смонтирован. Title установлен на: "${newTitle}"`);
 
+    // Отправка APP_CONTENT_READY в React Native приложение
     if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
       const timerId = setTimeout(() => {
         console.log('[WEBSITE /auth LOG] Отправка APP_CONTENT_READY из AuthPage');
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'APP_CONTENT_READY' }));
-      }, 150);
+      }, 150); // Небольшая задержка
+      // return () => clearTimeout(timerId); 
     }
-  }, []);
+  }, []); 
 
+  // Check for recovery token or signup confirmation on page load
   useEffect(() => {
     const checkForSpecialFlows = async () => {
       const searchParams = new URLSearchParams(window.location.search);
@@ -67,7 +70,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
           console.error('[WEBSITE /auth LOG] Error handling signup flow:', err);
           setError('Произошла ошибка при подтверждении регистрации.');
         }
-      } else if (token && type === 'recovery') {
+      }
+      else if (token && type === 'recovery') {
         try {
           setIsResetPassword(true);
           setAccessToken(token);
@@ -82,119 +86,19 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
           console.error('[WEBSITE /auth LOG] Error handling recovery flow:', err);
           setError('Произошла ошибка при обработке ссылки сброса пароля.');
         }
-      } else if (window.location.hash) {
+      }
+      else if (window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const oauthAccessToken = hashParams.get('access_token');
+        const oauthAccessToken = hashParams.get('access_token'); 
 
-        if (oauthAccessToken) {
-          console.log('[WEBSITE /auth LOG] Found OAuth token in hash, attempting to verify session.');
-          setLoading(true);
-          try {
-            setTimeout(async () => {
-              const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-              if (session && session.user) {
-                console.log('[WEBSITE /auth LOG] Supabase session successfully established from OAuth callback. User ID:', session.user.id);
-                setSuccessMessage('Вход через Facebook успешно выполнен!');
-
-                // --- НАЧАЛО НОВОЙ ЛОГИКИ ИНИЦИАЛИЗАЦИИ ПРОФИЛЯ ---
-                console.log('--- AuthPage: Запуск инициализации профиля после OAuth ---');
-                try {
-                  const currentUser = session.user;
-                  const { data: profileData, error: profileFetchError } = await supabase
-                    .from('profiles')
-                    .select('display_name, email, user_status')
-                    .eq('id', currentUser.id)
-                    .single();
-
-                  if (profileFetchError && profileFetchError.code !== 'PGRST116') {
-                    console.error('--- AuthPage: Ошибка при получении профиля для инициализации:', profileFetchError);
-                    throw profileFetchError;
-                  }
-
-                  if (profileData) {
-                    console.log('--- AuthPage: Профиль уже существует для пользователя', currentUser.id);
-                  } else {
-                    console.log('--- AuthPage: Профиль не найден, создаем новый для пользователя', currentUser.id);
-
-                    const nameFromFacebook = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name;
-                    const nameFromEmail = currentUser.email?.split('@')[0];
-                    let initialDisplayName = 'Пользователь';
-
-                    if (nameFromFacebook) {
-                      initialDisplayName = nameFromFacebook;
-                    } else if (nameFromEmail) {
-                      initialDisplayName = nameFromEmail;
-                    }
-
-                    if (!currentUser.email) {
-                        console.error('--- AuthPage: ОШИБКА: email пользователя отсутствует для создания профиля.');
-                        setError('Не удалось создать профиль: email не предоставлен.');
-                        setLoading(false);
-                        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                        navigate('/auth', { replace: true });
-                        return;
-                    }
-
-                    console.log(`--- AuthPage: Создание профиля с именем: "${initialDisplayName}", email: "${currentUser.email}"`);
-
-                    const { error: upsertError } = await supabase
-                      .from('profiles')
-                      .upsert({ 
-                        id: currentUser.id, 
-                        display_name: initialDisplayName, 
-                        email: currentUser.email 
-                      }, { onConflict: 'id' });
-
-                    if (upsertError) {
-                      console.error('--- AuthPage: ОШИБКА UPSERT при создании профиля:', upsertError);
-                      setError('Ошибка при создании профиля: ' + upsertError.message);
-                      setLoading(false);
-                      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                      navigate('/auth', { replace: true });
-                      return;
-                    } else {
-                      console.log('--- AuthPage: Профиль успешно создан в базе данных для пользователя', currentUser.id);
-                    }
-                  }
-                } catch (profileInitError) {
-                  console.error('--- AuthPage: Критическая ошибка инициализации профиля:', profileInitError);
-                  setError('Произошла критическая ошибка при инициализации профиля.');
-                  setLoading(false);
-                  window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                  navigate('/auth', { replace: true });
-                  return;
-                }
-                // --- КОНЕЦ НОВОЙ ЛОГИКИ ИНИЦИАЛИЗАЦИИ ПРОФИЛЯ ---
-
-                window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                navigate('/', { replace: true });
-              } else if (sessionError) {
-                console.error('[WEBSITE /auth LOG] Error getting Supabase session after OAuth:', sessionError);
-                setError('Ошибка при установке сессии после Facebook входа: ' + sessionError.message);
-                window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                navigate('/auth', { replace: true });
-              } else {
-                console.warn('[WEBSITE /auth LOG] OAuth token found, but Supabase session not immediately established.');
-                setError('Вход через Facebook не удался. Пожалуйста, попробуйте снова.');
-                window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                navigate('/auth', { replace: true });
-              }
-              setLoading(false);
-            }, 100);
-          } catch (err: any) {
-            console.error('[WEBSITE /auth LOG] Error processing OAuth token:', err);
-            setError('Произошла ошибка при входе через Facebook: ' + (err.message || 'Неизвестная ошибка'));
-            setLoading(false);
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-            navigate('/auth', { replace: true });
-          }
+        if (oauthAccessToken) { 
+          console.log('[WEBSITE /auth LOG] Found OAuth token in hash, redirecting to home');
+          navigate('/', { replace: true });
         }
       }
     };
-
     checkForSpecialFlows();
-  }, [location, navigate, isResetPasswordPage, user]);
+  }, [location, navigate, isResetPasswordPage]);
 
   useEffect(() => {
     if (location.state?.token) {
@@ -203,6 +107,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       setIsResetPassword(true);
     }
   }, [location.state]);
+
+  /* Закомментированный useEffect для touchmove 
+  useEffect(() => {
+    const handleTouchMove = (event: TouchEvent) => {
+      // ... код ...
+    };
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    return () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
+  */
 
   useEffect(() => {
     const validateConfig = async () => {
@@ -259,7 +175,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     setLoading(true);
     try {
       console.log('Attempting to update password with token');
-      await updatePassword(password);
+      await updatePassword(password); 
       setSuccessMessage('Ваш пароль был успешно обновлен');
       setTimeout(() => {
         setIsResetPassword(false);
@@ -352,15 +268,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   };
 
   const handleFacebookAuth = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccessMessage(null);
     try {
       await signInWithFacebook();
     } catch (err: any) {
-      console.error('Facebook Auth initiation error:', err);
-      setError(err.message || 'Не удалось начать аутентификацию через Facebook.');
-      setLoading(false);
+      setError(err.message);
     }
   };
 
@@ -369,6 +280,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     setSuccessMessage(null);
   };
 
+  // <<< ВОЗВРАЩАЕМ ВАШ ОРИГИНАЛЬНЫЙ JSX ДЛЯ СТРАНИЦЫ АВТОРИЗАЦИИ >>>
   return (
     <div className="min-h-screen bg-gray-900 px-4 py-8">
       <div className="max-w-md mx-auto">
@@ -400,17 +312,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
         {!isResetPassword && (
           <button
             onClick={handleFacebookAuth}
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium flex items-center justify-center mb-4"
+            className="w-full bg-blue-600 text-white py-3 px-4
+rounded-md font-medium flex items-center justify-center mb-4"
           >
-            {loading ? (
-              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <>
-                <Facebook className="h-5 w-5 mr-2" />
-                Продолжить с Facebook
-              </>
-            )}
+            <Facebook className="h-5 w-5 mr-2" />
+            Продолжить с Facebook
           </button>
         )}
 
@@ -531,7 +437,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
                   id="remember-me"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-orange-500 rounded border-gray-700 bg-gray-800"
+                  className="h-4 w-4 text-orange-500 rounded border-gray-700
+bg-gray-800"
                 />
                 <label htmlFor="remember-me" className="ml-2 text-gray-400">
                   Запомнить меня

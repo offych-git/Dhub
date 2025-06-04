@@ -1,785 +1,633 @@
-import React, { useState, useEffect, useCallback } from "react"; // Добавил useCallback
-import { useNavigate, Link, useLocation } from "react-router-dom";
-import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
-import { checkAuthStatus, validateSupabaseConfig } from "../utils/authDebug";
-import { supabase } from "../lib/supabase"; // Убедитесь, что путь правильный
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Heart,
+  Tag,
+  Bell,
+  MessageSquare,
+  Pencil,
+  Check,
+  X,
+  Settings,
+  Shield,
+  Info,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext"; // Используем useAuth для получения user
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { useAdmin } from "../hooks/useAdmin";
+import { useModeration } from "../contexts/ModerationContext";
 
-interface AuthPageProps {
-  isResetPasswordPage?: boolean;
-}
+// Компонент для отображения количества элементов в очереди модерации
+const ModerationCount: React.FC = () => {
+  const { queueCount, isLoading, loadModerationQueue } = useModeration();
 
-const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
+  useEffect(() => {
+    loadModerationQueue();
+  }, [loadModerationQueue]);
+
+  return (
+    <span className="ml-auto text-gray-400">
+      {isLoading ? "..." : queueCount > 0 ? queueCount : 0}
+    </span>
+  );
+};
+
+const ProfilePage: React.FC = () => {
+  const { user } = useAuth(); // Получаем user из AuthContext
   const navigate = useNavigate();
-  const location = useLocation();
-  const {
-    signIn,
-    signUp,
-    signInWithFacebook,
-    resetPassword,
-    updatePassword,
-    user,
-  } = useAuth();
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [isResetPassword, setIsResetPassword] = useState(isResetPasswordPage);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [configValid, setConfigValid] = useState(true);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [originalName, setOriginalName] = useState("");
+  const [savedItemsCount, setSavedItemsCount] = useState(0);
+  const [profile, setProfile] = useState<any>(null); // Для хранения всего объекта профиля
+  const [stats, setStats] = useState({
+    dealsCount: 0,
+    promosCount: 0,
+    commentsCount: 0,
+  });
+  const [userStatus, setUserStatus] = useState("Newcomer");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const { isAdmin, isLoading: isAdminLoading, role } = useAdmin();
 
-  useEffect(() => {
-    const newTitle = "Страница Авторизации";
-    document.title = newTitle;
-    console.log(
-      `[WEBSITE /auth LOG] Компонент AuthPage.tsx смонтирован. Title установлен на: "${newTitle}"`,
-    );
-
-    if (
-      window.ReactNativeWebView &&
-      typeof window.ReactNativeWebView.postMessage === "function"
-    ) {
-      const timerId = setTimeout(() => {
-        console.log(
-          "[WEBSITE /auth LOG] Отправка APP_CONTENT_READY из AuthPage",
-        );
-        window.ReactNativeWebView.postMessage(
-          JSON.stringify({ type: "APP_CONTENT_READY" }),
-        );
-      }, 150);
+  const getUserStatusColor = (status: string) => {
+    switch (status) {
+      case "Admin":
+        return "bg-red-500/20 text-red-400 dark:text-red-300";
+      case "Deal Master":
+        return "bg-purple-500/20 text-purple-600 dark:text-purple-300";
+      case "Deal Expert":
+        return "bg-orange-500/20 text-orange-600 dark:text-orange-300";
+      case "Moderator":
+        return "bg-pink-500/20 text-pink-600 dark:text-pink-300";
+      case "Active Contributor":
+        return "bg-green-500/20 text-green-600 dark:text-green-300";
+      case "Regular Member":
+        return "bg-blue-500/20 text-blue-600 dark:text-blue-300";
+      case "Rising Star":
+        return "bg-yellow-500/20 text-yellow-600 dark:text-yellow-300";
+      default:
+        return "bg-gray-500/20 text-gray-600 dark:text-gray-300";
     }
-  }, []);
+  };
 
-  // useEffect для проверки специальных потоков (сброс пароля, OAuth callback)
-  // В этом useEffect теперь только логика редиректа и обработки токенов,
-  // инициализация профиля перенесена в отдельный useEffect (см. ниже).
-  useEffect(() => {
-    const checkForSpecialFlows = async () => {
-      const searchParams = new URLSearchParams(window.location.search);
-      const token = searchParams.get("token");
-      const type = searchParams.get("type");
+  const calculateUserStatus = async (stats: {
+    dealsCount: number;
+    commentsCount: number;
+  }) => {
+    try {
+      if (!user?.id) return "Newcomer";
 
-      console.log(
-        "[WEBSITE /auth LOG] Auth flow check (checkForSpecialFlows):",
-        {
-          fullUrl: window.location.href,
-          search: window.location.search,
-          token: token ? `${token.substring(0, 10)}...` : "none",
-          type: type || "none",
-          isResetPage: isResetPasswordPage,
-        },
-      );
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("user_status")
+        .eq("id", user.id)
+        .single();
 
-      if (type === "signup") {
-        try {
-          console.log("[WEBSITE /auth LOG] Detected signup confirmation flow");
-          setTimeout(() => {
-            setSuccessMessage(
-              "Регистрация успешно завершена! Переход на страницу профиля...",
-            );
-            setTimeout(() => {
-              navigate("/profile", { replace: true });
-            }, 1500);
-          }, 500);
-          return;
-        } catch (err) {
-          console.error("[WEBSITE /auth LOG] Error handling signup flow:", err);
-          setError("Произошла ошибка при подтверждении регистрации.");
-        }
-      } else if (token && type === "recovery") {
-        try {
-          setIsResetPassword(true);
-          setAccessToken(token);
-          if (!isResetPasswordPage) {
-            console.log(
-              "[WEBSITE /auth LOG] Redirecting to reset password page with token",
-            );
-            navigate("/auth/reset-password", {
-              replace: true,
-              state: { token, type },
-            });
-          }
-        } catch (err) {
-          console.error(
-            "[WEBSITE /auth LOG] Error handling recovery flow:",
-            err,
-          );
-          setError("Произошла ошибка при обработке ссылки сброса пароля.");
-        }
-      } else if (window.location.hash) {
-        const hashParams = new URLSearchParams(
-          window.location.hash.substring(1),
-        );
-        const oauthAccessToken = hashParams.get("access_token");
-
-        if (oauthAccessToken) {
-          console.log(
-            "[WEBSITE /auth LOG] Found OAuth token in hash, attempting to verify session.",
-          );
-          setLoading(true);
-          // Даем Supabase SDK время для обработки хэша и установки сессии
-          setTimeout(async () => {
-            const {
-              data: { session },
-              error: sessionError,
-            } = await supabase.auth.getSession();
-
-            // Важно: здесь мы только проверяем, что сессия установлена, и перенаправляем.
-            // Логика создания профиля теперь в отдельном useEffect, который реагирует на "user"
-            if (session && session.user) {
-              console.log(
-                "[WEBSITE /auth LOG] Supabase session successfully established from OAuth callback.",
-              );
-              setSuccessMessage("Вход через Facebook успешно выполнен!");
-              window.history.replaceState(
-                {},
-                document.title,
-                window.location.pathname + window.location.search,
-              );
-              navigate("/", { replace: true }); // Перенаправляем на главную
-            } else if (sessionError) {
-              console.error(
-                "[WEBSITE /auth LOG] Error getting Supabase session after OAuth:",
-                sessionError,
-              );
-              setError(
-                "Ошибка при установке сессии после Facebook входа: " +
-                  sessionError.message,
-              );
-              window.history.replaceState(
-                {},
-                document.title,
-                window.location.pathname + window.location.search,
-              );
-              navigate("/auth", { replace: true });
-            } else {
-              console.warn(
-                "[WEBSITE /auth LOG] OAuth token found, but Supabase session not immediately established.",
-              );
-              setError(
-                "Вход через Facebook не удался. Пожалуйста, попробуйте снова.",
-              );
-              window.history.replaceState(
-                {},
-                document.title,
-                window.location.pathname + window.location.search,
-              );
-              navigate("/auth", { replace: true });
-            }
-            setLoading(false);
-          }, 100);
-        }
-      }
-    };
-
-    checkForSpecialFlows();
-  }, [location, navigate, isResetPasswordPage, user]); // user в зависимостях все еще нужен для перезапуска при изменении user
-
-  // --- НОВЫЙ useEffect ДЛЯ ИНИЦИАЛИЗАЦИИ ПРОФИЛЯ ---
-  useEffect(() => {
-    const initializeProfileForNewUser = async () => {
-      if (!user?.id) {
-        console.log(
-          "[AuthPage Init] Пользователь не залогинен или ID отсутствует, пропускаем инициализацию профиля.",
-        );
-        return;
+      if (error) {
+        console.error("Error fetching profile:", error);
+        return "Newcomer";
       }
 
-      console.log(
-        `[AuthPage Init] *** Запуск инициализации профиля для user.id: ${user.id} ***`,
-      );
-      console.log("[AuthPage Init] user.user_metadata:", user.user_metadata);
-      console.log("[AuthPage Init] user.email:", user.email);
+      if (profile?.user_status === "admin") return "Admin";
+      if (profile?.user_status === "moderator") return "Moderator";
+      if (profile?.user_status === "super_admin") return "Admin";
 
-      try {
-        // 1. Попытка получить профиль: Используем .maybeSingle() для обработки отсутствия записи
-        const { data: profileData, error: profileFetchError } = await supabase
-          .from("profiles")
-          .select("id, display_name, email, user_status") // Запрашиваем поля, которые могут пригодиться
-          .eq("id", user.id)
-          .maybeSingle(); // ИЗМЕНЕНИЕ ЗДЕСЬ: используем maybeSingle()
+      const totalContributions = stats.dealsCount + stats.commentsCount;
 
-        // Ошибка .maybeSingle() будет null, если 0 строк. Проверяем только настоящие ошибки.
-        if (profileFetchError && profileFetchError.code) {
-          // Проверяем, что error не просто {code: 'PGRST116'}
-          console.error(
-            "[AuthPage Init] Ошибка при получении профиля из БД:",
-            profileFetchError,
-          );
-          // Здесь можно добавить логику отображения ошибки, если она критична
-          return; // Прерываем инициализацию при ошибке
-        }
+      if (totalContributions >= 1000) return "Deal Master";
+      if (totalContributions >= 500) return "Deal Expert";
+      if (totalContributions >= 150) return "Active Contributor";
+      if (totalContributions >= 100) return "Regular Member";
+      if (totalContributions >= 50) return "Rising Star";
+      return "Newcomer";
+    } catch (error) {
+      console.error("Error calculating user status:", error);
+      return "Newcomer";
+    }
+  };
 
-        // 2. Если профиль уже существует, выходим (не нужно создавать заново)
-        if (profileData) {
-          console.log(
-            "[AuthPage Init] Профиль уже существует для пользователя:",
-            user.id,
-          );
-          // Возможно, здесь можно обновить displayName/email в AuthContext, если это необходимо
-          return;
-        }
+  // useEffect для вызова loadUserProfile
+  useEffect(() => {
+    if (user) {
+      loadUserProfile();
+    } else {
+      // Сброс данных профиля, если пользователь не залогинен
+      setDisplayName("");
+      setOriginalName("");
+      setProfile(null);
+      setUserStatus("Newcomer");
+      setStats({ dealsCount: 0, promosCount: 0, commentsCount: 0 });
+      setSavedItemsCount(0);
+    }
+  }, [user]); // Зависимость от user
 
-        // 3. Профиль не найден, создаем новый
-        console.log("[AuthPage Init] Профиль НЕ найден, создаем новый...");
+  useEffect(() => {
+    if (user) {
+      loadUserStats();
+    }
+  }, [user, calculateUserStatus]);
 
-        const nameFromFacebook =
-          user.user_metadata?.full_name || user.user_metadata?.name;
-        const nameFromEmail = user.email?.split("@")[0];
-        let initialDisplayName = "Пользователь";
+  useEffect(() => {
+    if (user) {
+      loadSavedItemsCount();
+    }
+  }, [user]);
 
-        if (nameFromFacebook) {
-          initialDisplayName = nameFromFacebook;
-        } else if (nameFromEmail) {
-          initialDisplayName = nameFromEmail;
-        }
+  const loadSavedItemsCount = async () => {
+    if (!user) return;
 
-        // Убедимся, что email есть, так как он NOT NULL
-        if (!user.email) {
-          console.error(
-            "[AuthPage Init] ОШИБКА: Email пользователя отсутствует для создания профиля. Отмена создания.",
-          );
-          return;
-        }
+    try {
+      const { data: dealFavorites, error: dealFavoritesError } = await supabase
+        .from("deal_favorites")
+        .select("deal_id")
+        .eq("user_id", user.id);
 
-        console.log(
-          `[AuthPage Init] UPSERT: id=${user.id}, display_name="${initialDisplayName}", email="${user.email}"`,
-        );
+      if (dealFavoritesError) {
+        console.error("Error fetching deal favorites:", dealFavoritesError);
+      }
 
-        const { error: upsertError } = await supabase.from("profiles").upsert(
-          {
-            id: user.id,
-            display_name: initialDisplayName,
-            email: user.email,
-          },
-          { onConflict: "id" },
-        ); // onConflict 'id' для создания, если нет, и обновления, если есть
+      let dealsCount = 0;
+      if (dealFavorites && dealFavorites.length > 0) {
+        const dealIds = dealFavorites.map((fav) => fav.deal_id);
+        const { count, error } = await supabase
+          .from("deals")
+          .select("id", { count: "exact", head: true })
+          .in("id", dealIds);
 
-        if (upsertError) {
-          console.error(
-            "[AuthPage Init] ОШИБКА UPSERT при создании профиля:",
-            upsertError,
-          );
-          // Можно добавить логику для отображения ошибки пользователю
+        if (error) {
+          console.error("Error fetching deals count:", error);
         } else {
-          console.log(
-            "[AuthPage Init] *** Профиль успешно создан в базе данных! ***",
-          );
+          dealsCount = count || 0;
         }
-      } catch (err: any) {
-        console.error(
-          "[AuthPage Init] КРИТИЧЕСКАЯ ОШИБКА инициализации профиля (Общий Catch):",
-          err,
-        );
-        // Этот catch поймает любые неожиданные ошибки в процессе
       }
-    };
 
-    initializeProfileForNewUser();
-  }, [user, supabase]); // Зависимость от user объекта и клиента Supabase
+      const { count: promoCount, error: promosCountError } = await supabase
+        .from("promo_favorites")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
 
-  // useEffect для получения токена из navigation state
-  useEffect(() => {
-    if (location.state?.token) {
-      console.log("[WEBSITE /auth LOG] Found token in navigation state");
-      setAccessToken(location.state.token);
-      setIsResetPassword(true);
-    }
-  }, [location.state]);
-
-  // useEffect для валидации конфигурации Supabase и проверки статуса аутентификации
-  useEffect(() => {
-    const validateConfig = async () => {
-      const configResult = validateSupabaseConfig();
-      setConfigValid(configResult.isValid);
-
-      if (!configResult.isValid) {
-        setError(
-          "Supabase configuration is missing or invalid. Please check your environment variables.",
-        );
-        return;
+      if (promosCountError) {
+        console.error("Error fetching saved promos count:", promosCountError);
       }
-      const authStatus = await checkAuthStatus();
+
       console.log(
-        "[WEBSITE /auth LOG] Auth status check (validateConfig):",
-        authStatus,
+        "Actual saved items count - Deals:",
+        dealsCount,
+        "Promos:",
+        promoCount,
+        "Total:",
+        (dealsCount || 0) + (promoCount || 0),
       );
-    };
-    validateConfig();
-  }, []);
 
-  const validateForm = () => {
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-
-    if (isResetPassword && accessToken) {
-      if (!trimmedPassword || trimmedPassword.length < 6) {
-        setError("Пароль должен содержать не менее 6 символов");
-        return false;
-      }
-      if (trimmedPassword !== confirmPassword.trim()) {
-        setError("Пароли не совпадают");
-        return false;
-      }
-      return true;
+      setSavedItemsCount((dealsCount || 0) + (promoCount || 0));
+    } catch (err) {
+      console.error("Error loading saved items count:", err);
     }
-
-    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Пожалуйста, введите корректный email адрес");
-      return false;
-    }
-    if (!isResetPassword && (!trimmedPassword || trimmedPassword.length < 6)) {
-      setError("Пароль должен содержать не менее 6 символов");
-      return false;
-    }
-    setEmail(trimmedEmail);
-    if (!isResetPassword) {
-      setPassword(trimmedPassword);
-    }
-    return true;
   };
 
-  const handleUpdatePassword = async () => {
-    setError(null);
-    setSuccessMessage(null);
-    if (!validateForm()) {
+  // loadUserProfile в ProfilePage теперь только ЧИТАЕТ.
+  // Инициализация профиля перенесена в AuthPage.tsx
+  const loadUserProfile = useCallback(async () => {
+    if (!user?.id) {
+      // Уже обработано в useEffect, но для безопасности
+      setDisplayName('Гость');
+      setOriginalName('Гость');
+      setProfile(null);
+      setUserStatus('Гость');
       return;
     }
-    setLoading(true);
+
     try {
-      console.log("Attempting to update password with token");
-      await updatePassword(password);
-      setSuccessMessage("Ваш пароль был успешно обновлен");
-      setTimeout(() => {
-        setIsResetPassword(false);
-        setAccessToken(null);
-        navigate("/auth", { replace: true });
-      }, 2000);
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("display_name, user_status, email") // Добавили email для полноты данных, если нужно
+        .eq("id", user.id)
+        .maybeSingle(); // Используем maybeSingle, чтобы избежать ошибок при отсутствии профиля
+
+      // Если есть ошибка, отличная от отсутствия строк
+      if (profileError && profileError.code) {
+        console.error("Error loading profile from DB in ProfilePage:", profileError);
+        throw profileError; // Пробрасываем реальные ошибки
+      }
+
+      // Определяем отображаемое имя (приоритет: из БД -> из user_metadata -> из email)
+      const name = profileData?.display_name 
+                   || user.user_metadata?.full_name // Имя от Facebook/OAuth
+                   || user.user_metadata?.name // Альтернативное имя от OAuth
+                   || user.email?.split("@")[0] 
+                   || '';
+
+      setProfile(profileData || null); // profileData может быть null, если профиля нет
+      setDisplayName(name);
+      setOriginalName(name);
+
+      // Логика установки userStatus (админ/модератор)
+      if (profileData?.user_status === "admin" || profileData?.user_status === "super_admin") {
+        console.log("User is admin or super_admin:", profileData.user_status);
+        setUserStatus("Admin");
+      } else if (profileData?.user_status === "moderator") {
+        console.log("User is moderator:", profileData.user_status);
+        setUserStatus("Moderator");
+      }
+      // Если не админ/модератор, статус будет рассчитан в loadUserStats
+
     } catch (err: any) {
-      console.error("Password update error:", err);
-      setError(
-        "Не удалось обновить пароль. Пожалуйста, попробуйте снова или запросите новую ссылку для сброса пароля.",
-      );
+      console.error("Catch error loading profile in ProfilePage:", err);
+      // Fallback на случай общей ошибки загрузки профиля
+      const fallbackName = user?.user_metadata?.full_name 
+                           || user?.user_metadata?.name 
+                           || user?.email?.split('@')[0] 
+                           || 'Пользователь';
+      setDisplayName(fallbackName);
+      setOriginalName(fallbackName);
+      setProfile(null);
+      setUserStatus('Ошибка загрузки');
+    }
+  }, [user, supabase]); // Зависимости для useCallback
+
+
+  const loadUserStats = async () => {
+    if (!user) return;
+
+    try {
+      const { count: dealsCount } = await supabase
+        .from("deals")
+        .select("id", { count: "exact" })
+        .eq("user_id", user.id);
+
+      const { count: promosCount } = await supabase
+        .from("promo_codes")
+        .select("id", { count: "exact" })
+        .eq("user_id", user.id);
+
+      const { count: dealCommentsCount } = await supabase
+        .from("deal_comments")
+        .select("id", { count: "exact" })
+        .eq("user_id", user.id);
+
+      const { count: promoCommentsCount } = await supabase
+        .from("promo_comments")
+        .select("id", { count: "exact" })
+        .eq("user_id", user.id);
+
+      const newStats = {
+        dealsCount: (dealsCount || 0) + (promosCount || 0),
+        promosCount: promosCount || 0,
+        commentsCount: (dealCommentsCount || 0) + (promoCommentsCount || 0),
+      };
+
+      setStats(newStats);
+      const status = await calculateUserStatus(newStats);
+      setUserStatus(status);
+    } catch (err) {
+      console.error("Error loading user stats:", err);
+    }
+  };
+
+  const handleNameEdit = () => {
+    setIsEditingName(true);
+  };
+
+  // handleNameSave остается, так как он обновляет существующее имя
+  const handleNameSave = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ display_name: displayName.trim() })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      setOriginalName(displayName.trim());
+      setIsEditingName(false);
+      setSuccess("Имя успешно обновлено");
+
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.message);
+      setDisplayName(originalName);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccessMessage(null);
-    if (isResetPassword && accessToken) {
-      handleUpdatePassword();
-      return;
-    }
-    if (!validateForm()) {
-      return;
-    }
-    setLoading(true);
-    try {
-      console.log(
-        `Attempting to ${isResetPassword ? "reset password" : isSignUp ? "sign up" : "sign in"} with email: ${email}`,
-      );
-      if (isResetPassword && !accessToken) {
-        await resetPassword(email);
-        setSuccessMessage(
-          "Инструкции по сбросу пароля отправлены на ваш email",
-        );
-        setIsResetPassword(false);
-      } else if (isSignUp) {
-        try {
-          const result = await signUp(email, password);
-          console.log("Sign up result:", result);
-          if (result?.user?.identities?.length === 0) {
-            setError(
-              "Аккаунт с этим email уже существует. Пожалуйста, выполните вход.",
-            );
-            setIsSignUp(false);
-          } else if (result?.user?.confirmed_at) {
-            setSuccessMessage("Аккаунт создан и подтвержден успешно!");
-            setTimeout(() => navigate("/"), 2000);
-          } else if (result?.user) {
-            setSuccessMessage(
-              "Аккаунт создан! Пожалуйста, проверьте ваш email для подтверждения аккаунта перед входом.",
-            );
-          } else {
-            throw new Error("Регистрация не удалась с неизвестной ошибкой");
-          }
-        } catch (signupErr: any) {
-          if (
-            signupErr.message?.includes("already registered") ||
-            signupErr.message?.includes("already exists")
-          ) {
-            setError(
-              "Этот email уже зарегистрирован. Пожалуйста, используйте опцию Вход.",
-            );
-            setIsSignUp(false);
-          } else {
-            throw signupErr;
-          }
-        }
-      } else {
-        try {
-          const signInResult = await signIn(email, password);
-          console.log("Sign in successful:", signInResult);
-        } catch (signInErr: any) {
-          console.error("Specific sign in error:", signInErr);
-          if (
-            signInErr.message?.includes("incorrect") ||
-            signInErr.code === "invalid_credentials" ||
-            signInErr.message?.includes("Invalid login credentials")
-          ) {
-            setError(
-              "Неверный email или пароль. Пожалуйста, проверьте данные и попробуйте снова.",
-            );
-          } else {
-            throw signInErr;
-          }
-        }
-      }
-    } catch (err: any) {
-      console.error("Auth error:", err);
-      if (
-        err.code === "invalid_credentials" ||
-        err.message?.includes("invalid_credentials") ||
-        err.message?.includes("Invalid login credentials")
-      ) {
-        setError(
-          "Email или пароль, которые вы ввели, неверны. Пожалуйста, попробуйте снова.",
-        );
-      } else if (
-        err.message?.includes("already exists") ||
-        err.message?.includes("already registered")
-      ) {
-        setError(
-          "Аккаунт с этим email уже существует. Пожалуйста, выполните вход.",
-        );
-        setIsSignUp(false);
-      } else if (err.message?.includes("password")) {
-        setError(
-          "Пароль должен содержать не менее 6 символов. Пожалуйста, используйте более надежный пароль.",
-        );
-      } else {
-        setError(
-          err.message || "Произошла ошибка. Пожалуйста, попробуйте позже.",
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
+  const handleNameCancel = () => {
+    setDisplayName(originalName);
+    setIsEditingName(false);
   };
 
-  const handleFacebookAuth = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccessMessage(null);
-    try {
-      await signInWithFacebook();
-    } catch (err: any) {
-      console.error("Facebook Auth initiation error:", err);
-      setError(
-        err.message || "Не удалось начать аутентификацию через Facebook.",
-      );
-      setLoading(false);
+  const toggleTooltip = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const tooltip = e.currentTarget.nextElementSibling;
+    if (tooltip) {
+      tooltip.classList.toggle("opacity-0");
+      if (!tooltip.classList.contains("opacity-0")) {
+        const closeTooltip = (event: MouseEvent) => {
+          if (!tooltip.contains(event.target as Node)) {
+            tooltip.classList.add("opacity-0");
+            document.removeEventListener("click", closeTooltip);
+          }
+        };
+        setTimeout(() => {
+          document.addEventListener("click", closeTooltip);
+        }, 0);
+      }
     }
-  };
-
-  const clearMessages = () => {
-    setError(null);
-    setSuccessMessage(null);
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 px-4 py-8">
-      <div className="max-w-md mx-auto">
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center text-gray-400 hover:text-white mb-6"
-        >
-          <ArrowLeft className="h-5 w-5 mr-2" />
-          Back
-        </button>
-
-        <h1 className="text-3xl font-bold text-white text-center mb-8">
-          {accessToken
-            ? "Создание нового пароля"
-            : isResetPassword
-              ? "Сброс пароля"
-              : isSignUp
-                ? "Создание аккаунта"
-                : "Добро пожаловать"}
-        </h1>
-
+    <div className="pb-8 pt-0 bg-gray-900 min-h-screen">
+      <div className="px-4 pt-4">
         {error && (
-          <div className="bg-red-500 text-white px-4 py-3 rounded-md mb-4">
+          <div className="bg-red-500 text-white px-4 py-2 rounded mb-4">
             {error}
           </div>
         )}
-
-        {successMessage && (
-          <div className="bg-green-500 text-white px-4 py-3 rounded-md mb-4">
-            {successMessage}
+        {success && (
+          <div className="bg-green-500 text-white px-4 py-2 rounded mb-4">
+            {success}
           </div>
         )}
 
-        {!isResetPassword && (
-          <button
-            onClick={handleFacebookAuth}
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium flex items-center justify-center mb-4"
-          >
-            {loading ? (
-              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <>
-                <Facebook className="h-5 w-5 mr-2" />
-                Продолжить с Facebook
-              </>
-            )}
-          </button>
-        )}
-
-        <div className="relative mb-4">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-700"></div>
+        <div className="flex items-center mb-6">
+          <div className="w-16 h-16 rounded-full overflow-hidden mr-4">
+            <img
+              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`}
+              alt="User avatar"
+              className="w-full h-full object-cover"
+            />
           </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-gray-900 text-gray-400">
-              {isResetPassword ? "Введите ваш email" : "Или продолжить с"}
-            </span>
+          <div className="flex-1">
+            <div className="flex items-center">
+              {isEditingName ? (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="bg-gray-800 text-white px-2 py-1 rounded"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleNameSave}
+                    disabled={loading || !displayName.trim()}
+                    className="text-green-500 hover:text-green-400 disabled:opacity-50"
+                  >
+                    <Check className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={handleNameCancel}
+                    className="text-red-500 hover:text-red-400"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-white text-xl font-bold">
+                    {displayName}
+                  </h2>
+                  <button
+                    onClick={handleNameEdit}
+                    className="ml-2 text-gray-400 hover:text-orange-500 cursor-pointer transition-colors"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+            </div>
+            <div className="flex items-center">
+              {" "}
+              <p className="text-gray-400">{user?.email}</p>
+              <div className="relative w-4 h-4 flex items-center justify-center ml-2">
+                {" "}
+                <button
+                  onClick={toggleTooltip}
+                  className="text-gray-500 hover:text-gray-300 p-0 flex items-center justify-center"
+                >
+                  <Info className="h-4 w-4" />{" "}
+                </button>
+                <div className="absolute top-full right-0 mt-2 w-48 opacity-0 transition-opacity duration-200 pointer-events-none z-50">
+                  <div className="bg-gray-100 text-gray-800 text-center text-xs py-2 px-3 rounded-lg shadow-lg border border-gray-200">
+                    Your email is visible only to you.
+                  </div>
+                  <div className="absolute bottom-full right-0 mb-1">
+                    <div className="border-8 border-transparent border-b-gray-100"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <button
+              onClick={() => navigate("/user-settings")}
+              className="p-2 text-white hover:text-orange-500"
+              title="User Settings"
+            >
+              <Settings className="h-6 w-6" />
+            </button>
           </div>
         </div>
 
-        <form onSubmit={handleEmailAuth} className="space-y-4">
-          {(!accessToken || !isResetPassword) && (
-            <div>
-              <input
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-                placeholder="Email адрес"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  clearMessages();
-                }}
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
-                required
-              />
-            </div>
-          )}
-
-          {(!isResetPassword || accessToken) && (
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                autoComplete={isSignUp ? "new-password" : "current-password"}
-                placeholder={isSignUp ? "Пароль" : "Пароль"}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  clearMessages();
-                }}
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 pr-10"
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
-              >
-                {showPassword ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+        <div className="bg-gray-800 rounded-lg p-4 mb-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <div className="text-gray-400 text-sm mb-1 flex items-center justify-center gap-2">
+                Status
+                <div className="relative w-4 h-4 flex items-center justify-center">
+                  <button
+                    onClick={toggleTooltip}
+                    className="text-gray-500 hover:text-gray-300 p-0 flex items-center justify-center"
                   >
-                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
-                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
-                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
-                    <line x1="2" x2="22" y1="2" y2="22"></line>
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                )}
-              </button>
-            </div>
-          )}
-
-          {accessToken && (
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="Подтвердите новый пароль"
-                value={confirmPassword}
-                onChange={(e) => {
-                  setConfirmPassword(e.target.value);
-                  clearMessages();
-                }}
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 pr-10"
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
-              >
-                {showPassword ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
-                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
-                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
-                    <line x1="2" x2="22" y1="2" y2="22"></line>
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                )}
-              </button>
-            </div>
-          )}
-
-          {!isResetPassword && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="remember-me"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-orange-500 rounded border-gray-700 bg-gray-800"
-                />
-                <label htmlFor="remember-me" className="ml-2 text-gray-400">
-                  Запомнить меня
-                </label>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                  </button>
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-64 opacity-0 transition-opacity duration-200 pointer-events-none z-50">
+                    <div className="bg-white dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300 py-2 px-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                      <div className="font-medium mb-1 text-gray-900 dark:text-white">
+                        Status Progression:
+                      </div>
+                      <div className="space-y-1">
+                        <div>Newcomer (0)</div>
+                        <div>Rising Star (50+)</div>
+                        <div>Regular Member (100+)</div>
+                        <div>Active Contributor (150+)</div>
+                        <div>Deal Expert (500+)</div>
+                        <div>Deal Master (1000+)</div>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1">
+                      <div className="border-8 border-transparent border-b-white dark:border-b-gray-800"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              {!isSignUp && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsResetPassword(true);
-                    clearMessages();
-                  }}
-                  className="text-orange-500 hover:text-orange-400"
-                >
-                  Забыли пароль?
-                </button>
-              )}
+              <div className="space-y-2">
+                <div className="flex items-center justify-center">
+                  <div
+                    className={`px-3 py-1 rounded-full text-sm ${getUserStatusColor(userStatus)}`}
+                  >
+                    {userStatus}
+                  </div>
+                </div>
+                <div className="text-xs text-gray-400">
+                  {(() => {
+                    const totalContributions =
+                      stats.dealsCount + stats.commentsCount;
+                    if (userStatus === "Admin" || userStatus === "Moderator") {
+                      return (
+                        <>
+                          Special status
+                          <ModerationCount />
+                        </>
+                      );
+                    } else if (userStatus === "Deal Master") {
+                      return `${totalContributions}/1000+ contributions`;
+                    } else {
+                      const nextThreshold =
+                        totalContributions < 50
+                          ? 50
+                          : totalContributions < 100
+                            ? 100
+                            : totalContributions < 150
+                              ? 150
+                              : totalContributions < 500
+                                ? 500
+                                : totalContributions < 1000
+                                  ? 1000
+                                  : 1000;
+                      const progress = Math.min(
+                        100,
+                        (totalContributions / nextThreshold) * 100,
+                      );
+                      return `${totalContributions}/${nextThreshold} contributions (${Math.floor(progress)}%)`;
+                    }
+                  })()}
+                </div>
+              </div>
             </div>
-          )}
+            <div className="text-center border-l border-gray-700">
+              <div className="text-gray-400 text-sm mb-1">Rating</div>
+              <div className="text-xl font-bold text-orange-500">
+                {Math.min(
+                  5,
+                  Math.floor((stats.dealsCount + stats.commentsCount) / 10),
+                )}
+                .0
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-orange-500 text-white py-3 rounded-md font-medium flex items-center justify-center"
-          >
-            {loading ? (
-              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <>
-                {accessToken
-                  ? "Обновить пароль"
-                  : isResetPassword
-                    ? "Отправить инструкции"
-                    : isSignUp
-                      ? "Регистрация"
-                      : "Вход"}
-                <ArrowRight className="h-5 w-5 ml-2" />
-              </>
-            )}
-          </button>
-        </form>
-
-        {!isResetPassword && (
-          <p className="text-center text-gray-400 mt-4">
-            {isSignUp ? "Уже есть аккаунт?" : "Нет аккаунта?"}{" "}
-            <button
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                clearMessages();
-              }}
-              className="text-orange-500 font-medium"
-            >
-              {isSignUp ? "Вход" : "Регистрация"}
-            </button>
-          </p>
-        )}
-
-        {isResetPassword && (
-          <button
-            onClick={() => {
-              setIsResetPassword(false);
-              clearMessages();
-            }}
-            className="text-orange-500 font-medium mt-4 w-full text-center"
-          >
-            Вернуться к входу
-          </button>
-        )}
-
-        <p className="text-center text-gray-400 mt-4 text-sm">
-          Продолжая, вы соглашаетесь с нашей{" "}
-          <Link
-            to="/privacy-policy"
-            className="text-orange-500 hover:text-orange-400"
-          >
-            Политикой конфиденциальности
-          </Link>
-        </p>
+        <div className="bg-gray-800 rounded-lg overflow-hidden mb-6">
+          <div className="divide-y divide-gray-700">
+            <div className="px-4 py-3 flex items-center">
+              <Heart className="h-5 w-5 text-orange-500 mr-3" />
+              <button
+                onClick={() => navigate("/saved")}
+                className="text-white flex-1 text-left"
+              >
+                Saved Items
+              </button>
+              <span className="ml-auto text-gray-400">{savedItemsCount}</span>
+            </div>
+            <div className="px-4 py-3 flex items-center">
+              <Tag className="h-5 w-5 text-orange-500 mr-3" />
+              <button
+                onClick={() => navigate("/posted")}
+                className="text-white flex-1 text-left"
+              >
+                My Posted Items
+              </button>
+              <span className="ml-auto text-gray-400">{stats.dealsCount}</span>
+            </div>
+            <div className="px-4 py-3 flex items-center">
+              <Bell className="h-5 w-5 text-orange-500 mr-3" />
+              <button
+                onClick={() => navigate("/settings/notifications")}
+                className="text-white flex-1 text-left"
+              >
+                Notification Settings
+              </button>
+            </div>
+            <div className="px-4 py-3 flex items-center">
+              <svg
+                className="h-5 w-5 text-orange-500 mr-3"
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <line x1="10" y1="9" x2="8" y2="9" />
+              </svg>
+              <button
+                onClick={() => navigate("/user-subscriptions")}
+                className="text-white flex-1 text-left"
+              >
+                My Subscriptions
+              </button>
+            </div>
+            <div className="px-4 py-3 flex items-center">
+              <MessageSquare className="h-5 w-5 text-orange-500 mr-3" />
+              <button
+                onClick={() => navigate("/comments")}
+                className="text-white flex-1 text-left"
+              >
+                My Comments
+              </button>
+              <span className="ml-auto text-gray-400">
+                {stats.commentsCount}
+              </span>
+            </div>
+            {(isAdmin ||
+              role === "moderator" ||
+              role === "admin" ||
+              role === "super_admin") && (
+                <div className="px-4 py-3 flex items-center">
+                  <Shield className="h-5 w-5 text-orange-500 mr-3" />
+                  <button
+                    onClick={() => navigate("/moderation")}
+                    className="text-white flex-1 text-left"
+                  >
+                    Модерация
+                  </button>
+                  <ModerationCount />
+                </div>
+              )}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-export default AuthPage;
+export default ProfilePage;
