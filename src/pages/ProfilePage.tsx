@@ -11,12 +11,12 @@ import {
   Shield,
   Info,
 } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext"; // Используем useAuth для получения user
+import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAdmin } from "../hooks/useAdmin";
 import { useModeration } from "../contexts/ModerationContext";
-import { sendNotificationEmail } from '../utils/emailService'; // ДОБАВЛЕНО: Импорт функции отправки email
+import { sendNotificationEmail } from '../utils/emailService'; // Импорт функции отправки email
 
 // Компонент для отображения количества элементов в очереди модерации
 const ModerationCount: React.FC = () => {
@@ -34,14 +34,14 @@ const ModerationCount: React.FC = () => {
 };
 
 const ProfilePage: React.FC = () => {
-  const { user } = useAuth(); // Получаем user из AuthContext
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [originalName, setOriginalName] = useState("");
   const [savedItemsCount, setSavedItemsCount] = useState(0);
-  const [profile, setProfile] = useState<any>(null); // Для хранения всего объекта профиля
+  const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({
     dealsCount: 0,
     promosCount: 0,
@@ -73,7 +73,8 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const calculateUserStatus = async (stats: {
+  // ИСПРАВЛЕНИЕ: Обернули calculateUserStatus в useCallback
+  const calculateUserStatus = useCallback(async (stats: {
     dealsCount: number;
     commentsCount: number;
   }) => {
@@ -84,7 +85,7 @@ const ProfilePage: React.FC = () => {
         .from("profiles")
         .select("user_status")
         .eq("id", user.id)
-        .single();
+        .single(); // Здесь можно оставить .single() или поменять на .maybeSingle() для чистоты логов
 
       if (error) {
         console.error("Error fetching profile:", error);
@@ -107,7 +108,7 @@ const ProfilePage: React.FC = () => {
       console.error("Error calculating user status:", error);
       return "Newcomer";
     }
-  };
+  }, [user, supabase]); // Зависимости для useCallback: user и supabase
 
   useEffect(() => {
     if (user) {
@@ -126,7 +127,7 @@ const ProfilePage: React.FC = () => {
     if (user) {
       loadUserStats();
     }
-  }, [user, calculateUserStatus]);
+  }, [user, calculateUserStatus]); // calculateUserStatus теперь стабилен благодаря useCallback
 
   useEffect(() => {
     if (user) {
@@ -229,7 +230,7 @@ const ProfilePage: React.FC = () => {
       console.error("Catch error loading profile in ProfilePage:", err);
       const fallbackName = user?.user_metadata?.full_name 
                            || user?.user_metadata?.name 
-                           || user?.email?.split("@")[0] 
+                           || user?.email?.split('@')[0] 
                            || 'Пользователь';
       setDisplayName(fallbackName);
       setOriginalName(fallbackName);
@@ -269,7 +270,7 @@ const ProfilePage: React.FC = () => {
       };
 
       setStats(newStats);
-      const status = await calculateUserStatus(newStats);
+      const status = await calculateUserStatus(newStats); // calculateUserStatus теперь стабилен
       setUserStatus(status);
     } catch (err) {
       console.error("Error loading user stats:", err);
@@ -331,7 +332,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  // --- ДОБАВЛЕНО: ФУНКЦИЯ ДЛЯ ОТПРАВКИ ТЕСТОВОГО EMAIL ---
+  // Функция для отправки тестового email
   const handleSendTestEmail = async () => {
     if (!user?.email) {
       setError('Email пользователя не найден для отправки тестового письма.');
@@ -342,10 +343,10 @@ const ProfilePage: React.FC = () => {
     setSuccess(null);
     try {
       await sendNotificationEmail({
-        to: user.email, // Отправить письмо текущему залогиненному пользователю
+        to: user.email,
         subject: 'Тестовое уведомление от WeDealz',
         html: '<p>Привет! Это <strong>тестовое уведомление</strong> от вашего сайта WeDealz.</p><p>Если вы это читаете, рассылка работает!</p>',
-        from: 'notifications@wedealz.com', // ОБЯЗАТЕЛЬНО: используйте адрес с верифицированного домена
+        from: 'notifications@wedealz.com',
       });
       setSuccess('Тестовое письмо отправлено успешно! Проверьте почту (включая спам).');
       console.log('Тестовое письмо отправлено успешно!');
@@ -354,10 +355,9 @@ const ProfilePage: React.FC = () => {
       setError('Ошибка при отправке тестового письма: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setLoading(false);
-      setTimeout(() => { setError(null); setSuccess(null); }, 5000); // Очистить сообщения через 5 секунд
+      setTimeout(() => { setError(null); setSuccess(null); }, 5000);
     }
   };
-  // --- КОНЕЦ ДОБАВЛЕННОЙ ФУНКЦИИ ---
 
   return (
     <div className="pb-8 pt-0 bg-gray-900 min-h-screen">
@@ -460,7 +460,7 @@ const ProfilePage: React.FC = () => {
             disabled={loading}
             style={{
               padding: '10px 20px',
-              backgroundColor: loading ? '#6B7280' : '#F97316', // Оранжевый или серый при загрузке
+              backgroundColor: loading ? '#6B7280' : '#F97316',
               color: 'white',
               border: 'none',
               borderRadius: '5px',
