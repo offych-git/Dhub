@@ -19,6 +19,7 @@ interface ModerationContextType {
   rejectModerationItem: (itemId: string, itemType: string, comment?: string) => Promise<boolean>;
   toggleModerationSetting: (enabled: boolean) => Promise<boolean>;
   updateModerationTypes: (types: string[]) => Promise<boolean>;
+  addToModerationQueue: (itemId: string, itemType: string) => Promise<boolean>;
 }
 
 const defaultSettings: ModerationSettings = {
@@ -26,27 +27,13 @@ const defaultSettings: ModerationSettings = {
   types: ['deal', 'promo', 'sweepstake']
 };
 
-interface ModerationContextType {
-  isModerationEnabled: boolean;
-  moderationSettings: ModerationSettings;
-  isLoading: boolean;
-  moderationQueue: any[];
-  queueCount: number;
-  loadModerationQueue: () => Promise<void>;
-  approveModerationItem: (itemId: string, itemType: string) => Promise<boolean>;
-  rejectModerationItem: (itemId: string, itemType: string, comment?: string) => Promise<boolean>;
-  toggleModerationSetting: (enabled: boolean) => Promise<boolean>;
-  updateModerationTypes: (types: string[]) => Promise<boolean>;
-  addToModerationQueue: (itemId: string, itemType: string) => Promise<boolean>;
-}
-
 export const ModerationContext = createContext<ModerationContextType>({
   isModerationEnabled: true,
   moderationSettings: defaultSettings,
   isLoading: true,
   moderationQueue: [],
   queueCount: 0,
-  loadModerationQueue: async () => {},
+  loadModerationQueue: async () => { },
   approveModerationItem: async () => false,
   rejectModerationItem: async () => false,
   toggleModerationSetting: async () => false,
@@ -355,7 +342,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                   .update({
                     status: promo.status,
                     moderator_id: promo.moderator_id || user?.id,
-                    moderated_at: promo.moderated_at || new Date().toISOString()
+                    moderated_at: new Date().toISOString()
                   })
                   .eq('item_id', promo.id)
                   .eq('item_type', 'promo')
@@ -431,7 +418,6 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       setIsLoading(true);
 
-      // 1. Определяем соответствующую таблицу для типа элемента
       let tableName = '';
       if (itemType === 'deal' || itemType === 'sweepstake') {
         tableName = 'deals';
@@ -466,7 +452,6 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         is_moderator: isModerator
       });
 
-      // Проверяем права доступа
       if (!isAdmin && !isModerator) {
         console.error('У пользователя нет прав на модерацию');
         throw new Error('Недостаточно прав для выполнения операции');
@@ -476,8 +461,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (checkData && checkData.status === 'approved') {
         console.log(`Элемент ${itemId} типа ${itemType} уже имеет статус approved, обновляем только UI`);
 
-        // Обновляем очередь модерации
-        const { error: queueError } = await supabase
+        await supabase
           .from('moderation_queue')
           .update({
             status: 'approved',
@@ -487,70 +471,34 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           .eq('item_id', itemId)
           .eq('item_type', itemType);
 
-        if (queueError) {
-          console.error('Error updating moderation_queue:', queueError);
-        }
-
-        // Обновляем локальное состояние очереди модерации
-        setModerationQueue(prevQueue => 
+        setModerationQueue(prevQueue =>
           prevQueue.filter(item => !(item.item_id === itemId && item.item_type === itemType))
         );
-
-        // Уменьшаем счетчик элементов в очереди
         setQueueCount(prev => Math.max(0, prev - 1));
-
-        // Перезагружаем очередь модерации для синхронизации с базой данных
         await loadModerationQueue();
-
         return true;
       }
 
-      // 3. Обновляем статус элемента в соответствующей таблице
-      const updateObject = {
-        status: 'approved',
-        moderator_id: user?.id,
-        moderated_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      // 3. Обновляем статус элемента в соответствующей таблице через RPC
+      console.log(`Calling RPC update_item_status for ${tableName} with ID ${itemId} to status approved`);
 
-      console.log(`Updating ${tableName} with ID ${itemId} to status approved`);
-
-      // Пробуем обновить через RPC с проверкой прав
-      try {
-        const { data: rpcData, error: rpcError } = await supabase.rpc(
-          'update_entity_status',
-          {
-            item_id: itemId,
-            item_type: itemType,
-            new_status: 'approved',
-            moderator_user_id: user?.id,
-            new_moderation_note: ''
-          }
-        );
-
-        if (rpcError) {
-          console.error('RPC update failed:', rpcError);
-
-          // Если RPC не сработал, пробуем прямой update
-          const { data: updateData, error: updateError } = await supabase
-            .from(tableName)
-            .update(updateObject)
-            .eq('id', itemId)
-            .select('*');
-
-          if (updateError) {
-            console.error('Direct update failed:', updateError);
-            throw updateError;
-          }
-
-          console.log('Direct update result:', updateData);
-        } else {
-          console.log('RPC update result:', rpcData);
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        'update_item_status',
+        {
+          p_item_id: itemId,
+          p_status: 'approved',
+          p_table_name: tableName,
+          moderator_user_id: user?.id,
+          new_moderation_note: ''
         }
-      } catch (error) {
-        console.error('Update failed:', error);
-        throw error;
+      );
+
+      if (rpcError) {
+        console.error('RPC update_item_status failed:', rpcError);
+        throw rpcError;
       }
+
+      console.log('RPC update_item_status result:', rpcData);
 
       // 4. Обновляем запись в очереди модерации
       console.log(`Updating moderation_queue for item ${itemId} of type ${itemType} to status approved`);
@@ -567,54 +515,11 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       if (queueError) {
         console.error('Error updating moderation_queue:', queueError);
-        // Продолжаем выполнение, даже если это обновление не удалось
         console.log('Продолжаем выполнение, несмотря на ошибку обновления moderation_queue');
       }
 
-      // Проверяем, что основная таблица (deals или promo_codes) была успешно обновлена
-      const { data: verifyData, error: verifyError } = await supabase
-        .from(tableName)
-        .select('status, moderator_id, moderated_at, user_id')
-        .eq('id', itemId)
-        .single();
-
-      if (verifyError) {
-        console.error('Ошибка при проверке статуса после обновления:', verifyError);
-      } else {
-        console.log('Данные после обновления:', {
-          status: verifyData?.status,
-          moderator_id: verifyData?.moderator_id,
-          moderated_at: verifyData?.moderated_at,
-          user_id: verifyData?.user_id,
-          expected_status: 'approved',
-          table: tableName,
-          item_id: itemId
-        });
-
-        if (verifyData?.status !== 'approved') {
-          console.error(`Статус не был обновлен на 'approved'! Текущий статус: ${verifyData?.status}`);
-
-          // Последняя попытка - через RPC с принудительным обновлением
-          console.log('Trying final RPC update...');
-          const { data: finalRpcData, error: finalRpcError } = await supabase.rpc(
-            'update_item_status',
-            {
-              p_item_id: itemId,
-              p_status: 'approved',
-              p_table_name: tableName
-            }
-          );
-
-          if (finalRpcError) {
-            console.error('Final RPC update failed:', finalRpcError);
-          } else {
-            console.log('Final RPC update result:', finalRpcData);
-          }
-        }
-      }
-
-      // 5. Обновляем локальное состояние очереди модерации без запроса к серверу
-      setModerationQueue(prevQueue => 
+      // 5. Обновляем локальное состояние очереди модерации
+      setModerationQueue(prevQueue =>
         prevQueue.filter(item => !(item.item_id === itemId && item.item_type === itemType))
       );
 
@@ -640,7 +545,6 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       setIsLoading(true);
 
-      // 1. Определяем соответствующую таблицу для типа элемента
       let tableName = '';
       if (itemType === 'deal' || itemType === 'sweepstake') {
         tableName = 'deals';
@@ -652,7 +556,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw new Error(`Неизвестный тип элемента: ${itemType}`);
       }
 
-      // 2. Проверяем существование записи и её текущий статус перед обновлением
+      // Проверяем существование записи и её текущий статус перед обновлением
       const { data: checkData, error: checkError } = await supabase
         .from(tableName)
         .select('id, status')
@@ -668,7 +572,6 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (checkData && checkData.status === 'rejected') {
         console.log(`Элемент ${itemId} типа ${itemType} уже имеет статус rejected, обновляем только UI`);
 
-        // Обновляем очередь модерации
         await loadModerationQueue();
         return true;
       }
@@ -676,96 +579,28 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.log(`rejectModerationItem - таблица для обновления: ${tableName} для типа: ${itemType}`);
       console.log('Текущее состояние элемента перед обновлением:', checkData);
 
-      // 3. Подготовка объекта обновления
-      const updateObject: any = {
-        status: 'rejected',
-        moderation_note: comment || '',
-        moderator_id: user?.id,
-        moderated_at: new Date().toISOString()
-      };
+      // Обновляем статус элемента в соответствующей таблице через RPC
+      console.log(`Calling RPC update_item_status for ${tableName} with ID ${itemId} to status rejected`);
 
-      console.log(`Updating ${tableName} with ID ${itemId} to status rejected`);
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        'update_item_status',
+        {
+          p_item_id: itemId,
+          p_status: 'rejected',
+          p_table_name: tableName,
+          moderator_user_id: user?.id || null,
+          new_moderation_note: comment || ''
+        }
+      );
 
-      // 4. Обновляем запись в соответствующей таблице
-      const { data: updateData, error: updateError } = await supabase
-        .from(tableName)
-        .update(updateObject)
-        .match({ id: itemId })  // Используем match вместо eq для более точного соответствия
-        .select();
-
-      if (updateError) {
-        console.error(`Error updating ${tableName}:`, updateError);
-        throw updateError;
+      if (rpcError) {
+        console.error('RPC update_item_status failed:', rpcError);
+        throw rpcError;
       }
 
-      console.log(`Результат обновления ${tableName}:`, updateData);
+      console.log('RPC update_item_status result:', rpcData);
 
-      // 5. Если обновление не затронуло ни одной записи, используем альтернативный подход
-      if (!updateData || updateData.length === 0) {
-        console.error(`Запись не найдена в таблице ${tableName} с id=${itemId}, пробуем альтернативный метод`);
-
-        // Пробуем альтернативный метод обновления в зависимости от типа элемента
-        let altUpdateSuccess = false;
-
-        // Используем универсальную RPC функцию для всех типов элементов
-        const { data: altUpdateData, error: altUpdateError } = await supabase.rpc(
-          'update_entity_status', 
-          { 
-            item_id: itemId,
-            item_type: itemType,
-            new_status: 'rejected',
-            moderator_user_id: user?.id || null,
-            new_moderation_note: comment || ''
-          }
-        );
-
-        if (altUpdateError) {
-          console.error(`Ошибка обновления через RPC:`, altUpdateError);
-        } else {
-          altUpdateSuccess = !!altUpdateData;
-          console.log(`Результат обновления через RPC:`, altUpdateData);
-        }
-        
-        // Если универсальная RPC функция не сработала, пробуем прямой запрос
-        if (!altUpdateSuccess && (itemType === 'deal' || itemType === 'sweepstake')) {
-          try {
-            // Прямой SQL запрос как запасной вариант
-            const { data: finalUpdateData, error: finalUpdateError } = await supabase
-              .from(tableName)
-              .update(updateObject)
-              .eq('id', itemId)
-              .select();
-
-            if (altUpdateError) {
-              console.error(`RPC функция ${rpcName} не найдена или возникла ошибка:`, altUpdateError);
-              // Последняя попытка - обычный update с eq вместо match
-              const { data: finalUpdateData, error: finalUpdateError } = await supabase
-                .from(tableName)
-                .update(updateObject)
-                .eq('id', itemId)
-                .select();
-
-              if (finalUpdateError) {
-                console.error(`Финальная попытка обновления не удалась:`, finalUpdateError);
-              } else {
-                altUpdateSuccess = !!finalUpdateData && finalUpdateData.length > 0;
-                console.log(`Результат финального обновления:`, finalUpdateData);
-              }
-            } else {
-              altUpdateSuccess = !!altUpdateData;
-              console.log(`Результат RPC обновления:`, altUpdateData);
-            }
-          } catch (rpcError) {
-            console.error(`Ошибка при попытке использовать RPC:`, rpcError);
-          }
-        }
-
-        if (!altUpdateSuccess) {
-          throw new Error(`Невозможно обновить запись в таблице ${tableName}`);
-        }
-      }
-
-      // 6. Обновляем статус в очереди модерации
+      // Обновляем статус в очереди модерации
       console.log(`Updating moderation_queue for item ${itemId} of type ${itemType} to status rejected`);
 
       const { error: queueError } = await supabase
@@ -784,13 +619,15 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw queueError;
       }
 
-      // 7. Обновляем локальное состояние очереди модерации без запроса к серверу
-      setModerationQueue(prevQueue => 
+      // Обновляем локальное состояние очереди модерации
+      setModerationQueue(prevQueue =>
         prevQueue.filter(item => !(item.item_id === itemId && item.item_type === itemType))
       );
 
-      // 8. Уменьшаем счетчик элементов в очереди
+      // Уменьшаем счетчик элементов в очереди
       setQueueCount(prev => Math.max(0, prev - 1));
+
+      await loadModerationQueue();
 
       console.log(`Successfully rejected item ${itemId} of type ${itemType}`);
       return true;
@@ -813,7 +650,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       const { error } = await supabase
         .from('system_settings')
-        .update({ 
+        .update({
           value: newSettings,
           updated_at: new Date().toISOString(),
           updated_by: user?.id
@@ -842,7 +679,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       const { error } = await supabase
         .from('system_settings')
-        .update({ 
+        .update({
           value: newSettings,
           updated_at: new Date().toISOString(),
           updated_by: user?.id
