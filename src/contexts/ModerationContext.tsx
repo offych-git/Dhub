@@ -305,7 +305,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     .update({
                       status: deal.status,
                       moderator_id: deal.moderator_id || user?.id,
-                      moderated_at: deal.moderated_at || new Date().toISOString()
+                      moderated_at: new Date().toISOString()
                     })
                     .eq('item_id', deal.id)
                     .eq('item_type', itemType)
@@ -482,19 +482,14 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 3. Обновляем статус элемента в соответствующей таблице через RPC
       console.log(`Calling RPC update_item_status for ${tableName} with ID ${itemId} to status approved`);
 
-      // --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
       const { data: rpcData, error: rpcError } = await supabase.rpc(
         'update_item_status',
         {
-          p_item_id: itemId,
+          p_item_id: itemId as string, // <--- Явное приведение к string
           p_status: 'approved',
           p_table_name: tableName,
-          // УДАЛЕНЫ: moderator_user_id и new_moderation_note, так как они не нужны функции БД
-          // moderator_user_id: user?.id,
-          // new_moderation_note: ''
         }
       );
-      // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
       if (rpcError) {
         console.error('RPC update_item_status failed:', rpcError);
@@ -585,19 +580,14 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // Обновляем статус элемента в соответствующей таблице через RPC
       console.log(`Calling RPC update_item_status for ${tableName} with ID ${itemId} to status rejected`);
 
-      // --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
       const { data: rpcData, error: rpcError } = await supabase.rpc(
         'update_item_status',
         {
-          p_item_id: itemId,
+          p_item_id: itemId as string, // <--- Явное приведение к string
           p_status: 'rejected',
           p_table_name: tableName,
-          // УДАЛЕНЫ: moderator_user_id и new_moderation_note, так как они не нужны функции БД
-          // moderator_user_id: user?.id || null,
-          // new_moderation_note: comment || ''
         }
       );
-      // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
       if (rpcError) {
         console.error('RPC update_item_status failed:', rpcError);
@@ -613,7 +603,7 @@ export const ModerationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         .from('moderation_queue')
         .update({
           status: 'rejected',
-          moderation_note: comment || '', // Примечание модерации оставляем, если оно есть в таблице moderation_queue
+          moderation_note: comment || '',
           moderator_id: user?.id,
           moderated_at: new Date().toISOString()
         })
