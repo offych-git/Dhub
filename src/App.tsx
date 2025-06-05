@@ -107,22 +107,23 @@ function App() {
             <ModerationProvider>
               <LanguageProvider>
                 <Routes>
+<Route path="/promos/:id" element={<PromoDetailPage />} />
+<Route path="/deals/:id" element={<DealDetailPage />} />
+<Route path="/sweepstakes/:id" element={<SweepstakesDetailPage />} />
+<Route path="/category/:categoryId" element={<CategoryItemsPage />} />
                   <Route path="/auth" element={<AuthPage />} />
                   <Route path="/auth/reset-password" element={<AuthPage isResetPasswordPage={true} />} />
                   <Route path="/auth/callback" element={<AuthPage />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                   <Route element={<AppLayout />}>
                     <Route path="/" element={<DealsPage />} />
-                    <Route path="/deals/:id" element={<DealDetailPage />} />
                     <Route path="/deals/new" element={<PrivateRoute><AddDealPage /></PrivateRoute>} />
                     <Route path="/deals/new-carousel" element={<PrivateRoute><AddDealPageNew /></PrivateRoute>} />
                     <Route path="/edit-carousel/:id" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} />
                     <Route path="/promos/new" element={<PrivateRoute><AddPromoPage /></PrivateRoute>} />
                     <Route path="/promos" element={<PromosPage />} />
-                    <Route path="/promos/:id" element={<PrivateRoute><PromoDetailPage /></PrivateRoute>} />
                     <Route path="/promos/:id/edit" element={<PrivateRoute><EditPromoPage /></PrivateRoute>} />
                     <Route path="/sweepstakes/new" element={<PrivateRoute><AddSweepstakesPage /></PrivateRoute>} />
-                    <Route path="/sweepstakes/:id" element={<SweepstakesDetailPage />} />
                     <Route path="/sweepstakes" element={<SweepstakesPage />} />
                     <Route path="/discussions" element={<PrivateRoute><DiscussionsPage /></PrivateRoute>} />
                     <Route path="/categories" element={<PrivateRoute><CategoriesPage /></PrivateRoute>} />
@@ -132,7 +133,6 @@ function App() {
                     <Route path="/posted" element={<PrivateRoute><UserPostedItemsPage /></PrivateRoute>} />
                     <Route path="/settings/notifications" element={<PrivateRoute><NotificationSettingsPage /></PrivateRoute>} />
                     <Route path="/user-settings" element={<PrivateRoute><UserSettingsPage /></PrivateRoute>} />
-                    <Route path="/category/:categoryId" element={<CategoryItemsPage />} />
                     <Route path="/edit-deal/:id" element={<PrivateRoute><EditDealPage /></PrivateRoute>} />
                     <Route path="/edit-promo/:id" element={<PrivateRoute><EditPromoPage /></PrivateRoute>} />
                     <Route path="/edit-sweepstakes/:id" element={<PrivateRoute><EditSweepstakesPage /></PrivateRoute>} />
