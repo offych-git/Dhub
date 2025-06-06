@@ -409,7 +409,14 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
           : initialData?.image || null,
         deal_url: formData.dealUrl,
         user_id: originalUserId, // Используем оригинального создателя при редактировании
-        expires_at: formData.expiryDate || null,
+        expires_at: formData.expiryDate
+  ? (() => {
+      const selectedDate = new Date(formData.expiryDate);
+      selectedDate.setDate(selectedDate.getDate() + 1);
+      selectedDate.setUTCHours(0, 0, 0, 0);
+      return selectedDate.toISOString();
+    })()
+  : null,
         is_hot: allowHotToggle ? formData.isHot : false,
         type: "sweepstakes",
         status: "pending", // Устанавливаем начальный статус 'pending' для модерации

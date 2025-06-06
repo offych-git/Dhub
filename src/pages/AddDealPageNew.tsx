@@ -135,7 +135,14 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
     description: initialData?.description || "",
     category: initialData?.category || "",
     dealUrl: initialData?.deal_url || "",
-    expiryDate: initialData?.expiry_date || initialData?.expires_at || "",
+    expiryDate: initialData?.expires_at
+  ? (() => {
+      const expiryUtcDate = new Date(initialData.expires_at);
+      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
+      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
+      return expiryUtcDate.toISOString().split('T')[0];
+    })()
+  : initialData?.expiry_date || "",
     isHot: initialData?.is_hot || false,
   });
 
@@ -456,9 +463,14 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
         category_id: formData.category,
         image_url: mainImageUrl,
         deal_url: formData.dealUrl,
-        expires_at: formData.expiryDate
-          ? `${formData.expiryDate}T12:00:00.000Z`
-          : null,
+expires_at: formData.expiryDate
+  ? (() => {
+      const selectedDate = new Date(formData.expiryDate);
+      selectedDate.setDate(selectedDate.getDate() + 1);
+      selectedDate.setUTCHours(0, 0, 0, 0);
+      return selectedDate.toISOString();
+    })()
+  : null,
         is_hot: formData.isHot,
       };
 
@@ -491,9 +503,14 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           category_id: formData.category,
           image_url: mainImageUrl,
           deal_url: formData.dealUrl,
-          expires_at: formData.expiryDate
-            ? `${formData.expiryDate}T12:00:00.000Z`
-            : null,
+expires_at: formData.expiryDate
+  ? (() => {
+      const selectedDate = new Date(formData.expiryDate);
+      selectedDate.setDate(selectedDate.getDate() + 1);
+      selectedDate.setUTCHours(0, 0, 0, 0);
+      return selectedDate.toISOString();
+    })()
+  : null,
           is_hot: formData.isHot,
 
           // --- ЛОГИКА ПУБЛИКАЦИИ ПРИ РЕДАКТИРОВАНИИ ИЗ МОДЕРАЦИИ ---

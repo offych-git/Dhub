@@ -88,9 +88,13 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
         description: promoData.description || "",
         category: promoData.category_id || "",
         discountUrl: promoData.discount_url || "",
-        expiryDate: promoData.expires_at
-          ? promoData.expires_at.split("T")[0]
-          : "",
+expiryDate: promoData.expires_at
+  ? (() => {
+      const expiryUtcDate = new Date(promoData.expires_at);
+      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
+      return expiryUtcDate.toISOString().split('T')[0];
+    })()
+  : "",
       });
     }
   }, [isEditing, promoData]);
@@ -123,7 +127,14 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
           description: formData.description,
           category_id: formData.category,
           discount_url: formData.discountUrl,
-          expires_at: formData.expiryDate || null,
+expires_at: formData.expiryDate
+  ? (() => {
+      const selectedDate = new Date(formData.expiryDate);
+      selectedDate.setDate(selectedDate.getDate() + 1);
+      selectedDate.setUTCHours(0, 0, 0, 0);
+      return selectedDate.toISOString();
+    })()
+  : null,
           updated_at: new Date().toISOString(),
         };
 
@@ -320,7 +331,14 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
             description: formData.description,
             category_id: formData.category,
             discount_url: formData.discountUrl,
-            expires_at: formData.expiryDate || null,
+expires_at: formData.expiryDate
+  ? (() => {
+      const selectedDate = new Date(formData.expiryDate);
+      selectedDate.setDate(selectedDate.getDate() + 1);
+      selectedDate.setUTCHours(0, 0, 0, 0);
+      return selectedDate.toISOString();
+    })()
+  : null,
             user_id: user?.id,
             status: moderationStatus,
           })

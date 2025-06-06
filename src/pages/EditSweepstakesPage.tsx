@@ -109,7 +109,14 @@ const EditSweepstakesPage: React.FC = () => {
           title: data.title,
           description: data.description,
           dealUrl: data.deal_url,
-          expiryDate: data.expires_at || '',
+          expiryDate: data.expires_at
+  ? (() => {
+      const expiryUtcDate = new Date(data.expires_at);
+      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
+      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
+      return expiryUtcDate.toISOString().split('T')[0];
+    })()
+  : '',
           image: data.image_url,
           isHot: !!data.is_hot
         };

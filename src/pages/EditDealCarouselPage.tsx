@@ -107,12 +107,25 @@ const EditDealCarouselPage: React.FC = () => {
           original_price: data.original_price !== null ? data.original_price.toString() : '',
           category: data.category_id || '',
           deal_url: data.deal_url || '',
-          expiry_date: data.expires_at ? (typeof data.expires_at === 'string' && !data.expires_at.includes('T') 
-            ? data.expires_at 
-            : new Date(data.expires_at).toISOString().split('T')[0]) : '',
-          expires_at: data.expires_at ? (typeof data.expires_at === 'string' && !data.expires_at.includes('T') 
-            ? data.expires_at 
-            : new Date(data.expires_at).toISOString().split('T')[0]) : '',
+         
+expiry_date: data.expires_at // Используем expires_at как основной источник
+  ? (() => {
+      const expiryUtcDate = new Date(data.expires_at);
+      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
+      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
+      return expiryUtcDate.toISOString().split('T')[0];
+    })()
+  : '',
+         
+expires_at: data.expires_at // Дублируем для expires_at, если это разные поля в форме
+  ? (() => {
+      const expiryUtcDate = new Date(data.expires_at);
+      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
+      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
+      return expiryUtcDate.toISOString().split('T')[0];
+    })()
+  : '',
+
           is_hot: !!data.is_hot,
           store_id: data.store_id || null,
           dealImages: [] // Будет заполнено ниже

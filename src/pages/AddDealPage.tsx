@@ -64,7 +64,14 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
     category: initialData?.category_id || '', // Добавлена инициализация
     subcategories: [] as string[],
     dealUrl: initialData?.deal_url || '', // Добавлена инициализация
-    expiryDate: initialData?.expires_at ? new Date(initialData.expires_at).toISOString().split('T')[0] : '', // Добавлена инициализация
+    expiryDate: initialData?.expires_at ? new expiryDate: initialData?.expires_at
+  ? (() => {
+      const expiryUtcDate = new Date(initialData.expires_at);
+      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
+      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
+      return expiryUtcDate.toISOString().split('T')[0];
+    })()
+  : '', // Добавлена инициализация
     isHot: initialData?.is_hot || false // Добавлена инициализация
   });
 
@@ -395,7 +402,14 @@ useEffect(() => {
         // subcategories: formData.subcategories, // Если это поле есть в БД
         image_url: currentImageUrl,
         deal_url: formData.dealUrl,
-        expires_at: formData.expiryDate ? `${formData.expiryDate}T23:59:59.999Z` : null, // Устанавливаем конец дня
+        expires_at: formData.expiryDate
+  ? (() => {
+      const selectedDate = new Date(formData.expiryDate);
+      selectedDate.setDate(selectedDate.getDate() + 1);
+      selectedDate.setUTCHours(0, 0, 0, 0);
+      return selectedDate.toISOString();
+    })()
+  : null,
         is_hot: formData.isHot,
       };
 
