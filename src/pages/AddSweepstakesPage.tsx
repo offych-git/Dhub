@@ -151,12 +151,14 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     title: initialData?.title || "",
     description: initialData?.description || "",
     dealUrl: initialData?.dealUrl || "",
-    // ИСПРАВЛЕНО: Правильная инициализация expiryDate для AddSweepstakesPage
-    expiryDate: initialData?.expires_at // Используем expires_at, так как это общий формат для истечения
+    // ИСПРАВЛЕНО: Логика инициализации expiryDate для отображения в календарике
+    expiryDate: initialData?.expires_at
       ? (() => {
-          const expiryUtcDate = new Date(initialData.expires_at);
-          expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
-          return expiryUtcDate.toISOString().split('T')[0];
+          const expiresAtDate = new Date(initialData.expires_at);
+          const year = expiresAtDate.getFullYear();
+          const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
+          const day = expiresAtDate.getDate().toString().padStart(2, '0');
+          return `${year}-${month}-${day}`;
         })()
       : "",
   });
@@ -394,12 +396,12 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
           : initialData?.image || null,
         deal_url: formData.dealUrl,
         user_id: originalUserId,
+        // ИСПРАВЛЕНО: Логика сохранения expires_at для AddSweepstakesPage
         expires_at: formData.expiryDate
           ? (() => {
-              const selectedDate = new Date(formData.expiryDate);
-              selectedDate.setDate(selectedDate.getDate() + 1);
-              selectedDate.setUTCHours(0, 0, 0, 0);
-              return selectedDate.toISOString();
+              const selectedDate = new Date(formData.expiryDate); // 'YYYY-MM-DD' в локальном времени
+              selectedDate.setHours(23, 59, 59, 999); // Устанавливаем конец дня в локальном времени
+              return selectedDate.toISOString(); // Преобразуем в UTC ISO-строку
             })()
           : null,
         is_hot: allowHotToggle ? formData.isHot : false,

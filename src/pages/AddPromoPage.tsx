@@ -88,13 +88,16 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
         description: promoData.description || "",
         category: promoData.category_id || "",
         discountUrl: promoData.discount_url || "",
-expiryDate: promoData.expires_at
-  ? (() => {
-      const expiryUtcDate = new Date(promoData.expires_at);
-      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
-      return expiryUtcDate.toISOString().split('T')[0];
-    })()
-  : "",
+        // ИСПРАВЛЕНО: Логика инициализации expiryDate для отображения в календарике
+        expiryDate: promoData.expires_at
+          ? (() => {
+              const expiresAtDate = new Date(promoData.expires_at);
+              const year = expiresAtDate.getFullYear();
+              const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
+              const day = expiresAtDate.getDate().toString().padStart(2, '0');
+              return `${year}-${month}-${day}`;
+            })()
+          : "",
       });
     }
   }, [isEditing, promoData]);
@@ -127,14 +130,14 @@ expiryDate: promoData.expires_at
           description: formData.description,
           category_id: formData.category,
           discount_url: formData.discountUrl,
-expires_at: formData.expiryDate
-  ? (() => {
-      const selectedDate = new Date(formData.expiryDate);
-      selectedDate.setDate(selectedDate.getDate() + 1);
-      selectedDate.setUTCHours(0, 0, 0, 0);
-      return selectedDate.toISOString();
-    })()
-  : null,
+          // ИСПРАВЛЕНО: Логика сохранения expires_at для AddPromoPage
+          expires_at: formData.expiryDate
+            ? (() => {
+                const selectedDate = new Date(formData.expiryDate); // 'YYYY-MM-DD' в локальном времени
+                selectedDate.setHours(23, 59, 59, 999); // Устанавливаем конец дня в локальном времени
+                return selectedDate.toISOString(); // Преобразуем в UTC ISO-строку
+              })()
+            : null,
           updated_at: new Date().toISOString(),
         };
 
@@ -331,14 +334,14 @@ expires_at: formData.expiryDate
             description: formData.description,
             category_id: formData.category,
             discount_url: formData.discountUrl,
-expires_at: formData.expiryDate
-  ? (() => {
-      const selectedDate = new Date(formData.expiryDate);
-      selectedDate.setDate(selectedDate.getDate() + 1);
-      selectedDate.setUTCHours(0, 0, 0, 0);
-      return selectedDate.toISOString();
-    })()
-  : null,
+            // ИСПРАВЛЕНО: Логика сохранения expires_at для AddPromoPage
+            expires_at: formData.expiryDate
+              ? (() => {
+                  const selectedDate = new Date(formData.expiryDate); // 'YYYY-MM-DD' в локальном времени
+                  selectedDate.setHours(23, 59, 59, 999); // Устанавливаем конец дня в локальном времени
+                  return selectedDate.toISOString(); // Преобразуем в UTC ISO-строку
+                })()
+              : null,
             user_id: user?.id,
             status: moderationStatus,
           })

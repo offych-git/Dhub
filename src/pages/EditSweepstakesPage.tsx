@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import AddSweepstakesPage from './AddSweepstakesPage';
@@ -109,14 +108,16 @@ const EditSweepstakesPage: React.FC = () => {
           title: data.title,
           description: data.description,
           dealUrl: data.deal_url,
+          // ИСПРАВЛЕНО: Логика инициализации expiryDate для отображения в календарике
           expiryDate: data.expires_at
-  ? (() => {
-      const expiryUtcDate = new Date(data.expires_at);
-      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
-      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
-      return expiryUtcDate.toISOString().split('T')[0];
-    })()
-  : '',
+            ? (() => {
+                const expiresAtDate = new Date(data.expires_at);
+                const year = expiresAtDate.getFullYear();
+                const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
+                const day = expiresAtDate.getDate().toString().padStart(2, '0');
+                return `${year}-${month}-${day}`;
+              })()
+            : '',
           image: data.image_url,
           isHot: !!data.is_hot
         };

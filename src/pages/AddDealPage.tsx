@@ -64,13 +64,15 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
     category: initialData?.category_id || '',
     subcategories: [] as string[],
     dealUrl: initialData?.deal_url || '',
-    // ИСПРАВЛЕНО: Правильная инициализация expiryDate
+    // ИСПРАВЛЕНО: Логика инициализации expiryDate для отображения в календарике
     expiryDate: initialData?.expires_at
       ? (() => {
-          const expiryUtcDate = new Date(initialData.expires_at);
-          // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
-          expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
-          return expiryUtcDate.toISOString().split('T')[0];
+          const expiresAtDate = new Date(initialData.expires_at);
+          // Получаем компоненты даты в локальном часовом поясе
+          const year = expiresAtDate.getFullYear();
+          const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
+          const day = expiresAtDate.getDate().toString().padStart(2, '0');
+          return `${year}-${month}-${day}`;
         })()
       : '',
     isHot: initialData?.is_hot || false
@@ -388,12 +390,12 @@ useEffect(() => {
         category_id: formData.category,
         image_url: currentImageUrl,
         deal_url: formData.dealUrl,
+        // ИСПРАВЛЕНО: Логика сохранения expires_at для AddDealPage
         expires_at: formData.expiryDate
           ? (() => {
-              const selectedDate = new Date(formData.expiryDate);
-              selectedDate.setDate(selectedDate.getDate() + 1);
-              selectedDate.setUTCHours(0, 0, 0, 0);
-              return selectedDate.toISOString();
+              const selectedDate = new Date(formData.expiryDate); // 'YYYY-MM-DD' в локальном времени
+              selectedDate.setHours(23, 59, 59, 999); // Устанавливаем конец дня в локальном времени
+              return selectedDate.toISOString(); // Преобразуем в UTC ISO-строку
             })()
           : null,
         is_hot: formData.isHot,

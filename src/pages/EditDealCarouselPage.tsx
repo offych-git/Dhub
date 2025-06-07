@@ -107,25 +107,26 @@ const EditDealCarouselPage: React.FC = () => {
           original_price: data.original_price !== null ? data.original_price.toString() : '',
           category: data.category_id || '',
           deal_url: data.deal_url || '',
-         
-expiry_date: data.expires_at // Используем expires_at как основной источник
-  ? (() => {
-      const expiryUtcDate = new Date(data.expires_at);
-      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
-      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
-      return expiryUtcDate.toISOString().split('T')[0];
-    })()
-  : '',
-         
-expires_at: data.expires_at // Дублируем для expires_at, если это разные поля в форме
-  ? (() => {
-      const expiryUtcDate = new Date(data.expires_at);
-      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
-      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
-      return expiryUtcDate.toISOString().split('T')[0];
-    })()
-  : '',
-
+          // ИСПРАВЛЕНО: Логика инициализации expiryDate для отображения в календарике
+          expiry_date: data.expires_at
+            ? (() => {
+                const expiresAtDate = new Date(data.expires_at);
+                const year = expiresAtDate.getFullYear();
+                const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
+                const day = expiresAtDate.getDate().toString().padStart(2, '0');
+                return `${year}-${month}-${day}`;
+              })()
+            : '',
+          // ИСПРАВЛЕНО: Логика инициализации expires_at для отображения в календарике
+          expires_at: data.expires_at
+            ? (() => {
+                const expiresAtDate = new Date(data.expires_at);
+                const year = expiresAtDate.getFullYear();
+                const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
+                const day = expiresAtDate.getDate().toString().padStart(2, '0');
+                return `${year}-${month}-${day}`;
+              })()
+            : '',
           is_hot: !!data.is_hot,
           store_id: data.store_id || null,
           dealImages: [] // Будет заполнено ниже
@@ -142,7 +143,7 @@ expires_at: data.expires_at // Дублируем для expires_at, если э
 
         // Далее пытаемся извлечь дополнительные изображения из комментария в описании
         if (data.description) {
-          const match = data.description.match(/<!-- DEAL_IMAGES: (.*?) -->/);
+          const match = data.description.match(//);
           if (match && match[1]) {
             try {
               const parsedImages = JSON.parse(match[1]);
@@ -158,7 +159,7 @@ expires_at: data.expires_at // Дублируем для expires_at, если э
               }
 
               // Очищаем описание от JSON с изображениями
-              transformedData.description = data.description.replace(/<!-- DEAL_IMAGES: .*? -->/, '').trim();
+              transformedData.description = data.description.replace(//, '').trim();
             } catch (e) {
               console.error('Error parsing carousel images:', e);
             }

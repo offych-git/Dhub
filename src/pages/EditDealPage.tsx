@@ -113,11 +113,14 @@ const EditDealPage: React.FC = () => {
             description: data.description ? data.description.replace(imageJsonRegex, '') : '',
             category_id: data.category_id || '',
             deal_url: data.deal_url || '',
+            // ИСПРАВЛЕНО: Логика инициализации expires_at для отображения в календарике
             expires_at: data.expires_at
               ? (() => {
-                  const expiryUtcDate = new Date(data.expires_at);
-                  expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
-                  return expiryUtcDate.toISOString().split('T')[0];
+                  const expiresAtDate = new Date(data.expires_at);
+                  const year = expiresAtDate.getFullYear();
+                  const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
+                  const day = expiresAtDate.getDate().toString().padStart(2, '0');
+                  return `${year}-${month}-${day}`;
                 })()
               : '',
             is_hot: Boolean(data.is_hot),
