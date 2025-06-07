@@ -58,21 +58,22 @@ const EditDealPage: React.FC = () => {
         console.log('Raw deal data from DB:', data);
 
         let hasCarouselImages = false;
-        if (data.description && data.description.includes('
-            if (match && match[1]) {
-              const carouselImages = JSON.parse(match[1]);
-              if (carouselImages.length > 1) {
-                hasCarouselImages = true;
-                setHasCarousel(true);
-                console.log('Deal has carousel, redirecting to carousel editor');
-                navigate(`/edit-carousel/${id}`);
-                return;
-              }
-            }
-          } catch (e) {
-            console.error('Error checking for carousel:', e);
-          }
-        }
+if (data.description && data.description.includes('/);
+    if (match && match[1]) {
+      const carouselImages = JSON.parse(match[1]);
+      if (carouselImages.length > 1) { // Если больше одного изображения, это карусель
+        hasCarouselImages = true;
+        setHasCarousel(true);
+        console.log('Deal has carousel, redirecting to carousel editor');
+        // Перенаправляем на страницу редактирования карусели
+        navigate(`/edit-carousel/${id}`);
+        return;
+      }
+    }
+  } catch (e) {
+    console.error('Error checking for carousel:', e);
+  }
+}
 
         if (!hasCarouselImages) {
           console.log('Загружаем актуальные данные сделки с сервера');
