@@ -58,7 +58,7 @@ const EditDealPage: React.FC = () => {
         console.log('Raw deal data from DB:', data);
 
         let hasCarouselImages = false;
-        if (data.description && data.description.includes('/);
+        if (data.description && data.description.includes('
             if (match && match[1]) {
               const carouselImages = JSON.parse(match[1]);
               if (carouselImages.length > 1) {
