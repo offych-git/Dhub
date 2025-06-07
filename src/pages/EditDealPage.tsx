@@ -57,29 +57,35 @@ const EditDealPage: React.FC = () => {
       if (data) {
         console.log('Raw deal data from DB:', data);
 
-        let hasCarouselImages = false;
-if (data.description && data.description.includes('/);
-    if (match && match[1]) {
-      const carouselImages = JSON.parse(match[1]);
-      if (carouselImages.length > 1) { // Если больше одного изображения, это карусель
-        hasCarouselImages = true;
-        setHasCarousel(true);
-        console.log('Deal has carousel, redirecting to carousel editor');
-        // Перенаправляем на страницу редактирования карусели
-        navigate(`/edit-carousel/${id}`);
-        return;
-      }
-    }
-  } catch (e) {
-    console.error('Error checking for carousel:', e);
-  }
-}
+        // ИСПРАВЛЕНИЕ 1: Блок проверки карусели обернут в try-catch и используется валидное регулярное выражение
+        // Это исправляет ошибку 'Unterminated string literal' и связанные с ней ошибки синтаксиса.
+        const imageJsonRegex = /(\[".*?"\])/; // Валидное регулярное выражение для поиска JSON-массива
 
-        if (!hasCarouselImages) {
+        try {
+          if (data.description) {
+            const match = data.description.match(imageJsonRegex);
+            if (match && match[1]) {
+              const carouselImages = JSON.parse(match[1]);
+              if (carouselImages.length > 1) { // Если больше одного изображения, это карусель
+                setHasCarousel(true);
+                console.log('Deal has carousel, redirecting to carousel editor');
+                // Перенаправляем на страницу редактирования карусели
+                navigate(`/edit-carousel/${id}`);
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error checking for carousel:', e);
+        }
+
+
+        if (!hasCarousel) {
           console.log('Загружаем актуальные данные сделки с сервера');
           let additionalImages: string[] = [];
           if (data.description) {
-            const match = data.description.match(//);
+            // ИСПРАВЛЕНИЕ 2: Пустое регулярное выражение заменено на валидное
+            const match = data.description.match(imageJsonRegex);
             if (match && match[1]) {
               try {
                 const allImages = JSON.parse(match[1]);
@@ -97,14 +103,14 @@ if (data.description && data.description.includes('/);
             }
           }
 
-          // ИСПРАВЛЕНО: Правильная трансформация expires_at для отображения
           const transformedData = {
             id: data.id,
             store_id: data.store_id || null,
             title: data.title || '',
             current_price: data.current_price !== null ? data.current_price.toString() : '',
             original_price: data.original_price !== null ? data.original_price.toString() : '',
-            description: data.description ? data.description.replace(//, '') : '',
+            // ИСПРАВЛЕНИЕ 3: Пустое регулярное выражение заменено на валидное для очистки описания
+            description: data.description ? data.description.replace(imageJsonRegex, '') : '',
             category_id: data.category_id || '',
             deal_url: data.deal_url || '',
             expires_at: data.expires_at
