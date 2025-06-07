@@ -134,6 +134,9 @@ const EditDealCarouselPage: React.FC = () => {
 
         // Извлекаем карусель изображений из описания
         let imageUrls: string[] = [];
+        
+        // Регулярное выражение для поиска JSON-блока с изображениями
+        const imageJsonRegex = /([\s\S]*?)/;
 
         // Всегда добавляем основное изображение первым элементом массива
         if (data.image_url) {
@@ -143,7 +146,7 @@ const EditDealCarouselPage: React.FC = () => {
 
         // Далее пытаемся извлечь дополнительные изображения из комментария в описании
         if (data.description) {
-          const match = data.description.match(//);
+          const match = data.description.match(imageJsonRegex); // ИСПРАВЛЕНО
           if (match && match[1]) {
             try {
               const parsedImages = JSON.parse(match[1]);
@@ -159,7 +162,7 @@ const EditDealCarouselPage: React.FC = () => {
               }
 
               // Очищаем описание от JSON с изображениями
-              transformedData.description = data.description.replace(//, '').trim();
+              transformedData.description = data.description.replace(imageJsonRegex, '').trim(); // ИСПРАВЛЕНО
             } catch (e) {
               console.error('Error parsing carousel images:', e);
             }
