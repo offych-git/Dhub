@@ -64,14 +64,15 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
     category: initialData?.category_id || '', // Добавлена инициализация
     subcategories: [] as string[],
     dealUrl: initialData?.deal_url || '', // Добавлена инициализация
-    expiryDate: initialData?.expires_at ? new expiryDate: initialData?.expires_at
-  ? (() => {
-      const expiryUtcDate = new Date(initialData.expires_at);
-      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
-      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
-      return expiryUtcDate.toISOString().split('T')[0];
-    })()
-  : '', // Добавлена инициализация
+    // ИСПРАВЛЕНО: Правильная инициализация expiryDate
+    expiryDate: initialData?.expires_at
+      ? (() => {
+          const expiryUtcDate = new Date(initialData.expires_at);
+          // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
+          expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
+          return expiryUtcDate.toISOString().split('T')[0];
+        })()
+      : '',
     isHot: initialData?.is_hot || false // Добавлена инициализация
   });
 
@@ -402,14 +403,15 @@ useEffect(() => {
         // subcategories: formData.subcategories, // Если это поле есть в БД
         image_url: currentImageUrl,
         deal_url: formData.dealUrl,
+        // ИСПРАВЛЕНО: Правильная логика сохранения expires_at для dealPayload
         expires_at: formData.expiryDate
-  ? (() => {
-      const selectedDate = new Date(formData.expiryDate);
-      selectedDate.setDate(selectedDate.getDate() + 1);
-      selectedDate.setUTCHours(0, 0, 0, 0);
-      return selectedDate.toISOString();
-    })()
-  : null,
+          ? (() => {
+              const selectedDate = new Date(formData.expiryDate);
+              selectedDate.setDate(selectedDate.getDate() + 1);
+              selectedDate.setUTCHours(0, 0, 0, 0);
+              return selectedDate.toISOString();
+            })()
+          : null,
         is_hot: formData.isHot,
       };
 
@@ -432,7 +434,7 @@ useEffect(() => {
         
         const { error: updateError } = await supabase
           .from('deals')
-          .update(dealPayload)
+          .update(dealPayload) // Используем уже подготовленный dealPayload
           .eq('id', dealId);
 
         if (updateError) {
@@ -479,7 +481,7 @@ useEffect(() => {
             // или если роль не админ/модератор, добавляем в очередь модерации
             // Функция addToModerationQueue сама проверит, нужно ли добавлять или авто-одобрить
             // await addToModerationQueue(newDeal.id, 'deal');
-    console.log('ВРЕМЕННО: Вызов addToModerationQueue пропущен для теста');
+    console.log('ВРЕМЕННО: Вызов addToModerationQueue пропущен для теста'); // Удалите эту строку после тестирования
 
             navigate(`/deals/${newDeal.id}`);
         } else {
