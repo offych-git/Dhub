@@ -118,7 +118,14 @@ const EditDealPage: React.FC = () => {
             description: data.description ? data.description.replace(/<!-- DEAL_IMAGES: .*? -->/, '') : '',
             category_id: data.category_id || '',
             deal_url: data.deal_url || '',
-            expires_at: data.expires_at || '',
+            expires_at: data.expires_at
+  ? (() => {
+      const expiryUtcDate = new Date(data.expires_at);
+      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
+      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
+      return expiryUtcDate.toISOString().split('T')[0];
+    })()
+  : '',
             is_hot: Boolean(data.is_hot), // Убедимся, что is_hot правильно конвертируется в boolean
             image_url: data.image_url || '',
             carousel_images: additionalImages, // Добавляем изображения карусели
