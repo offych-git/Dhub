@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Bold, Italic, Underline as UnderlineIcon, List, Image as ImageIcon, Link as LinkIcon, Info, ChevronDown, X, Plus } from 'lucide-react';
-import { categories, stores, categoryIcons } from '../data/mockData'; // Убедитесь, что этот путь корректен
+import { categories, stores, categoryIcons } from '../data/mockData';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -10,12 +10,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
-import ImageUploader from '../components/deals/ImageUploader'; // Убедитесь, что этот путь корректен
+import ImageUploader from '../components/deals/ImageUploader';
 import imageCompression from 'browser-image-compression';
 import { createPortal } from 'react-dom';
-import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomSheet'; // Убедитесь, что этот путь корректен
-import StoreBottomSheet from '../components/deals/StoreBottomSheet'; // Убедитесь, что этот путь корректен
-import { useModeration } from '../contexts/ModerationContext'; // <<< ДОБАВЛЕН ИМПОРТ
+import CategorySimpleBottomSheet from '../components/deals/CategorySimpleBottomSheet';
+import StoreBottomSheet from '../components/deals/StoreBottomSheet';
+import { useModeration } from '../contexts/ModerationContext';
 
 interface Subcategory {
   id: string;
@@ -40,7 +40,7 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
   const { user } = useAuth();
   const { role } = useAdmin();
   const { t, language } = useLanguage();
-  const { addToModerationQueue } = useModeration(); // <<< ХУК ВЫЗВАН ЗДЕСЬ, НА ВЕРХНЕМ УРОВНЕ
+  const { addToModerationQueue } = useModeration();
 
   const canMarkHot = role === 'admin' || role === 'moderator';
   const [loading, setLoading] = useState(false);
@@ -57,13 +57,13 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
   const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
 
   const [formData, setFormData] = useState({
-    title: initialData?.title || '', // Добавлена инициализация из initialData
-    currentPrice: initialData?.current_price?.toString() || '', // Добавлена инициализация
-    originalPrice: initialData?.original_price?.toString() || '', // Добавлена инициализация
-    description: initialData?.description || '', // Добавлена инициализация
-    category: initialData?.category_id || '', // Добавлена инициализация
+    title: initialData?.title || '',
+    currentPrice: initialData?.current_price?.toString() || '',
+    originalPrice: initialData?.original_price?.toString() || '',
+    description: initialData?.description || '',
+    category: initialData?.category_id || '',
     subcategories: [] as string[],
-    dealUrl: initialData?.deal_url || '', // Добавлена инициализация
+    dealUrl: initialData?.deal_url || '',
     // ИСПРАВЛЕНО: Правильная инициализация expiryDate
     expiryDate: initialData?.expires_at
       ? (() => {
@@ -73,7 +73,7 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
           return expiryUtcDate.toISOString().split('T')[0];
         })()
       : '',
-    isHot: initialData?.is_hot || false // Добавлена инициализация
+    isHot: initialData?.is_hot || false
   });
 
   const [descriptionImages, setDescriptionImages] = useState<ImageWithId[]>([]);
@@ -98,18 +98,9 @@ useEffect(() => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Загрузка главного изображения при редактировании, если оно есть в initialData
   useEffect(() => {
     if (isEditing && initialData?.image_url) {
-      // Для mainImage мы не можем просто установить File из URL,
-      // но можем показать его как уже загруженное или предложить заменить.
-      // Здесь просто для примера выведем в консоль.
-      // Отображение существующего mainImage потребует другой логики,
-      // например, хранить initialData.image_url и показывать его,
-      // а mainImage будет использоваться только для нового файла.
       console.log('Editing mode: main image URL from initialData:', initialData.image_url);
-      // Если вы хотите, чтобы mainImage не было обязательным при редактировании, если оно уже есть:
-      // setMainImage(new File([], "existing_main_image.jpg")); // Это "заглушка", чтобы форма считала, что изображение есть
     }
   }, [isEditing, initialData]);
 
@@ -288,7 +279,6 @@ useEffect(() => {
       return false;
     }
 
-    // Позволяем originalPrice быть равным currentPrice
     if (formData.originalPrice && Number(formData.currentPrice) > Number(formData.originalPrice)) {
       setError('Current price cannot be higher than original price');
       return false;
@@ -299,7 +289,6 @@ useEffect(() => {
       return false;
     }
 
-    // Main image is required only when creating, or if not already present in initialData when editing
     if (!isEditing && !mainImage) {
       setError('Main image is required');
       return false;
@@ -315,16 +304,13 @@ useEffect(() => {
       return false;
     }
 
-    // Более простая и общая проверка URL
     const urlRegex = /^(https?:\/\/)?([^\s(["<,>]*)\.([^\s(["<,>]*){2,}(\/[^\s]*)?$/i;
     if (!urlRegex.test(formData.dealUrl)) {
       setError('Please enter a valid URL');
       return false;
     }
 
-    // Автоматическое добавление https:// если протокол отсутствует
     if (!formData.dealUrl.startsWith('http://') && !formData.dealUrl.startsWith('https://')) {
-      // Используем callback-форму setFormData, чтобы гарантировать работу с актуальным состоянием
       setFormData(prev => ({
         ...prev,
         dealUrl: `https://${prev.dealUrl}`
@@ -366,16 +352,16 @@ useEffect(() => {
     try {
       let currentImageUrl = isEditing ? initialData?.image_url : null;
 
-      if (mainImage) { // Если загружено новое главное изображение (или при создании)
+      if (mainImage) {
         const fileExt = mainImage.name.split('.').pop();
-        const fileName = `${user?.id}-${Date.now()}.${fileExt}`; // Более уникальное имя файла
+        const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
         const filePath = `${user?.id}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('deal-images')
           .upload(filePath, mainImage, {
             cacheControl: '3600',
-            upsert: isEditing // true если редактируем и хотим перезаписать, false если создаем
+            upsert: isEditing
           });
 
         if (uploadError) {
@@ -389,21 +375,19 @@ useEffect(() => {
         currentImageUrl = publicUrl;
       }
 
-      if (!currentImageUrl) { // Проверка, что URL изображения точно есть
+      if (!currentImageUrl) {
           throw new Error('Main image URL is missing');
       }
 
       const dealPayload: any = {
         title: formData.title,
-        description: formData.description, // Убедитесь, что editor.getHTML() используется, если нужно
+        description: formData.description,
         current_price: Number(formData.currentPrice),
         original_price: formData.originalPrice ? Number(formData.originalPrice) : null,
         store_id: selectedStoreId,
         category_id: formData.category,
-        // subcategories: formData.subcategories, // Если это поле есть в БД
         image_url: currentImageUrl,
         deal_url: formData.dealUrl,
-        // ИСПРАВЛЕНО: Правильная логика сохранения expires_at для dealPayload
         expires_at: formData.expiryDate
           ? (() => {
               const selectedDate = new Date(formData.expiryDate);
@@ -417,7 +401,6 @@ useEffect(() => {
 
 
       if (isEditing && dealId) {
-        // Обновление существующей скидки
         console.log('Updating existing deal:', dealId);
 
         if (autoApprove) {
@@ -425,16 +408,13 @@ useEffect(() => {
           dealPayload.moderator_id = user?.id;
           dealPayload.moderated_at = new Date().toISOString();
         } else {
-           // Если не авто-одобрение, и скидка была 'approved', возможно, нужно снова на 'pending'
-           // Эта логика должна быть более сложной и учитывать текущий статус
            if (initialData?.status === 'approved' || initialData?.status === 'published') {
-             // dealPayload.status = 'pending'; // Решите, нужна ли повторная модерация
            }
         }
         
         const { error: updateError } = await supabase
           .from('deals')
-          .update(dealPayload) // Используем уже подготовленный dealPayload
+          .update(dealPayload)
           .eq('id', dealId);
 
         if (updateError) {
@@ -448,11 +428,10 @@ useEffect(() => {
             .from('moderation_queue')
             .delete()
             .eq('item_id', dealId)
-            .eq('item_type', 'deal'); // Убедитесь, что item_type правильный
+            .eq('item_type', 'deal');
           navigate('/moderation');
           alert('Deal successfully updated and approved.');
         } else {
-          // Если не авто-одобрение, но статус был изменен на pending, добавить в очередь
           if (dealPayload.status === 'pending') {
              await addToModerationQueue(dealId, 'deal');
           }
@@ -460,10 +439,7 @@ useEffect(() => {
         }
 
       } else {
-        // Создание новой скидки
         dealPayload.user_id = user?.id;
-        // Для новых сделок статус по умолчанию будет 'pending' или тот, что установит БД
-        // или же его нужно явно устанавливать здесь перед отправкой в addToModerationQueue
 
         const { data: newDeal, error: dealError } = await supabase
           .from('deals')
@@ -477,11 +453,7 @@ useEffect(() => {
         }
 
         if (newDeal) {
-            // После создания, если не autoApprove (которого нет для новых по умолчанию)
-            // или если роль не админ/модератор, добавляем в очередь модерации
-            // Функция addToModerationQueue сама проверит, нужно ли добавлять или авто-одобрить
-            // await addToModerationQueue(newDeal.id, 'deal');
-    console.log('ВРЕМЕННО: Вызов addToModerationQueue пропущен для теста'); // Удалите эту строку после тестирования
+            console.log('ВРЕМЕННО: Вызов addToModerationQueue пропущен для теста');
 
             navigate(`/deals/${newDeal.id}`);
         } else {
@@ -490,7 +462,6 @@ useEffect(() => {
       }
     } catch (err) {
       console.error('Error in handleSubmit:', err);
-      // Проверяем, является ли err экземпляром Error
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -505,7 +476,7 @@ useEffect(() => {
     if (formData.currentPrice && formData.originalPrice) {
       const current = Number(formData.currentPrice);
       const original = Number(formData.originalPrice);
-      if (!isNaN(current) && !isNaN(original) && original > 0 && current <= original) { // original > 0 to avoid division by zero
+      if (!isNaN(current) && !isNaN(original) && original > 0 && current <= original) {
         return Math.round(((original - current) / original) * 100);
       }
     }
@@ -531,7 +502,7 @@ useEffect(() => {
   useEffect(() => {
     (window as any).handleImageClick = handleImageClick;
     (window as any).handleDeleteImage = handleDeleteImage;
-  }, [showDeleteButton]); // Зависимость от showDeleteButton может быть не нужна, если функции не меняются
+  }, [showDeleteButton]);
 
   const editor = useEditor({
     extensions: [
@@ -543,13 +514,13 @@ useEffect(() => {
         },
         paragraph: {
           HTMLAttributes: {
-            class: 'mb-3', // Можно настроить отступы по умолчанию
+            class: 'mb-3',
           },
         },
-        hardBreak: { // Для <br> по Shift+Enter или Enter (как настроено ниже)
+        hardBreak: {
           keepMarks: true,
           HTMLAttributes: {
-            class: 'inline-block', // Или другие классы, если нужны
+            class: 'inline-block',
           },
         },
       }),
@@ -558,10 +529,10 @@ useEffect(() => {
         HTMLAttributes: {
           class: 'max-w-full h-auto rounded-lg my-4 relative delete-button-container',
         },
-        allowBase64: true, // Разрешаем вставку base64, но лучше загружать на сервер
+        allowBase64: true,
       }),
     ],
-    content: formData.description, // Инициализация редактора из formData
+    content: formData.description,
     parseOptions: {
       preserveWhitespace: 'full',
     },
@@ -570,15 +541,14 @@ useEffect(() => {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-[200px]',
       },
       handleKeyDown: (view, event) => {
-        if (event.key === 'Enter' && !event.shiftKey) { // Обычный Enter создает <br>
-          event.preventDefault(); // Предотвращаем стандартное поведение Enter (новый параграф)
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
           view.dispatch(view.state.tr.replaceSelectionWith(
             view.state.schema.nodes.hardBreak.create()
           ).scrollIntoView());
-          return true; // Сообщаем, что событие обработано
+          return true;
         }
-        // Для Shift+Enter (если нужен новый параграф) можно не обрабатывать, он сработает по умолчанию
-        return false; // Для других клавиш передаем управление дальше
+        return false;
       },
     },
     onUpdate: ({ editor }) => {
@@ -587,14 +557,13 @@ useEffect(() => {
         ...prev,
         description: html
       }));
-      checkImagesInEditor(); // Проверяем изображения после каждого обновления
+      checkImagesInEditor();
     },
   });
   
-  // Инициализация редактора содержимым при редактировании
   useEffect(() => {
     if (isEditing && initialData?.description && editor && !editor.isDestroyed) {
-        if (editor.getHTML() !== initialData.description) { // Обновляем только если контент реально отличается
+        if (editor.getHTML() !== initialData.description) {
             editor.commands.setContent(initialData.description);
         }
     }
@@ -618,15 +587,14 @@ useEffect(() => {
             setSelectedImageId(imageId);
           }
         } else {
-          setSelectedImageId(null); // Сбрасываем выделение, если клик не по изображению
+          setSelectedImageId(null);
         }
       };
 
-      // Используем editor.view.dom для добавления слушателя
       if (editor.view && editor.view.dom) {
         editor.view.dom.addEventListener('click', handleClick);
         return () => {
-          if (editor.view && editor.view.dom && !editor.isDestroyed) { // Проверка на isDestroyed
+          if (editor.view && editor.view.dom && !editor.isDestroyed) {
             editor.view.dom.removeEventListener('click', handleClick);
           }
         };
@@ -639,7 +607,7 @@ useEffect(() => {
   }, [descriptionImages]);
 
   useEffect(() => {
-    if (editor && editor.view.dom && !editor.isDestroyed) { // Проверка на isDestroyed
+    if (editor && editor.view.dom && !editor.isDestroyed) {
       const editorDom = editor.view.dom;
 
       const observer = new MutationObserver((mutations) => {
@@ -660,40 +628,38 @@ useEffect(() => {
         });
 
         if (needsCheck) {
-          setTimeout(checkImagesInEditor, 0); // Вызов с задержкой для корректной работы
+          setTimeout(checkImagesInEditor, 0);
         }
       });
 
       observer.observe(editorDom, {
         childList: true,
         subtree: true,
-        characterData: false, // Обычно не нужно для отслеживания удаления элементов
-        attributes: false // Обычно не нужно для отслеживания удаления элементов
+        characterData: false,
+        attributes: false
       });
 
       return () => {
         observer.disconnect();
       };
     }
-  }, [editor]); // Добавляем editor как зависимость
+  }, [editor]);
 
   const handleStoreSelect = (storeId: string | null) => {
     setSelectedStoreId(storeId);
     setIsStoreSheetOpen(false);
   };
 
-  // Логирование пропсов для StoreBottomSheet
   useEffect(() => {
     console.log('AddDealPage - StoreBottomSheet props:', {
       isOpen: isStoreSheetOpen,
       selectedStore: selectedStoreId,
-      onStoreSelect: handleStoreSelect // Это сама функция, её содержимое не логируется так просто
+      onStoreSelect: handleStoreSelect
     });
-  }, [isStoreSheetOpen, selectedStoreId]); // Добавил handleStoreSelect в зависимости на всякий случай, хотя она и так стабильна из-за useCallback (если бы был)
+  }, [isStoreSheetOpen, selectedStoreId]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      {/* Header */}
       <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -702,15 +668,11 @@ useEffect(() => {
             </button>
             <h1 className="text-white text-lg font-medium ml-4">{isEditing ? t('common.edit') : t('common.add')} {t('common.deal')}</h1>
           </div>
-          {/* <button className="text-white">
-            <Info className="h-6 w-6" />
-          </button> */}
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto pt-16 pb-24"> {/* pt-16 чтобы контент не уходил под фиксированный хедер */}
-        <div className="px-4"> {/* Отступы по бокам */}
+      <div className="flex-1 overflow-y-auto pt-16 pb-24">
+        <div className="px-4">
           {error && (
             <div className="bg-red-500 text-white px-4 py-3 rounded-md mb-4">
               {error}
@@ -718,7 +680,6 @@ useEffect(() => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Title Input */}
             <div>
               <input
                 type="text"
@@ -730,7 +691,6 @@ useEffect(() => {
               />
             </div>
 
-            {/* Category Selector */}
             <div>
               <button
                 type="button"
@@ -743,7 +703,7 @@ useEffect(() => {
                   {formData.category
                     ? (language === 'ru'
                       ? categories.find(cat => cat.id === formData.category)?.name
-                      : t(`categories.${formData.category}`)) || formData.category // Fallback to ID if translation not found
+                      : t(`categories.${formData.category}`)) || formData.category
                     : `${t('deals.selectCategory')} *`
                   }
                 </span>
@@ -751,12 +711,11 @@ useEffect(() => {
               </button>
             </div>
 
-            {/* Price Inputs */}
             <div className="flex space-x-4">
               <div className="flex-1">
                 <input
-                  type="number" // Используем number для лучшей валидации и клавиатуры на мобильных
-                  step="0.01" // Для копеек/центов
+                  type="number"
+                  step="0.01"
                   min="0"
                   placeholder={`${t('deals.currentPrice')} *`}
                   className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
@@ -778,18 +737,15 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Discount Display */}
             {calculateDiscount() !== null && (
               <div className="text-green-500 text-sm">
                 {t('deals.discount')}: {calculateDiscount()}%
               </div>
             )}
 
-            {/* Tiptap Editor */}
             <div className="relative" ref={editorRef}>
               <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
                 <div className="flex flex-wrap items-center gap-1">
-                  {/* Formatting Buttons */}
                   <button
                     type="button"
                     onClick={() => editor?.chain().focus().toggleBold().run()}
@@ -818,7 +774,6 @@ useEffect(() => {
                   >
                     <List className="h-5 w-5" />
                   </button>
-                  {/* Image Upload Button */}
                   <div className="relative">
                     <button
                       type="button"
@@ -839,26 +794,24 @@ useEffect(() => {
                       accept="image/*"
                       id="description-image-upload"
                       className="hidden"
-                      multiple // Разрешаем множественный выбор файлов
+                      multiple
                       onChange={(e) => {
                         const files = e.target.files;
                         if (files) {
                           const remainingSlots = 4 - descriptionImages.length;
                           if (files.length > remainingSlots) {
                             alert(`You can only add ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'}`);
-                            // Очищаем input, чтобы пользователь мог выбрать заново
                             e.target.value = ''; 
                             return;
                           }
                           handleDescriptionImageUpload(files);
-                          e.target.value = ''; // Очищаем input после успешной обработки
+                          e.target.value = '';
                         }
                       }}
                     />
                   </div>
                 </div>
 
-                {/* Delete Image Button (conditionally rendered) */}
                 <div className="ml-auto">
                   {selectedImageId && (
                     <button
@@ -867,7 +820,7 @@ useEffect(() => {
                       onClick={() => {
                         if (selectedImageId) {
                           handleDeleteImage(selectedImageId);
-                          setSelectedImageId(null); // Сбрасываем выделение после удаления
+                          setSelectedImageId(null);
                         }
                       }}
                       title="Delete selected image"
@@ -887,7 +840,6 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Main Image Upload */}
             <div>
               <label className="block text-gray-400 mb-2">{t('deals.mainImage')} *</label>
               <input
@@ -903,7 +855,6 @@ useEffect(() => {
               >
                 {mainImage ? t('deals.changeMainImage') : `${t('deals.selectMainImage')} *`}
               </label>
-              {/* Preview for newly selected main image */}
               {mainImage && (
                 <img
                   src={URL.createObjectURL(mainImage)}
@@ -911,7 +862,6 @@ useEffect(() => {
                   className="mt-2 w-full h-48 object-cover rounded-lg"
                 />
               )}
-              {/* Preview for existing main image when editing */}
               {isEditing && initialData?.image_url && !mainImage && (
                 <img
                   src={initialData.image_url}
@@ -921,10 +871,9 @@ useEffect(() => {
               )}
             </div>
 
-            {/* Deal URL Input */}
             <div>
               <input
-                type="url" // тип url для семантики и возможной валидации браузером
+                type="url"
                 placeholder={`${t('deals.dealUrl')} *`}
                 className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
                 value={formData.dealUrl}
@@ -936,31 +885,26 @@ useEffect(() => {
               </p>
             </div>
 
-            {/* Expiry Date Input */}
             <div>
               <div className="relative">
                 <input
                   type="date"
                   className="w-full bg-gray-800 text-white rounded-md px-4 py-3"
                   value={formData.expiryDate}
-                  min={new Date().toISOString().split('T')[0]} // Сегодняшняя дата как минимальная
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={(e) =>{
                     const selectedDate = new Date(e.target.value);
                     const today = new Date();
-                    today.setHours(0, 0, 0, 0); // Устанавливаем время на начало дня для корректного сравнения
+                    today.setHours(0, 0, 0, 0);
 
                     if (selectedDate < today) {
                       setError('Expiry date cannot be earlier than today');
-                      // Можно не устанавливать дату, если она невалидна, или оставить как есть,
-                      // но тогда валидация формы должна это учитывать.
-                      // setFormData({ ...formData, expiryDate: '' }); // Опционально - сбросить дату
                       return;
                     }
-                    setError(null); // Сбрасываем ошибку, если дата валидна
+                    setError(null);
                     setFormData({ ...formData, expiryDate: e.target.value });
                   }}
                 />
-                {/* Кнопка для очистки даты */}
                 {formData.expiryDate && (
                   <button
                     type="button"
@@ -977,7 +921,6 @@ useEffect(() => {
               </p>
             </div>
 
-            {/* Mark as HOT Checkbox */}
             {canMarkHot && (
               <div className="flex items-center space-x-2 mt-4">
                 <input
@@ -985,43 +928,33 @@ useEffect(() => {
                   id="isHot"
                   checked={formData.isHot}
                   onChange={(e) => setFormData({ ...formData, isHot: e.target.checked })}
-                  className="form-checkbox h-5 w-5 text-orange-500 rounded focus:ring-orange-500" // Стилизация для чекбокса
+                  className="form-checkbox h-5 w-5 text-orange-500 rounded focus:ring-orange-500"
                 />
                 <label htmlFor="isHot" className="text-white select-none">{t('deals.markAsHot')}</label>
               </div>
             )}
 
-            {/* Preview and Submit Button Block */}
             <div className="bg-gray-800 rounded-md p-4">
               <h3 className="text-white font-medium mb-2">{t('common.preview')}</h3>
-              <div // Используем div вместо pre для лучшего рендеринга HTML
+              <div
                 className="bg-gray-900 rounded-md p-4 whitespace-pre-wrap font-sans text-sm description-preview min-h-[100px]"
                 dangerouslySetInnerHTML={{
                   __html: formData.description
-                    .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => { // Улучшенный regex для ссылок
+                    .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
                       const lastChar = match.charAt(match.length - 1);
-                      // Проверяем знаки препинания в конце ссылки
                       if ([',', '.', ':', ';', '!', '?', ')', ']', '}'].includes(lastChar)) {
                         return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
                       }
                       return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
                     })
-                    // Замена переносов строк на <br> для HTML (Tiptap обычно сам это делает)
-                    // .replace(/\n\n/g, '<br><br>')
-                    // .replace(/\n/g, '<br>')
-                    // Удаляем классы, если не хотим их в превью (Tiptap может добавлять свои)
-                    // .replace(/class="[^"]+"/g, '') 
-                    // .replace(/class='[^']+'/g, '') 
                 }}
               />
-              {/* Кнопка отправки находится в футере, здесь можно убрать или оставить для больших экранов */}
                <button
-                type="submit" // Важно для отправки формы из этого места, если футер скрыт
+                type="submit"
                 disabled={loading || !isValid}
-                className={`w-full mt-4 py-3 rounded-md font-medium flex items-center justify-center sm:hidden ${ /* Скрываем на sm и больше, если есть футер */ ''}
+                className={`w-full mt-4 py-3 rounded-md font-medium flex items-center justify-center sm:hidden ${
                   isValid ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}
-                // onClick={handleSubmit} // onClick на кнопке типа submit не обязателен, если есть form onSubmit
               >
                 {loading ? (
                   <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -1034,19 +967,17 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Fixed Footer with Action Buttons */}
       <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 p-4">
         <div className="flex space-x-4">
           <button
             type="button"
-            onClick={() => navigate(-1)} // Возвращает на предыдущую страницу
+            onClick={() => navigate(-1)}
             className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-md font-medium"
           >
             {t('common.cancel')}
           </button>
           <button
-            onClick={handleSubmit} // Вызывает handleSubmit при клике
-            // type="submit" // Можно и так, если эта кнопка внутри тега <form> (но она вне)
+            onClick={handleSubmit}
             disabled={loading || !isValid}
             className={`flex-1 py-3 rounded-md font-medium flex items-center justify-center ${
               isValid ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-gray-600 text-gray-400 cursor-not-allowed'
@@ -1060,12 +991,10 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* CSS Styles */}
       <style>
         {`
-          /* Стили для кнопок форматирования редактора */
           .formatting-button {
-            padding: 8px !important; /* Убедитесь, что эти стили не конфликтуют с Tailwind */
+            padding: 8px !important;
             margin: 0 2px !important;
             min-width: 40px !important;
             height: 40px !important;
@@ -1079,28 +1008,26 @@ useEffect(() => {
             height: 20px !important;
           }
 
-          .formatting-button.active { /* Стиль для активной кнопки */
-            background-color: #4B5563 !important; /* Пример цвета фона для активной кнопки (серый) */
-            transform: scale(1.05); /* Небольшое увеличение для эффекта */
+          .formatting-button.active {
+            background-color: #4B5563 !important;
+            transform: scale(1.05);
           }
           
-          /* Стили для обертки изображения в редакторе и кнопки удаления */
           .image-wrapper {
             margin: 1rem 0;
-            position: relative; /* Для позиционирования кнопки удаления */
-            display: inline-block; /* Чтобы обертка была по размеру изображения */
+            position: relative;
+            display: inline-block;
           }
           .image-wrapper img {
             transition: opacity 0.2s;
           }
           .image-wrapper:hover img {
-            opacity: 0.8; /* Легкое затемнение при наведении для видимости кнопки */
+            opacity: 0.8;
           }
           .image-wrapper:hover .delete-button {
-            opacity: 1; /* Показываем кнопку удаления при наведении на обертку */
+            opacity: 1;
           }
 
-          /* Кнопка удаления изображения в редакторе (скрыта по умолчанию) */
           .delete-button {
             position: absolute;
             top: 50%;
@@ -1108,7 +1035,7 @@ useEffect(() => {
             transform: translate(-50%, -50%);
             width: 40px;
             height: 40px;
-            background-color: rgba(239, 68, 68, 0.8); /* Полупрозрачный красный */
+            background-color: rgba(239, 68, 68, 0.8);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -1116,11 +1043,11 @@ useEffect(() => {
             cursor: pointer;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             transition: all 0.2s;
-            opacity: 0; /* Скрыта по умолчанию */
-            z-index: 10; /* Поверх изображения */
+            opacity: 0;
+            z-index: 10;
           }
           .delete-button:hover {
-            background-color: #dc2626; /* Более насыщенный красный при наведении */
+            background-color: #dc2626;
           }
           .delete-button svg {
             width: 20px;
@@ -1128,31 +1055,26 @@ useEffect(() => {
             color: white;
           }
 
-          /* Стили для превью описания */
           .description-preview {
-            white-space: pre-wrap; /* Сохраняем переносы строк и пробелы */
+            white-space: pre-wrap;
           }
-          .description-preview p { /* Стили для параграфов внутри превью (если Tiptap их генерирует) */
-            margin-bottom: 0.75rem; /* Отступ снизу для параграфов */
+          .description-preview p {
+            margin-bottom: 0.75rem;
           }
-          .description-preview a { /* Стили для ссылок в превью */
-            color: #f97316; /* Оранжевый цвет для ссылок */
+          .description-preview a {
+            color: #f97316;
             text-decoration: underline;
           }
 
-          /* Адаптивные стили для мобильных устройств */
           @media (max-width: 640px) {
             .formatting-button {
-              /* Можно уменьшить размеры кнопок на мобильных, если нужно */
             }
-            .delete-image-button { /* Стили для кнопки удаления на мобильных */
-              /* Можно настроить размер и позиционирование */
+            .delete-image-button {
             }
           }
         `}
       </style>
 
-      {/* Bottom Sheets */}
       <CategorySimpleBottomSheet
         isOpen={isCategorySheetOpen}
         onClose={() => setIsCategorySheetOpen(false)}

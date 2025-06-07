@@ -20,7 +20,6 @@ const EditDealPage: React.FC = () => {
   const { addToModerationQueue } = useModeration();
   const isFromModeration = new URLSearchParams(location.search).get('from') === 'moderation';
 
-  // Логи для отладки
   console.log("EditDealPage - Компонент инициализирован с параметрами:");
   console.log(" - id скидки:", id);
   console.log(" - роль пользователя:", role);
@@ -28,8 +27,6 @@ const EditDealPage: React.FC = () => {
   console.log(" - autoApprove:", isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin'));
 
   useEffect(() => {
-    // Полностью очищаем кеш сделок при монтировании компонента редактирования
-    // Это гарантирует, что после редактирования мы загрузим свежие данные
     dispatch({ type: 'SET_DEALS', payload: [] });
     dispatch({ type: 'MARK_DEALS_STALE' });
     console.log("EditDealPage: полная очистка кеша сделок для обеспечения актуальности");
@@ -60,18 +57,14 @@ const EditDealPage: React.FC = () => {
       if (data) {
         console.log('Raw deal data from DB:', data);
 
-        // Проверяем, есть ли у скидки карусель
         let hasCarouselImages = false;
-        if (data.description && data.description.includes('<!-- DEAL_IMAGES:')) {
-          try {
-            const match = data.description.match(/<!-- DEAL_IMAGES: (.*?) -->/);
+        if (data.description && data.description.includes('/);
             if (match && match[1]) {
               const carouselImages = JSON.parse(match[1]);
-              if (carouselImages.length > 1) { // Если больше одного изображения, это карусель
+              if (carouselImages.length > 1) {
                 hasCarouselImages = true;
                 setHasCarousel(true);
                 console.log('Deal has carousel, redirecting to carousel editor');
-                // Перенаправляем на страницу редактирования карусели
                 navigate(`/edit-carousel/${id}`);
                 return;
               }
@@ -81,23 +74,18 @@ const EditDealPage: React.FC = () => {
           }
         }
 
-        // Если нет карусели, продолжаем с обычным редактированием
         if (!hasCarouselImages) {
-          // Всегда загружаем свежие данные с сервера
           console.log('Загружаем актуальные данные сделки с сервера');
-          // Извлечение дополнительных изображений из комментария в описании
           let additionalImages: string[] = [];
           if (data.description) {
-            const match = data.description.match(/<!-- DEAL_IMAGES: (.*?) -->/);
+            const match = data.description.match(//);
             if (match && match[1]) {
               try {
                 const allImages = JSON.parse(match[1]);
-                // Если первое изображение совпадает с основным, используем остальные как дополнительные
                 if (allImages.length > 0) {
                   if (allImages[0] === data.image_url) {
                     additionalImages = allImages.slice(1);
                   } else {
-                    // Если первое изображение не совпадает с основным, используем все
                     additionalImages = [...allImages];
                   }
                   console.log('Found carousel images:', additionalImages.length);
@@ -108,27 +96,26 @@ const EditDealPage: React.FC = () => {
             }
           }
 
-          // Преобразование данных для формы редактирования с дополнительной проверкой
+          // ИСПРАВЛЕНО: Правильная трансформация expires_at для отображения
           const transformedData = {
             id: data.id,
             store_id: data.store_id || null,
             title: data.title || '',
             current_price: data.current_price !== null ? data.current_price.toString() : '',
             original_price: data.original_price !== null ? data.original_price.toString() : '',
-            description: data.description ? data.description.replace(/<!-- DEAL_IMAGES: .*? -->/, '') : '',
+            description: data.description ? data.description.replace(//, '') : '',
             category_id: data.category_id || '',
             deal_url: data.deal_url || '',
             expires_at: data.expires_at
-  ? (() => {
-      const expiryUtcDate = new Date(data.expires_at);
-      // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
-      expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
-      return expiryUtcDate.toISOString().split('T')[0];
-    })()
-  : '',
-            is_hot: Boolean(data.is_hot), // Убедимся, что is_hot правильно конвертируется в boolean
+              ? (() => {
+                  const expiryUtcDate = new Date(data.expires_at);
+                  expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
+                  return expiryUtcDate.toISOString().split('T')[0];
+                })()
+              : '',
+            is_hot: Boolean(data.is_hot),
             image_url: data.image_url || '',
-            carousel_images: additionalImages, // Добавляем изображения карусели
+            carousel_images: additionalImages,
             postedBy: {
               id: data.profiles?.id,
               name: data.profiles?.display_name || data.profiles?.email?.split('@')[0] || 'Anonymous'
@@ -142,7 +129,6 @@ const EditDealPage: React.FC = () => {
           console.log('- is_hot:', transformedData.is_hot, 'type:', typeof transformedData.is_hot);
           console.log('- carousel_images:', transformedData.carousel_images.length);
 
-          // Проверка корректности основных полей перед установкой
           if (!transformedData.title) console.warn('Warning: Deal title is empty');
           if (!transformedData.current_price) console.warn('Warning: Current price is empty');
           if (!transformedData.description) console.warn('Warning: Description is empty');
@@ -156,19 +142,16 @@ const EditDealPage: React.FC = () => {
     fetchDeal();
   }, [id, navigate, dispatch]);
 
-  // Добавляем в очередь модерации после редактирования
   const handleAddToModeration = async (dealId: string) => {
     if (!isFromModeration && dealData && dealData.id) {
       console.log("EditDealPage: добавляем отредактированную сделку в очередь модерации, ID:", dealId);
 
       try {
-        // Обновляем статус сделки на pending
         await supabase
           .from('deals')
           .update({ status: 'pending' })
           .eq('id', dealId);
 
-        // Вызываем функцию из контекста модерации
         if (addToModerationQueue) {
           const result = await addToModerationQueue(dealId, 'deal');
           console.log("EditDealPage: сделка успешно добавлена в очередь модерации");
@@ -182,7 +165,6 @@ const EditDealPage: React.FC = () => {
     }
   };
 
-  // Отключаем автоматическое одобрение для редактирования
   const autoApprove = isFromModeration && (role === 'admin' || role === 'moderator' || role === 'super_admin');
 
   if (loading) {
@@ -192,7 +174,7 @@ const EditDealPage: React.FC = () => {
   }
 
   if (hasCarousel) {
-    return null; // Компонент не рендерится, т.к. произойдет редирект
+    return null;
   }
 
   return (
@@ -208,7 +190,6 @@ const EditDealPage: React.FC = () => {
         dealId={id}
         initialData={dealData}
         autoApprove={autoApprove}
-        // onSave={handleAddToModeration}
         onSave={(id) => handleAddToModeration(id)}
       />
     </div>

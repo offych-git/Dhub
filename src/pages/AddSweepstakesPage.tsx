@@ -16,7 +16,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { useAuth } from "../contexts/AuthContext";
-import { useAdmin } from "../hooks/useAdmin"; // Fixed import path for useAdmin hook
+import { useAdmin } from "../hooks/useAdmin";
 import { useLanguage } from "../contexts/LanguageContext";
 import { supabase } from "../lib/supabase";
 import StoreBottomSheet from "../components/deals/StoreBottomSheet";
@@ -140,7 +140,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     },
   });
 
-  // Отладочная информация при инициализации компонента
   useEffect(() => {
     console.log("📋 AddSweepstakesPage инициализирована");
     console.log("📋 Режим редактирования:", isEditing);
@@ -152,12 +151,16 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     title: initialData?.title || "",
     description: initialData?.description || "",
     dealUrl: initialData?.dealUrl || "",
-    expiryDate: initialData?.expiryDate
-      ? initialData.expiryDate.split("T")[0]
+    // ИСПРАВЛЕНО: Правильная инициализация expiryDate для AddSweepstakesPage
+    expiryDate: initialData?.expires_at // Используем expires_at, так как это общий формат для истечения
+      ? (() => {
+          const expiryUtcDate = new Date(initialData.expires_at);
+          expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
+          return expiryUtcDate.toISOString().split('T')[0];
+        })()
       : "",
   });
 
-  // Отслеживаем состояние валидации каждого поля отдельно
   const [validationState, setValidationState] = useState({
     title: true,
     description: true,
@@ -176,10 +179,9 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     );
   }, [isStoreSheetOpen]);
 
-  // Image compression function
   const compressImage = async (file: File): Promise<File> => {
     const options = {
-      maxSizeMB: 0.2, // 200KB
+      maxSizeMB: 0.2,
       maxWidthOrHeight: 1200,
       useWebWorker: true,
       fileType: "image/jpeg",
@@ -199,7 +201,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
 
     try {
       setIsUploadingImage(true);
-      const file = files[0]; // Take only the first file
+      const file = files[0];
 
       if (!file.type.startsWith("image/")) {
         throw new Error("Please select only image files");
@@ -218,8 +220,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     }
   };
 
-  // Category functionality removed as per requirements
-
   const validateForm = () => {
     if (!formData.title.trim()) {
       setError("Title is required");
@@ -231,7 +231,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       return false;
     }
 
-    // Проверяем, есть ли хотя бы одно из изображений - новое загруженное или существующее
     if (!sweepstakesImage && !imageUrl) {
       setError("Please upload an image");
       return false;
@@ -263,17 +262,14 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
   };
 
   useEffect(() => {
-    // Проверяем каждое обязательное поле отдельно
     const titleValid = formData.title.trim() !== "";
     const descriptionValid = formData.description.trim() !== "";
-    // При редактировании считаем изображение валидным, если есть либо новое загруженное изображение, либо URL существующего
     const imageValid = sweepstakesImage !== null || imageUrl !== null;
     const urlValid =
       /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(
         formData.dealUrl,
       );
 
-    // Если указана дата, проверяем что она не раньше текущей
     let expiryDateValid = true;
     if (formData.expiryDate) {
       const selectedDate = new Date(formData.expiryDate);
@@ -282,7 +278,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       expiryDateValid = selectedDate >= today;
     }
 
-    // Обновляем состояние валидации
     setValidationState({
       title: titleValid,
       description: descriptionValid,
@@ -291,7 +286,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       expiryDate: expiryDateValid,
     });
 
-    // Общая проверка формы
     const isFormValid =
       titleValid &&
       descriptionValid &&
@@ -309,9 +303,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     });
   }, [formData, sweepstakesImage]);
 
-  // Инициализируем форму только в режиме редактирования
   useEffect(() => {
-    // Если это режим редактирования и есть начальные данные
     if (isEditing && initialData) {
       console.log("Режим редактирования: используем initialData");
       setFormData((prev) => ({
@@ -332,7 +324,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     e.preventDefault();
     setLoading(true);
 
-    // Проверка аутентификации пользователя
     if (!user || !user.id) {
       console.error("User not authenticated or user ID is missing.");
       setError("Для создания розыгрыша необходимо войти в систему.");
@@ -343,7 +334,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     try {
       let uploadedImageUrl = "";
 
-      // Upload image if available
       if (sweepstakesImage) {
         const fileExt = sweepstakesImage.name.split(".").pop();
         const fileName = `${Math.random()}.${fileExt}`;
@@ -364,10 +354,8 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         uploadedImageUrl = urlData.publicUrl;
       }
 
-      // Получаем оригинального создателя розыгрыша при редактировании
-      let originalUserId = user.id; // Используем не опциональный доступ к user.id
+      let originalUserId = user.id;
 
-      // Если это редактирование существующего розыгрыша, получаем оригинального создателя
       if (isEditing && sweepstakesId) {
         console.log(
           "Получаем данные оригинального розыгрыша для сохранения создателя",
@@ -380,7 +368,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
             .single();
 
           if (!fetchError && existingData && existingData.user_id) {
-            // Сохраняем оригинального пользователя только если он существует
             originalUserId = existingData.user_id;
             console.log("Оригинальный создатель розыгрыша:", originalUserId);
           } else {
@@ -394,32 +381,30 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         }
       }
 
-      // Prepare sweepstakes data
       const sweepstakesData = {
         title: formData.title,
         description: formData.description,
         current_price: 0,
         original_price: null,
         store_id: selectedStoreId || null,
-        category_id: 1, // Установка дефолтной категории вместо null
+        category_id: 1,
         subcategories: [],
-        // Используем новое изображение только если оно было загружено
         image_url: sweepstakesImage
           ? uploadedImageUrl
           : initialData?.image || null,
         deal_url: formData.dealUrl,
-        user_id: originalUserId, // Используем оригинального создателя при редактировании
+        user_id: originalUserId,
         expires_at: formData.expiryDate
-  ? (() => {
-      const selectedDate = new Date(formData.expiryDate);
-      selectedDate.setDate(selectedDate.getDate() + 1);
-      selectedDate.setUTCHours(0, 0, 0, 0);
-      return selectedDate.toISOString();
-    })()
-  : null,
+          ? (() => {
+              const selectedDate = new Date(formData.expiryDate);
+              selectedDate.setDate(selectedDate.getDate() + 1);
+              selectedDate.setUTCHours(0, 0, 0, 0);
+              return selectedDate.toISOString();
+            })()
+          : null,
         is_hot: allowHotToggle ? formData.isHot : false,
         type: "sweepstakes",
-        status: "pending", // Устанавливаем начальный статус 'pending' для модерации
+        status: "pending",
       };
 
       console.log("Отправляемые данные розыгрыша:", {
@@ -431,7 +416,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       let data, error;
 
       if (isEditing && sweepstakesId) {
-        // Проверяем текущий статус розыгрыша перед обновлением
         const { data: currentSweepstake, error: currentSweepstakeError } =
           await supabase
             .from("deals")
@@ -444,14 +428,11 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
           throw new Error(currentSweepstakeError.message);
         }
 
-        // Если розыгрыш уже был одобрен и не происходит автоматическое одобрение,
-        // меняем статус на "pending" для повторной модерации
         if (currentSweepstake.status === "approved" && !allowHotToggle) {
           sweepstakesData.status = "pending";
         }
 
         console.log("Обновление существующего розыгрыша:", sweepstakesId);
-        // Обновляем существующий розыгрыш
         const { data: updatedData, error: updateError } = await supabase
           .from("deals")
           .update(sweepstakesData)
@@ -469,7 +450,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
 
         console.log("Розыгрыш успешно обновлен:", data);
       } else {
-        // Создаем новый розыгрыш
         console.log("Создание нового розыгрыша...");
         const { data: newData, error: insertError } = await supabase
           .from("deals")
@@ -488,7 +468,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         console.log("Розыгрыш успешно создан:", data);
       }
 
-      // Дополнительная проверка полученных данных
       if (!data || !data.id) {
         console.error(
           "Получены некорректные данные после операции с розыгрышем:",
@@ -499,9 +478,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         );
       }
 
-      // Добавляем в очередь модерации в двух случаях:
-      // 1. Новый розыгрыш
-      // 2. Редактирование розыгрыша, который уже был одобрен
       if (
         (!isEditing || (isEditing && sweepstakesData.status === "pending")) &&
         addToModerationQueue
@@ -518,11 +494,9 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
             "Ошибка при добавлении в очередь модерации:",
             moderationError,
           );
-          // Продолжаем выполнение даже при ошибке модерации
         }
       }
 
-      // Вызываем функцию обратного вызова, если она определена
       if (isEditing && typeof onEditSuccess === "function" && data.id) {
         console.log(
           "Вызываем onEditSuccess после успешного редактирования розыгрыша",
@@ -534,12 +508,10 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         }
       }
 
-      // Перенаправляем на страницу просмотра розыгрыша
       navigate(`/sweepstakes/${data.id}`);
     } catch (error) {
       console.error("Error in handleSubmit:", error);
 
-      // Добавляем подробное логирование ошибок
       if (error instanceof Error) {
         console.error("Error details:", {
           name: error.name,
@@ -548,7 +520,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         });
       }
 
-      // Форматируем сообщение об ошибке для пользователя
       let errorMessage = "Failed to create/update sweepstakes";
 
       if (error instanceof Error) {
@@ -576,8 +547,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     }
     return null;
   }, [formData.currentPrice, formData.originalPrice]);
-
-  // Определение editor перемещено выше
 
   useEffect(() => {
     if (editor) {
@@ -667,11 +636,9 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     });
   }, [isStoreSheetOpen, selectedStoreId]);
 
-  // Define checkImagesInEditor function that was missing
   const checkImagesInEditor = () => {
     if (!editor) return;
 
-    // This is just a stub function since you removed image management functionality
     console.log("Editor content checked");
   };
 
@@ -1118,7 +1085,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
             text-decoration: underline;
           }
 
-          /* Mobile-friendly formatting buttons */
           @media (max-width: 640px) {
             .formatting-button {
               padding: 8px !important;

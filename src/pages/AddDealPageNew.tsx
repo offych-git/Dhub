@@ -29,7 +29,7 @@ import imageCompression from "browser-image-compression";
 import { createPortal } from "react-dom";
 import CategorySimpleBottomSheet from "../components/deals/CategorySimpleBottomSheet";
 import StoreBottomSheet from "../components/deals/StoreBottomSheet";
-import { useGlobalState } from "../contexts/GlobalStateContext"; // Import useGlobalState
+import { useGlobalState } from "../contexts/GlobalStateContext";
 import { useModeration } from "../contexts/ModerationContext";
 
 interface ImageWithId {
@@ -42,9 +42,9 @@ interface AddDealPageNewProps {
   isEditing?: boolean;
   dealId?: string;
   initialData?: any;
-  customHeaderComponent?: React.ReactNode; // Added custom header prop
+  customHeaderComponent?: React.ReactNode;
   allowHotToggle?: boolean;
-  autoApprove?: boolean; // Add autoApprove prop
+  autoApprove?: boolean;
   labelOverrides?: {
     expiryDate?: string;
   };
@@ -61,7 +61,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { dispatch } = useGlobalState(); // Added dispatch
+  const { dispatch } = useGlobalState();
   const { role } = useAdmin();
   const { t, language } = useLanguage();
   const canMarkHot = role === "admin" || role === "moderator";
@@ -75,14 +75,12 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
   const selectedStoreName =
     stores.find((store) => store.id === selectedStoreId)?.name || "";
 
-  // Images for carousel
   const [dealImages, setDealImages] = useState<ImageWithId[]>([]);
-  // В новой системе нам не нужен активный индекс, так как первое изображение всегда главное
-  const [mainImageIndex, setMainImageIndex] = useState(0); // Оставляем для совместимости с существующим кодом
+  const [mainImageIndex, setMainImageIndex] = useState(0);
   const { addToModerationQueue } = useModeration();
 
   useEffect(() => {
-    const pageTitle = "Add New Deal"; // Или ваш динамический заголовок
+    const pageTitle = "Add New Deal";
 
     console.log(
       `[Add New Deal Web] INFO: useEffect для отправки заголовка "${pageTitle}" запущен (с небольшой задержкой).`,
@@ -109,7 +107,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
     return () => clearTimeout(timerId);
   }, []);
 
-  // Загрузка существующих изображений при редактировании
   useEffect(() => {
     if (
       isEditing &&
@@ -135,11 +132,9 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
     description: initialData?.description || "",
     category: initialData?.category || "",
     dealUrl: initialData?.deal_url || "",
-    // ИСПРАВЛЕНО: Правильная инициализация expiryDate
     expiryDate: initialData?.expires_at
       ? (() => {
           const expiryUtcDate = new Date(initialData.expires_at);
-          // Отнимаем один день, чтобы получить дату, которую пользователь изначально выбрал
           expiryUtcDate.setDate(expiryUtcDate.getDate() - 1);
           return expiryUtcDate.toISOString().split('T')[0];
         })()
@@ -205,7 +200,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
       return false;
     }
 
-    // Более гибкая проверка URL, которая принимает query-параметры и фрагменты
     const urlRegex =
       /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?\.)+[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\/[^\s]*)?$/;
     if (!urlRegex.test(formData.dealUrl)) {
@@ -226,7 +220,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
     return true;
   };
 
-  // Создаем редактор
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -280,7 +273,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
     },
   });
 
-  // Устанавливаем содержимое редактора при загрузке существующих данных
   useEffect(() => {
     if (isEditing && initialData?.description && editor) {
       editor.commands.setContent(initialData.description);
@@ -288,7 +280,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
     }
   }, [isEditing, initialData, editor]);
 
-  // Отслеживаем состояние валидации каждого поля отдельно
   const [validationState, setValidationState] = useState({
     title: true,
     description: true,
@@ -300,7 +291,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
   });
 
   useEffect(() => {
-    // Проверяем каждое обязательное поле отдельно
     const titleValid = formData.title.trim() !== "";
     const descriptionValid = formData.description.trim() !== "";
     const currentPriceValid =
@@ -315,7 +305,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
       formData.dealUrl,
     );
 
-    // Обновляем состояние валидации
     setValidationState({
       title: titleValid,
       description: descriptionValid,
@@ -326,7 +315,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
       dealUrl: urlValid,
     });
 
-    // Общая проверка формы
     const isFormValid =
       titleValid &&
       descriptionValid &&
@@ -408,7 +396,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
   const handleRemoveImage = (imageId: string) => {
     setDealImages((prev) => {
       const newImages = prev.filter((img) => img.id !== imageId);
-      // В новой системе первое изображение всегда главное
       setMainImageIndex(0);
       return newImages;
     });
@@ -429,25 +416,18 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
       if (dealImages.length === 0)
         throw new Error("At least one image is required");
 
-      // Убедимся, что у нас есть актуальное содержимое из редактора
       const currentDescription = editor
         ? editor.getHTML()
         : formData.description;
 
-      // В новой системе, первое изображение в массиве всегда главное
       const mainImageUrl = dealImages[0].publicUrl;
 
-      // Добавим все URL изображений в описание в специальном JSON-формате
-      // Это позволит нам хранить дополнительные изображения без изменения структуры БД
       let enhancedDescription = currentDescription;
 
-      // Если есть дополнительные изображения, добавим их в описание в формате JSON
       if (dealImages.length > 1) {
         const allImagesJson = JSON.stringify(
           dealImages.map((img) => img.publicUrl),
         );
-        // Добавляем JSON с изображениями в конец описания в специальном формате
-        // который можно будет распознать в DealDetailPage
         enhancedDescription += `\n\n`;
       }
 
@@ -476,12 +456,9 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
         is_hot: formData.isHot,
       };
 
-      // Проверяем режим - создание или редактирование
       if (isEditing && dealId) {
-        // Обновление существующей скидки
         console.log("Updating existing deal:", dealId);
 
-        // Отмечаем все сделки как устаревшие для последующей перезагрузки
         try {
           if (dispatch) {
             dispatch({ type: "MARK_DEALS_STALE" });
@@ -492,9 +469,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           console.error("Error dispatching MARK_DEALS_STALE:", dispatchError);
         }
 
-        // Подготовьте объект данных для обновления
         const dealDataToUpdate = {
-          // Включите сюда все поля из формы, которые нужно обновить
           title: formData.title,
           description: enhancedDescription,
           current_price: Number(formData.currentPrice),
@@ -516,8 +491,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
             : null,
           is_hot: formData.isHot,
 
-          // --- ЛОГИКА ПУБЛИКАЦИИ ПРИ РЕДАКТИРОВАНИИ ИЗ МОДЕРАЦИИ ---
-          // Если autoApprove = true (редактирование из модерации), устанавливаем статус 'approved' и данные модератора
           ...(autoApprove
             ? {
                 status: "approved",
@@ -527,7 +500,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
             : {}),
         };
 
-        // Проверяем текущий статус скидки перед обновлением
         const { data: currentDeal, error: currentDealError } = await supabase
           .from("deals")
           .select("status, user_id")
@@ -548,8 +520,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
         );
         console.log("AddDealPageNew - autoApprove:", autoApprove);
 
-        // Если скидка уже одобрена/опубликована и это не автоматическое одобрение,
-        // то всегда изменяем статус на "pending" для повторной модерации
         if (
           (currentDeal.status === "approved" ||
             currentDeal.status === "published") &&
@@ -561,10 +531,9 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           dealDataToUpdate.status = "pending";
         }
 
-        // 1. Обновление данных сделки в таблице 'deals' и получение обновленной записи
         const { data: updatedDeal, error: updateError } = await supabase
           .from("deals")
-          .update(dealDataToUpdate) // Используйте объект с условным статусом
+          .update(dealDataToUpdate)
           .eq("id", dealId)
           .select()
           .single();
@@ -574,7 +543,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           throw new Error("Failed to update deal");
         }
 
-        // Проверяем статус сделки после обновления (для отладки)
         const { data: dealAfterUpdate, error: dealUpdateCheckError } =
           await supabase
             .from("deals")
@@ -589,9 +557,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           dealUpdateCheckError,
         );
 
-        // --- ЛОГИКА ОЧЕРЕДИ МОДЕРАЦИИ ---
         if (autoApprove) {
-          // Если это обновление из модерации (autoApprove = true), удаляем из очереди модерации
           console.log(
             "Updating deal from moderation, auto-approving and removing from queue",
           );
@@ -608,13 +574,11 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
             );
           }
         } else if (updatedDeal && updatedDeal.status === "pending") {
-          // Если статус в обновленной записи равен 'pending', добавляем в очередь модерации
           console.log(
             "AddDealPageNew - Добавляем скидку в очередь модерации, статус:",
             updatedDeal.status,
           );
 
-          // Используем контекст модерации для добавления в очередь
           if (addToModerationQueue) {
             try {
               await addToModerationQueue(dealId, "deal");
@@ -638,22 +602,17 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           );
         }
 
-        // Если редактирование из модерации, перенаправляем обратно на страницу модерации,
-        // в противном случае - на страницу деталей
         if (autoApprove) {
           console.log(
             "AddDealPageNew - Redirecting to moderation page after successful auto-approval",
           );
           navigate("/moderation");
-          // Показываем уведомление об успешном одобрении
           alert("Сделка успешно отредактирована и одобрена");
         } else {
           console.log("AddDealPageNew - Redirecting to deal detail page");
           navigate(`/deals/${dealId}`);
         }
       } else {
-        // Создание новой скидки
-        // Добавляем ID пользователя только при создании
         const { data: deal, error: dealError } = await supabase
           .from("deals")
           .insert({
@@ -668,7 +627,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           throw new Error("Failed to create deal");
         }
 
-        // Отмечаем все сделки как устаревшие, если есть dispatch
         try {
           if (dispatch) {
             dispatch({ type: "MARK_DEALS_STALE" });
@@ -685,7 +643,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
         }
 
         navigate(`/deals/${deal.id}`);
-        // Добавляем новую сделку в очередь модерации
         if (deal && deal.id) {
           console.log("Добавляем сделку в очередь модерации:", deal.id);
           await addToModerationQueue(deal.id, "deal");
@@ -724,7 +681,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
     setIsStoreSheetOpen(false);
   };
 
-  // Упрощенная обработка URL, без автоматического извлечения данных
   const handleUrlInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value;
     setFormData((prev) => ({ ...prev, dealUrl: url }));
@@ -732,7 +688,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      {/* Header */}
       <div className="web-page-header fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           {customHeaderComponent ? (
@@ -936,7 +891,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
               </div>
             )}
 
-            {/* Deal Images */}
             <div>
               <label className="block text-gray-400 mb-2">
                 Deal Images * ({dealImages.length}/4)
@@ -944,7 +898,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
 
               {dealImages.length > 0 && (
                 <div className="mb-4">
-                  {/* Отображение главного изображения */}
                   <div className="relative h-48 bg-gray-800 rounded-lg overflow-hidden main-image-container">
                     <img
                       key={dealImages[0]?.id}
@@ -964,7 +917,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                     </div>
                   </div>
 
-                  {/* Миниатюры с улучшенным интерфейсом управления порядком */}
                   {dealImages.length > 1 && (
                     <div className="mt-4">
                       <div className="text-gray-400 text-sm mb-2">
@@ -980,7 +932,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                                 : "border-gray-700"
                             }`}
                           >
-                            {/* Кнопка удаления в правом верхнем углу */}
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1012,14 +963,11 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                               className="w-full h-16 object-cover"
                             />
 
-                            {/* Метка позиции */}
                             <div className="absolute top-0 left-0 bg-black bg-opacity-70 text-white text-xs font-bold px-1.5 py-0.5 rounded-br-md">
                               {index + 1}
                             </div>
 
-                            {/* Кнопки перемещения */}
                             <div className="absolute bottom-0 left-0 right-0 flex justify-between bg-black bg-opacity-80 p-1">
-                              {/* Кнопка влево */}
                               <button
                                 type="button"
                                 disabled={index === 0}
@@ -1055,7 +1003,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                                 </svg>
                               </button>
 
-                              {/* Кнопка вправо */}
                               <button
                                 type="button"
                                 disabled={index === dealImages.length - 1}
@@ -1092,7 +1039,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                               </button>
                             </div>
 
-                            {/* Индикатор главного изображения */}
                             {index === 0 && (
                               <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-bl-md font-bold">
                                 Главное
@@ -1102,11 +1048,9 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                         ))}
                       </div>
 
-                      {/* Кнопки для быстрой установки главного изображения удалены */}
                     </div>
                   )}
 
-                  {/* Подсказка удалена */}
                 </div>
               )}
 
@@ -1323,7 +1267,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
               </p>
             </div>
 
-            {/* Проверка на роль пользователя для отображения HOT кнопки */}
             {!isUploadingImage &&
               (allowHotToggle === undefined ? canMarkHot : allowHotToggle) && (
                 <div className="mt-4">
@@ -1368,21 +1311,21 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                 }}
               />
               <button
-                type="submit" // Важно для отправки формы
+                type="submit"
                 disabled={loading || !isValid}
-                onClick={handleSubmit} // Можно оставить, как в AddSweepstakesPage, хотя form onSubmit тоже сработает
+                onClick={handleSubmit}
                 className={`w-full mt-4 py-3 rounded-md font-medium flex items-center justify-center ${
                   isValid
-                    ? "bg-orange-500 text-white hover:bg-orange-600" // Добавлено состояние hover для консистентности
+                    ? "bg-orange-500 text-white hover:bg-orange-600"
                     : "bg-gray-700 text-gray-400 cursor-not-allowed"
                 }`}
               >
                 {loading ? (
                   <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 ) : isEditing ? (
-                  "Update Deal" // Динамический текст для режима редактирования
+                  "Update Deal"
                 ) : (
-                  "Post Deal" // Динамический текст для режима создания
+                  "Post Deal"
                 )}
               </button>
             </div>
@@ -1438,7 +1381,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
             text-decoration: underline;
           }
 
-          /* Анимация смены главного изображения */
           .main-image-container {
             position: relative;
             overflow: hidden;
@@ -1457,7 +1399,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
             to { opacity: 1; transform: scale(1); }
           }
 
-          /* Стили для мобильных устройств */
           @media (max-width: 640px) {
             .image-controls button {
               padding: 8px;
