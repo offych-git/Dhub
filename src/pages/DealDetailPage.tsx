@@ -1135,13 +1135,13 @@ const DealDetailPage: React.FC = () => {
                         <ExternalLink className="h-4 w-4 ml-2" />
                     </a>
                 ) : (
-                    <button
-                        onClick={() => navigate("/auth")}
-                        className="mt-4 bg-gray-500 text-white py-3 rounded-md flex items-center justify-center font-medium w-full cursor-pointer"
-                    >
-                        <span>Login to see deal</span>
-                        <ExternalLink className="h-4 w-4 ml-2" />
-                    </button>
+    <button
+        onClick={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
+        className="mt-4 bg-gray-500 text-white py-3 rounded-md flex items-center justify-center font-medium w-full cursor-pointer"
+    >
+        <span>Login to see deal</span>
+        <ExternalLink className="h-4 w-4 ml-2" />
+    </button>
                 )}
 
                 <div className="mt-6">
@@ -1217,10 +1217,12 @@ const DealDetailPage: React.FC = () => {
                         }}
                     />
                 </div>
+
+                {/* Блок с ценовой историей был удалён */}
+
 <div className="text-center text-gray-500 text-sm mt-6 mb-6">
                     If you purchase something through a post on our site, WeDealz may get a small share of the sale.
                 </div>
-                {/* Блок с ценовой историей был удалён */}
 
                 <div className="mt-6" id="comments-section">
                     <div className="flex items-center justify-between mb-4">

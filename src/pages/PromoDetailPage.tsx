@@ -22,16 +22,14 @@ const PromoDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const searchQuery = searchParams.get("q") || "";
-  const { user } = useAuth();
+  const { user } = useAuth(); // Получаем объект user из AuthContext
   const [promo, setPromo] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [commentCount, setCommentCount] = useState(0);
-  // Removed voteCount and userVote state
   const [isFavorite, setIsFavorite] = useState(false);
   const isExpired =
     promo?.expires_at && new Date(promo.expires_at) < new Date();
 
-  // Define comment tree node type
   type CommentTreeNode = {
     id: string;
     content: string;
@@ -96,7 +94,7 @@ const PromoDetailPage: React.FC = () => {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   useEffect(() => {
-    const pageTitle = "Promo Details"; // Или ваш динамический заголовок
+    const pageTitle = "Promo Details";
 
     console.log(
       `[PromocodeDetailPage Web] INFO: useEffect для отправки заголовка "${pageTitle}" запущен (с небольшой задержкой).`,
@@ -124,36 +122,29 @@ const PromoDetailPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Прокручиваем страницу вверх при открытии деталей промокода
     window.scrollTo(0, 0);
 
     if (id) {
       loadPromo();
       loadComments();
       if (user) {
-        // loadVoteStatus(); // removed
         loadFavoriteStatus();
       }
     }
   }, [id, user, sortBy]);
 
-  // Отдельный эффект для прокрутки к комментарию, если указан ID комментария в URL
   useEffect(() => {
     if (highlightedCommentId) {
-      // Для DOM-элементов используем небольшую задержку, чтобы убедиться, что комментарии загружены
       const timer = setTimeout(() => {
         const commentElement = document.getElementById(
           `comment-${highlightedCommentId}`,
         );
         if (commentElement) {
-          // Прокручиваем к комментарию один раз
           commentElement.scrollIntoView({
             behavior: "smooth",
             block: "center",
           });
 
-          // Добавляем эффект подсветки (упрощаем анимацию)
-          // Используем последовательные классы без лишних удалений
           commentElement.classList.add("bg-orange-500/20");
           setTimeout(() => {
             commentElement.classList.remove("bg-orange-500/20");
@@ -288,7 +279,7 @@ const PromoDetailPage: React.FC = () => {
 
   const toggleFavorite = async () => {
     if (!user) {
-      navigate("/auth");
+      navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`);
       return;
     }
 
@@ -339,7 +330,7 @@ const PromoDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="pb-16 pt-12 bg-gray-900 min-h-screen">
+    <div className="pb-16 pt-16 bg-gray-900 min-h-screen">
       <div className="web-page-header fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -368,7 +359,6 @@ const PromoDetailPage: React.FC = () => {
             <button
               onClick={() => {
                 if (navigator.share) {
-                  // Формируем правильный URL для конкретного промокода
                   const promoUrl = `${window.location.origin}/promos/${promo.id}`;
                   navigator
                     .share({
@@ -377,7 +367,6 @@ const PromoDetailPage: React.FC = () => {
                     })
                     .catch(console.error);
                 } else {
-                  // Формируем правильный URL для копирования
                   const promoUrl = `${window.location.origin}/promos/${promo.id}`;
                   navigator.clipboard.writeText(promoUrl);
                   alert("Link copied to clipboard!");
@@ -430,30 +419,45 @@ const PromoDetailPage: React.FC = () => {
           </div>
         )}
 
+        {/* ЭТОТ БЛОК БЫЛ ПЕРЕМЕЩЕН ВЫШЕ */}
         <div className="mt-4 bg-gray-800 rounded-lg p-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <div className="bg-gray-700 px-3 py-1.5 rounded border border-gray-600">
-              <span className="text-orange-500 font-mono">{promo.code}</span>
+          {/* Условный рендеринг ТОЛЬКО для промокода и кнопки "Copy Code" */}
+          {user ? ( // Если пользователь авторизован, показываем промокод
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="bg-gray-700 px-3 py-1.5 rounded border border-gray-600">
+                <span className="text-orange-500 font-mono">{promo.code}</span>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(promo.code);
+                  setCopiedCodeId(promo.id);
+                  setTimeout(() => setCopiedCodeId(null), 2000);
+                }}
+                className={`font-medium px-3 py-1.5 rounded border ${copiedCodeId === promo.id ? "bg-green-500 text-white border-green-500" : "text-orange-500 border-orange-500"}`}
+              >
+                {copiedCodeId === promo.id ? "Copied!" : "Copy Code"}
+              </button>
             </div>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                navigator.clipboard.writeText(promo.code);
-                setCopiedCodeId(promo.id);
-                setTimeout(() => setCopiedCodeId(null), 2000);
-              }}
-              className={`font-medium px-3 py-1.5 rounded border ${copiedCodeId === promo.id ? "bg-green-500 text-white border-green-500" : "text-orange-500 border-orange-500"}`}
-            >
-              {copiedCodeId === promo.id ? "Copied!" : "Copy Code"}
-            </button>
-          </div>
+          ) : ( // Если пользователь не авторизован, показываем сообщение и кнопку для просмотра промокода
+            <div className="mb-4">
+              <p className="text-center text-gray-400 mb-2">Login to see this promo code.</p>
+              <button
+                onClick={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
+                className="bg-orange-500 text-white py-2 px-4 rounded-md flex items-center justify-center font-medium w-full"
+              >
+                <span>Login to see promo code</span>
+                <ExternalLink className="h-4 w-4 ml-2" />
+              </button>
+            </div>
+          )}
 
+          {/* ЭТОТ БЛОК ТЕПЕРЬ ВСЕГДА ВИДИМ */}
           <div
             className="text-gray-300"
             dangerouslySetInnerHTML={{
               __html: (() => {
-                // Если есть поисковый запрос, применяем прямую подсветку в HTML строке
                 if (searchQuery) {
                   const searchRegex = new RegExp(
                     `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
@@ -464,7 +468,6 @@ const PromoDetailPage: React.FC = () => {
                     '<span class="bg-orange-500 text-white px-0.5 rounded">$1</span>',
                   );
                 }
-
                 return promo.description;
               })(),
             }}
@@ -478,20 +481,39 @@ const PromoDetailPage: React.FC = () => {
         </div>
 
         <div className="mt-4 flex items-center justify-between">
-          <VoteControls dealId={promo.id} type="promo" do_refresh={true} />
-          <a
-            href={promo.discount_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center"
-          >
-            <span>Visit Store</span>
-            <ExternalLink className="h-4 w-4 ml-2" />
-          </a>
+          {/* VoteControls отображается, но действия требуют авторизации */}
+          <VoteControls
+              dealId={promo.id}
+              type="promo"
+              do_refresh={true}
+              onAuthRedirect={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
+          />
+          {user ? ( // Если пользователь авторизован, кнопка Visit Store активна
+            <a
+              href={promo.discount_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center"
+            >
+              <span>Visit Store</span>
+              <ExternalLink className="h-4 w-4 ml-2" />
+            </a>
+          ) : ( // Если пользователь не авторизован, кнопка Visit Store неактивна
+            <button
+              disabled
+              className="bg-gray-500 text-white px-4 py-2 rounded-md flex items-center cursor-not-allowed opacity-70"
+            >
+              <span>Visit Store</span>
+              <ExternalLink className="h-4 w-4 ml-2" />
+            </button>
+          )}
         </div>
-<div className="text-center text-gray-500 text-sm mt-6 mb-6">
-                    If you purchase something through a post on our site, WeDealz may get a small share of the sale.
-                </div>
+
+        {/* Добавляем блок с надписью о партнерских ссылках */}
+        <div className="text-center text-gray-500 text-sm mt-6 mb-6">
+            If you purchase something through a post on our site, WeDealz may get a small share of the sale.
+        </div>
+
         <div className="mt-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white font-medium">
@@ -515,6 +537,7 @@ const PromoDetailPage: React.FC = () => {
               sourceType="promo_comment"
               sourceId={promo.id}
               onSubmit={loadComments}
+              onAuthRedirect={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
             />
           </div>
 

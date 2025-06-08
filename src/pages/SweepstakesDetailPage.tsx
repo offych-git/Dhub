@@ -40,28 +40,22 @@ const SweepstakesDetailPage: React.FC = () => {
         sweepstakes?.expires_at &&
         new Date(sweepstakes.expires_at) < new Date();
 
-    // Получение списка изображений для карусели
     const sweepstakesImages = useMemo(() => {
         if (!sweepstakes) return [];
 
-        // Основное изображение всегда первое
         const images = [sweepstakes.image];
 
-        // Проверяем, есть ли в описании JSON с дополнительными изображениями
         if (sweepstakes.description) {
             const match = sweepstakes.description.match(
-                /<!-- DEAL_IMAGES: (.*?) -->/,
+                //,
             );
             if (match && match[1]) {
                 try {
-                    // Пытаемся распарсить JSON с изображениями
                     const allImages = JSON.parse(match[1]);
 
-                    // Если первое изображение в JSON совпадает с основным, не дублируем его
                     if (allImages[0] === sweepstakes.image) {
                         images.push(...allImages.slice(1));
                     } else {
-                        // Если не совпадает (это может быть из-за старых данных), добавляем все кроме первого
                         images.push(...allImages.slice(1));
                     }
                 } catch (e) {
@@ -76,7 +70,6 @@ const SweepstakesDetailPage: React.FC = () => {
         return images;
     }, [sweepstakes]);
 
-    // Функции для навигации по карусели с циклическим переходом
     const goToPreviousImage = () => {
         setCurrentImageIndex((prev) =>
             prev === 0 ? sweepstakesImages.length - 1 : prev - 1,
@@ -89,18 +82,14 @@ const SweepstakesDetailPage: React.FC = () => {
         );
     };
 
-    // Обработчики свайпов с улучшенной реактивностью
     const handleTouchStart = (e: React.TouchEvent) => {
-        // Сохраняем начальную позицию касания
         setTouchStart(e.targetTouches[0].clientX);
-        setTouchEnd(null); // Сбрасываем конечную позицию при новом касании
+        setTouchEnd(null);
     };
 
     const handleTouchMove = (e: React.TouchEvent) => {
-        // Обновляем позицию при движении пальца
         setTouchEnd(e.targetTouches[0].clientX);
 
-        // Предотвращаем скролл страницы при горизонтальном свайпе
         if (Math.abs((touchStart || 0) - e.targetTouches[0].clientX) > 10) {
             e.preventDefault();
         }
@@ -109,30 +98,25 @@ const SweepstakesDetailPage: React.FC = () => {
     const handleTouchEnd = () => {
         if (touchStart === null) return;
 
-        // Если touchEnd не был установлен (пользователь просто тапнул), выходим
         if (touchEnd === null) {
             setTouchStart(null);
             return;
         }
 
         const distance = touchStart - touchEnd;
-        const minSwipeDistance = 50; // Минимальное расстояние свайпа для срабатывания
+        const minSwipeDistance = 50;
 
         if (distance > minSwipeDistance) {
-            // Свайп влево - следующее изображение
             goToNextImage();
         } else if (distance < -minSwipeDistance) {
-            // Свайп вправо - предыдущее изображение
             goToPreviousImage();
         }
 
-        // Сбрасываем состояния касания
         setTouchStart(null);
         setTouchEnd(null);
     };
 
     useEffect(() => {
-        // Прокручиваем страницу вверх при открытии деталей розыгрыша
         window.scrollTo(0, 0);
 
         if (id) {
@@ -163,14 +147,12 @@ const SweepstakesDetailPage: React.FC = () => {
                 return;
             }
 
-            // Add null checks and default values for profile data
             const profileDisplayName =
                 data.profiles?.display_name ||
                 (data.profiles?.email
                     ? data.profiles.email.split("@")[0]
                     : "Anonymous");
 
-            // Log для отладки структуры данных
             console.log("Загружены данные розыгрыша:", data);
 
             setSweepstakes({
@@ -180,7 +162,7 @@ const SweepstakesDetailPage: React.FC = () => {
                 description: data.description,
                 url: data.deal_url,
                 postedAt: new Date(data.created_at).toLocaleDateString(),
-                createdAtISO: data.created_at, // Сохраняем оригинальную дату в ISO формате
+                createdAtISO: data.created_at,
                 expiresAt: data.expires_at
                     ? new Date(data.expires_at).toLocaleDateString()
                     : null,
@@ -220,7 +202,6 @@ const SweepstakesDetailPage: React.FC = () => {
             return;
         }
 
-        // Sort comments before building the tree
         const sortedComments = [...comments].sort((a, b) => {
             switch (sortBy) {
                 case "oldest":
@@ -240,11 +221,9 @@ const SweepstakesDetailPage: React.FC = () => {
         });
 
         if (!error && comments) {
-            // Build comment tree
             const commentMap = new Map();
             const rootComments = [];
 
-            // First pass: create map of all comments
             comments.forEach((comment) => {
                 commentMap.set(comment.id, {
                     ...comment,
@@ -252,7 +231,6 @@ const SweepstakesDetailPage: React.FC = () => {
                 });
             });
 
-            // Second pass: build tree structure
             sortedComments.forEach((comment) => {
                 const commentWithReplies = commentMap.get(comment.id);
                 if (comment.parent_id) {
@@ -265,7 +243,6 @@ const SweepstakesDetailPage: React.FC = () => {
                 }
             });
 
-            // Sort replies recursively
             const sortReplies = (comments) => {
                 comments.forEach((comment) => {
                     if (comment.replies && comment.replies.length > 0) {
@@ -315,7 +292,8 @@ const SweepstakesDetailPage: React.FC = () => {
 
     const toggleFavorite = async () => {
         if (!user) {
-            navigate("/auth");
+            // ПЕРЕНАПРАВЛЕНИЕ С REDIRECT ПАРАМЕТРОМ
+            navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`);
             return;
         }
 
@@ -336,7 +314,6 @@ const SweepstakesDetailPage: React.FC = () => {
         triggerNativeHaptic("impactLight");
     };
 
-    // Define a type for comment tree nodes
     type CommentTreeNode = {
         id: string;
         content: string;
@@ -348,7 +325,7 @@ const SweepstakesDetailPage: React.FC = () => {
         };
         reply_count?: number;
         like_count?: number;
-        images?: string[]; // Added images property
+        images?: string[];
         replies?: CommentTreeNode[];
     };
 
@@ -396,7 +373,7 @@ const SweepstakesDetailPage: React.FC = () => {
     );
 
     useEffect(() => {
-        const pageTitle = "Sweepstakes Details"; // Или ваш динамический заголовок
+        const pageTitle = "Sweepstakes Details";
 
         console.log(
             `[SweepstakesDetailPage Web] INFO: useEffect для отправки заголовка "${pageTitle}" запущен (с небольшой задержкой).`,
@@ -437,13 +414,11 @@ const SweepstakesDetailPage: React.FC = () => {
                     `comment-${highlightedCommentId}`,
                 );
                 if (commentElement) {
-                    // Прокручиваем к комментарию
                     commentElement.scrollIntoView({
                         behavior: "smooth",
                         block: "center",
                     });
 
-                    // Добавляем эффект подсветки с плавным переходом
                     commentElement.classList.add("bg-orange-500/20");
                     setTimeout(() => {
                         commentElement.classList.remove("bg-orange-500/20");
@@ -525,40 +500,31 @@ const SweepstakesDetailPage: React.FC = () => {
                     onError={handleImageError}
                     draggable="false"
                     onClick={(e) => {
-                        // Находим текущий элемент img
                         const img = e.target as HTMLImageElement;
 
-                        // Проверяем, есть ли уже модальное окно для этого изображения
                         const existingModal = document.querySelector(
                             ".fullscreen-image-modal",
                         );
                         if (existingModal) {
-                            // Если модальное окно уже открыто, закрываем его
                             document.body.removeChild(existingModal);
                             return;
                         }
 
-                        // Создаем модальное окно для просмотра изображения в полном размере
                         const modal = document.createElement("div");
                         modal.className =
                             "fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 fullscreen-image-modal";
 
-                        // Переменная для отслеживания текущего индекса изображения в полноэкранном режиме
                         let currentFullscreenIndex = currentImageIndex;
 
-                        // При клике на фон закрываем модальное окно
                         modal.addEventListener("click", (e) => {
                             if (e.target === modal) {
                                 document.body.removeChild(modal);
                             }
                         });
 
-                        // Определяем переменные заранее, чтобы избежать ошибок в ссылках
                         let prevButton, nextButton, counterElement;
 
-                        // Функция для навигации по изображениям с циклическим переходом
                         const goToPrevImage = () => {
-                            // Циклическая навигация: если мы на первом изображении, переходим к последнему
                             const newIndex =
                                 currentFullscreenIndex > 0
                                     ? currentFullscreenIndex - 1
@@ -567,7 +533,6 @@ const SweepstakesDetailPage: React.FC = () => {
                         };
 
                         const goToNextImage = () => {
-                            // Циклическая навигация: если мы на последнем изображении, переходим к первому
                             const newIndex =
                                 currentFullscreenIndex <
                                 sweepstakesImages.length - 1
@@ -576,17 +541,13 @@ const SweepstakesDetailPage: React.FC = () => {
                             updateFullscreenImage(newIndex);
                         };
 
-                        // Функция для обновления отображаемого изображения в полноэкранном режиме
                         const updateFullscreenImage = (index) => {
-                            // Обновляем индекс
                             currentFullscreenIndex = index;
 
-                            // Обновляем источник изображения
                             fullImg.src = getValidImageUrl(
                                 sweepstakesImages[index],
                             );
 
-                            // Обновляем активную точку навигации
                             const dots =
                                 navContainer.querySelectorAll("button.nav-dot");
                             dots.forEach((d, i) => {
@@ -597,7 +558,6 @@ const SweepstakesDetailPage: React.FC = () => {
                                 }`;
                             });
 
-                            // Обновляем счетчик изображений
                             if (counterElement) {
                                 counterElement.textContent = `${index + 1} / ${sweepstakesImages.length}`;
                             }
@@ -606,7 +566,6 @@ const SweepstakesDetailPage: React.FC = () => {
                         const content = document.createElement("div");
                         content.className = "relative max-w-4xl max-h-[90vh]";
 
-                        // Добавляем кнопку закрытия (крестик) с улучшенной видимостью
                         const closeBtn = document.createElement("button");
                         closeBtn.className =
                             "absolute top-4 right-4 bg-orange-500 hover:bg-orange-600 text-white text-2xl font-bold rounded-full w-12 h-12 flex items-center justify-center shadow-xl z-10 border-2 border-white";
@@ -624,20 +583,16 @@ const SweepstakesDetailPage: React.FC = () => {
                         fullImg.className =
                             "max-w-full max-h-[90vh] object-contain";
                         fullImg.onError = handleImageError;
-                        fullImg.draggable = false; // Отключаем стандартное перетаскивание
+                        fullImg.draggable = false;
 
-                        // Добавляем обработчики событий касания для свайпов
                         let touchStartX = 0;
                         let touchEndX = 0;
 
-                        // Функция обработки начала касания
                         const handleTouchStartModal = (e) => {
                             touchStartX = e.changedTouches[0].screenX;
                         };
 
-                        // Функция обработки движения касания
                         const handleTouchMoveModal = (e) => {
-                            // Предотвращаем стандартное поведение браузера при горизонтальном свайпе
                             const currentX = e.changedTouches[0].screenX;
                             const diff = Math.abs(touchStartX - currentX);
 
@@ -646,26 +601,21 @@ const SweepstakesDetailPage: React.FC = () => {
                             }
                         };
 
-                        // Функция обработки окончания касания
                         const handleTouchEndModal = (e) => {
                             touchEndX = e.changedTouches[0].screenX;
 
-                            // Определяем направление свайпа
                             const diff = touchStartX - touchEndX;
-                            const threshold = 50; // Минимальное расстояние для засчитывания свайпа
+                            const threshold = 50;
 
                             if (Math.abs(diff) > threshold) {
                                 if (diff > 0) {
-                                    // Свайп влево - следующее изображение
                                     goToNextImage();
                                 } else {
-                                    // Свайп вправо - предыдущее изображение
                                     goToPrevImage();
                                 }
                             }
                         };
 
-                        // Назначаем обработчики событий касания для полноэкранного изображения
                         fullImg.addEventListener(
                             "touchstart",
                             handleTouchStartModal,
@@ -683,12 +633,10 @@ const SweepstakesDetailPage: React.FC = () => {
 
                         content.appendChild(closeBtn);
 
-                        // Создаем контейнер для навигационных точек
                         const navContainer = document.createElement("div");
                         navContainer.className =
                             "absolute bottom-4 left-0 right-0 flex justify-center space-x-2";
 
-                        // Создаем счетчик изображений (только если есть больше одного изображения)
                         if (sweepstakesImages.length > 1) {
                             counterElement = document.createElement("div");
                             counterElement.className =
@@ -697,35 +645,29 @@ const SweepstakesDetailPage: React.FC = () => {
                             content.appendChild(counterElement);
                         }
 
-                        // Добавляем кнопки навигации при наличии нескольких изображений
                         if (sweepstakesImages.length > 1) {
-                            // Кнопка "Предыдущее изображение"
                             const prevButton = document.createElement("button");
                             prevButton.className =
                                 "absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30";
                             prevButton.innerHTML =
-                                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+                                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
                             prevButton.onclick = (e) => {
                                 e.stopPropagation();
                                 goToPrevImage();
                             };
-                            // Всегда активно для циклической навигации
                             content.appendChild(prevButton);
 
-                            // Кнопка "Следующее изображение"
                             const nextButton = document.createElement("button");
                             nextButton.className =
                                 "absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30";
                             nextButton.innerHTML =
-                                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+                                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
                             nextButton.onclick = (e) => {
                                 e.stopPropagation();
                                 goToNextImage();
                             };
-                            // Всегда активно для циклической навигации
                             content.appendChild(nextButton);
 
-                            // Создаем точки для каждого изображения
                             sweepstakesImages.forEach((_, index) => {
                                 const dot = document.createElement("button");
                                 dot.className = `nav-dot h-2 w-2 rounded-full ${
@@ -734,7 +676,6 @@ const SweepstakesDetailPage: React.FC = () => {
                                         : "bg-gray-400"
                                 }`;
 
-                                // При клике на точку меняем изображение
                                 dot.addEventListener("click", (e) => {
                                     e.stopPropagation();
                                     updateFullscreenImage(index);
@@ -750,7 +691,6 @@ const SweepstakesDetailPage: React.FC = () => {
                         modal.appendChild(content);
                         document.body.appendChild(modal);
 
-                        // Обработчик клавиатуры для навигации
                         const handleKeyDown = (e) => {
                             if (e.key === "ArrowLeft") {
                                 goToPrevImage();
@@ -765,10 +705,8 @@ const SweepstakesDetailPage: React.FC = () => {
                             }
                         };
 
-                        // Добавляем обработчик клавиатуры
                         document.addEventListener("keydown", handleKeyDown);
 
-                        // Удаляем обработчик при закрытии модального окна
                         modal.addEventListener("remove", () => {
                             document.removeEventListener(
                                 "keydown",
@@ -780,7 +718,6 @@ const SweepstakesDetailPage: React.FC = () => {
 
                 {sweepstakesImages.length > 1 && (
                     <>
-                        {/* Кнопка предыдущего изображения */}
                         <button
                             onClick={goToPreviousImage}
                             className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30"
@@ -801,7 +738,6 @@ const SweepstakesDetailPage: React.FC = () => {
                             </svg>
                         </button>
 
-                        {/* Кнопка следующего изображения */}
                         <button
                             onClick={goToNextImage}
                             className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30"
@@ -822,7 +758,6 @@ const SweepstakesDetailPage: React.FC = () => {
                             </svg>
                         </button>
 
-                        {/* Индикатор текущего изображения */}
                         <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
                             {sweepstakesImages.map((_, index) => (
                                 <button
@@ -838,7 +773,6 @@ const SweepstakesDetailPage: React.FC = () => {
                             ))}
                         </div>
 
-                        {/* Счетчик изображений */}
                         {sweepstakesImages.length > 1 && (
                             <div className="absolute top-3 right-3 bg-orange-500 text-white px-2 py-1 rounded font-medium text-sm shadow-md border border-white/60">
                                 {currentImageIndex + 1} /{" "}
@@ -860,10 +794,8 @@ const SweepstakesDetailPage: React.FC = () => {
                         <button
                             onClick={() => {
                                 if (navigator.share) {
-                                    // Формируем правильный URL для конкретного розыгрыша
                                     const sweepstakesUrl = `${window.location.origin}/sweepstakes/${sweepstakes.id}`;
 
-                                    // Очищаем HTML-теги из заголовка
                                     const cleanTitle = sweepstakes.title
                                         ? sweepstakes.title.replace(
                                               /<[^>]*>/g,
@@ -878,7 +810,6 @@ const SweepstakesDetailPage: React.FC = () => {
                                         })
                                         .catch(console.error);
                                 } else {
-                                    // Формируем правильный URL для копирования
                                     const sweepstakesUrl = `${window.location.origin}/sweepstakes/${sweepstakes.id}`;
                                     navigator.clipboard.writeText(
                                         sweepstakesUrl,
@@ -899,7 +830,6 @@ const SweepstakesDetailPage: React.FC = () => {
                                 fill={isFavorite ? "currentColor" : "none"}
                             />
                         </button>
-                        {/* Переместили кнопку редактирования сюда, в конец блока */}
                         {user &&
                             user.id === sweepstakes.postedBy.id &&
                             new Date().getTime() -
@@ -970,9 +900,13 @@ const SweepstakesDetailPage: React.FC = () => {
                 )}
 
                 <div className="mt-2 flex items-center justify-between">
-                    <VoteControls dealId={sweepstakes.id} />
+                    <VoteControls
+                        dealId={sweepstakes.id}
+                        onAuthRedirect={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
+                    />
                 </div>
 
+                {/* Блок с кнопкой "Участвовать в розыгрыше" или "Войдите, чтобы участвовать" */}
                 {user ? (
                     <a
                         href={sweepstakes.url}
@@ -985,7 +919,7 @@ const SweepstakesDetailPage: React.FC = () => {
                     </a>
                 ) : (
                     <button
-                        onClick={() => navigate("/auth")}
+                        onClick={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
                         className="mt-4 bg-gray-500 text-white py-3 rounded-md flex items-center justify-center font-medium w-full cursor-pointer"
                     >
                         <span>Войдите, чтобы участвовать</span>
@@ -999,23 +933,18 @@ const SweepstakesDetailPage: React.FC = () => {
                         className="description-text font-sans text-sm bg-transparent overflow-visible whitespace-pre-wrap border-0 p-0 m-0"
                         dangerouslySetInnerHTML={{
                             __html: (() => {
-                                // Сначала подготавливаем описание
                                 let processedDescription =
                                     sweepstakes.description
-                                        // Сначала удаляем технический блок с JSON изображений
                                         .replace(
-                                            /!-- DEAL_IMAGES: .*? -->/g,
+                                            //g, // Исправлено регулярное выражение
                                             "",
                                         )
-                                        // Обрабатываем URL в тексте с улучшенным регулярным выражением
                                         .replace(
                                             /(https?:\/\/[^\s<>"]+)/g,
                                             (match) => {
-                                                // Проверяем, заканчивается ли URL специальным символом
                                                 const lastChar = match.charAt(
                                                     match.length - 1,
                                                 );
-                                                // Проверяем специальные символы наконце URL
                                                 if (
                                                     [
                                                         ",",
@@ -1029,19 +958,14 @@ const SweepstakesDetailPage: React.FC = () => {
                                                         "}",
                                                     ].includes(lastChar)
                                                 ) {
-                                                    // Исключаем последний символ из ссылки (href и текста) и добавляем его после тега </a>
                                                     return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
                                                 }
-                                                // Если URL не заканчивается специальным символом из списка, создаем ссылку как обычно
                                                 return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
                                             },
                                         )
-                                        //    // Обрабатываем двойные переносы строк (пустые строки)
                                         .replace(/\n\n/g, "<br><br>")
-                                        // Затем обрабатываем обычные переносы строк
                                         .replace(/\n/g, "<br>");
 
-                                // Если есть поисковый запрос, применяем прямую подсветку в HTML строке
                                 if (searchQuery) {
                                     const searchRegex = new RegExp(
                                         `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
@@ -1070,9 +994,11 @@ const SweepstakesDetailPage: React.FC = () => {
                         }}
                     />
                 </div>
-<div className="text-center text-gray-500 text-sm mt-6 mb-6">
+
+                <div className="text-center text-gray-500 text-sm mt-6 mb-6">
                     If you purchase something through a post on our site, WeDealz may get a small share of the sale.
                 </div>
+
                 <div className="mt-6">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-white font-medium">
@@ -1101,10 +1027,10 @@ const SweepstakesDetailPage: React.FC = () => {
                             sourceType="deal_comment"
                             sourceId={sweepstakes.id}
                             onSubmit={loadComments}
+                            onAuthRedirect={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
                         />
                     </div>
 
-                    {/* Render comments as a tree */}
                     {comments.length > 0 ? (
                         <div className="space-y-4">
                             {comments.map((comment) =>

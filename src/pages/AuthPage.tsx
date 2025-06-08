@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug';
-import { supabase } from '../lib/supabase'; // Убедитесь, что путь правильный
+import { supabase } from '../lib/supabase';
 
 interface AuthPageProps {
   isResetPasswordPage?: boolean;
@@ -12,6 +12,7 @@ interface AuthPageProps {
 const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { signIn, signUp, signInWithFacebook, resetPassword, updatePassword, user } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(isResetPasswordPage);
@@ -26,43 +27,62 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const [configValid, setConfigValid] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    const newTitle = 'Страница Авторизации';
-    document.title = newTitle;
-    console.log(`[WEBSITE /auth LOG] Компонент AuthPage.tsx смонтирован. Title установлен на: "${newTitle}"`);
+  const redirectTo = searchParams.get('redirect');
+  const decodedRedirectTo = redirectTo ? decodeURIComponent(redirectTo) : '/';
 
-    if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
-      const timerId = setTimeout(() => {
-        console.log('[WEBSITE /auth LOG] Отправка APP_CONTENT_READY из AuthPage');
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'APP_CONTENT_READY' }));
-      }, 150);
+  // Сохраняем предыдущий заголовок, чтобы иметь возможность его восстановить
+  const [originalDocumentTitle, setOriginalDocumentTitle] = useState(document.title);
+
+  // useEffect для управления заголовком страницы
+  useEffect(() => {
+    let newTitle = 'Авторизация'; // Заголовок по умолчанию для страницы Auth
+    if (isSignUp) {
+      newTitle = 'Регистрация';
+    } else if (isResetPassword) {
+      newTitle = 'Сброс пароля';
+    } else if (accessToken) {
+      newTitle = 'Создание нового пароля';
     }
-  }, []);
+    document.title = newTitle;
+    console.log(`[WEBSITE /auth LOG] Title установлен на: "${newTitle}"`);
 
-  // useEffect для проверки специальных потоков (сброс пароля, OAuth callback)
+    // При размонтировании компонента (или перед новым рендером, если зависимости меняются)
+    // можно сбросить заголовок или восстановить его
+    return () => {
+        // Мы хотим, чтобы заголовок сбрасывался только после успешной авторизации,
+        // а не просто при навигации с этой страницы.
+        // Поэтому здесь мы ничего не делаем, а управляем сбросом в handleEmailAuth
+    };
+  }, [isSignUp, isResetPassword, accessToken]); // Зависимости для динамического заголовка
+
+  // useEffect для обработки специальных потоков (сброс пароля, OAuth callback)
+  // и для перенаправления авторизованных пользователей
   useEffect(() => {
-    const checkForSpecialFlows = async () => {
-      const searchParams = new URLSearchParams(window.location.search);
-      const token = searchParams.get('token');
-      const type = searchParams.get('type');
+    const checkForSpecialFlowsAndRedirect = async () => {
+      const currentSearchParams = new URLSearchParams(window.location.search);
+      const token = currentSearchParams.get('token');
+      const type = currentSearchParams.get('type');
 
-      console.log('[WEBSITE /auth LOG] Auth flow check (checkForSpecialFlows):', {
+      console.log('[WEBSITE /auth LOG] Auth flow check (checkForSpecialFlowsAndRedirect):', {
         fullUrl: window.location.href,
         search: window.location.search,
         token: token ? `${token.substring(0, 10)}...` : 'none',
         type: type || 'none',
-        isResetPage: isResetPasswordPage
+        isResetPage: isResetPasswordPage,
+        userStatus: user ? 'logged in' : 'not logged in',
+        redirectTo: decodedRedirectTo
       });
 
+      // Логика для SignUp confirmation (если Supabase отправляет на эту же страницу с type=signup)
       if (type === 'signup') {
         try {
           console.log('[WEBSITE /auth LOG] Detected signup confirmation flow');
+          setSuccessMessage('Регистрация успешно завершена! Переход на страницу профиля...');
+          // Сбросить заголовок перед перенаправлением
+          document.title = originalDocumentTitle; // Восстанавливаем оригинальный заголовок или устанавливаем пустой
           setTimeout(() => {
-            setSuccessMessage('Регистрация успешно завершена! Переход на страницу профиля...');
-            setTimeout(() => {
-              navigate('/profile', { replace: true });
-            }, 1500);
-          }, 500);
+            navigate('/profile', { replace: true });
+          }, 1500);
           return;
         } catch (err) {
           console.error('[WEBSITE /auth LOG] Error handling signup flow:', err);
@@ -74,7 +94,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
           setAccessToken(token);
           if (!isResetPasswordPage) {
             console.log('[WEBSITE /auth LOG] Redirecting to reset password page with token');
-            navigate('/auth/reset-password', {
+            navigate(`/auth/reset-password?redirect=${encodeURIComponent(decodedRedirectTo)}`, {
               replace: true,
               state: { token, type }
             });
@@ -97,7 +117,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
                   console.log('[WEBSITE /auth LOG] Supabase session successfully established from OAuth callback.');
                   setSuccessMessage('Вход через Facebook успешно выполнен!');
                   window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-                  navigate('/', { replace: true });
+                  document.title = originalDocumentTitle; // Сбросить заголовок после успешного OAuth
+                  navigate(decodedRedirectTo, { replace: true });
               } else if (sessionError) {
                   console.error('[WEBSITE /auth LOG] Error getting Supabase session after OAuth:', sessionError);
                   setError('Ошибка при установке сессии после Facebook входа: ' + sessionError.message);
@@ -115,10 +136,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       }
     };
 
-    checkForSpecialFlows();
-  }, [location, navigate, isResetPasswordPage, user]);
+    checkForSpecialFlowsAndRedirect();
+  }, [location, navigate, isResetPasswordPage, user, searchParams, decodedRedirectTo, originalDocumentTitle]); // Добавили originalDocumentTitle в зависимости
 
-  // --- НОВЫЙ useEffect ДЛЯ ИНИЦИАЛИЗАЦИИ ПРОФИЛЯ ---
   useEffect(() => {
     const initializeProfileForNewUser = async () => {
       if (!user?.id) {
@@ -134,7 +154,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       try {
         const { data: profileData, error: profileFetchError } = await supabase
           .from('profiles')
-          .select('id, display_name, email, user_status, notification_preferences') // Добавили notification_preferences
+          .select('id, display_name, email, user_status, notification_preferences')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -169,7 +189,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
             return;
         }
 
-        // --- НОВЫЕ НАСТРОЙКИ УВЕДОМЛЕНИЙ ПО УМОЛЧАНИЮ ---
         const defaultNotificationPreferences = {
           replies: true,
           mentions: true,
@@ -186,7 +205,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
             id: user.id, 
             display_name: initialDisplayName, 
             email: user.email,
-            notification_preferences: defaultNotificationPreferences // <-- ДОБАВЛЕНО/ОБНОВЛЕНО ЗДЕСЬ
+            notification_preferences: defaultNotificationPreferences
           }, { onConflict: 'id' });
 
         if (upsertError) {
@@ -203,8 +222,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     initializeProfileForNewUser();
 
   }, [user, supabase]);
-
-  // ... (остальные useEffects и функции без изменений) ...
 
   useEffect(() => {
     if (location.state?.token) {
@@ -274,7 +291,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       setTimeout(() => {
         setIsResetPassword(false);
         setAccessToken(null);
-        navigate('/auth', { replace: true });
+        document.title = originalDocumentTitle; // Сбросить заголовок
+        navigate(decodedRedirectTo, { replace: true });
       }, 2000);
     } catch (err: any) {
       console.error('[AUTH_PAGE] Ошибка обновления пароля:', err);
@@ -311,7 +329,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
             setIsSignUp(false);
           } else if (result?.user?.confirmed_at) {
             setSuccessMessage('Аккаунт создан и подтвержден успешно!');
-            setTimeout(() => navigate('/'), 2000);
+            document.title = originalDocumentTitle; // Сбросить заголовок
+            setTimeout(() => navigate(decodedRedirectTo), 2000);
           } else if (result?.user) {
             setSuccessMessage('Аккаунт создан! Пожалуйста, проверьте ваш email для подтверждения аккаунта перед входом.');
           } else {
@@ -326,10 +345,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
             throw signupErr;
           }
         }
-      } else {
+      } else { // Блок для входа (signIn)
         try {
           const signInResult = await signIn(email, password);
           console.log('[AUTH_PAGE] Вход успешно выполнен:', signInResult);
+          document.title = originalDocumentTitle; // Сбросить заголовок после успешного входа
+          navigate(decodedRedirectTo, { replace: true }); 
         } catch (signInErr: any) {
           console.error('[AUTH_PAGE] Специфическая ошибка входа:', signInErr);
           if (signInErr.message?.includes('incorrect') ||
@@ -384,7 +405,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     <div className="min-h-screen bg-gray-900 px-4 py-8">
       <div className="max-w-md mx-auto">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate(decodedRedirectTo)} // Кнопка "Назад" также ведет на предыдущую страницу.
           className="flex items-center text-gray-400 hover:text-white mb-6"
         >
           <ArrowLeft className="h-5 w-5 mr-2" />
