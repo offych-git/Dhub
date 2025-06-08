@@ -504,7 +504,11 @@ const match = deal.description.match(/<gallery>(.*?)<\/gallery>/);
     };
 
     const toggleFavorite = async () => {
+    console.log("toggleFavorite called. User object:", user); 
+
         if (!user) {
+        console.log("User is not logged in. Redirecting to /auth."); 
+
             navigate("/auth");
             return;
         }
