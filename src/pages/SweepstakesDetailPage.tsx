@@ -15,6 +15,7 @@ import { getValidImageUrl, handleImageError } from "../utils/imageUtils";
 import { highlightText } from "../utils/highlightText";
 import VoteControls from "../components/deals/VoteControls";
 import { triggerNativeHaptic } from "../utils/nativeBridge";
+import ReactGA4 from 'react-ga4'; // Добавлен импорт
 
 const SweepstakesDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -46,8 +47,9 @@ const SweepstakesDetailPage: React.FC = () => {
         const images = [sweepstakes.image];
 
         if (sweepstakes.description) {
+            // ИСПРАВЛЕНО: Регулярное выражение для поиска галереи
             const match = sweepstakes.description.match(
-                //,
+                /<gallery>(.*?)<\/gallery>/,
             );
             if (match && match[1]) {
                 try {
@@ -125,6 +127,22 @@ const SweepstakesDetailPage: React.FC = () => {
             loadFavoriteStatus();
         }
     }, [id, sortBy]);
+
+    // --> НОВЫЙ БЛОК ДЛЯ GOOGLE ANALYTICS <--
+    useEffect(() => {
+        if (sweepstakes && !loading) {
+            ReactGA4.event({
+                category: "Content View",
+                action: "View Item Detail",
+                label: `Sweepstakes: ${sweepstakes.title}`,
+                item_id: sweepstakes.id,
+                item_name: sweepstakes.title,
+                content_type: 'sweepstakes',
+            });
+            console.log(`GA4: View Item Detail event sent for Sweepstakes ID: ${sweepstakes.id}`);
+        }
+    }, [id, sweepstakes, loading]);
+    // --> КОНЕЦ НОВОГО БЛОКА <--
 
     const loadSweepstakes = async () => {
         try {
@@ -794,7 +812,7 @@ const SweepstakesDetailPage: React.FC = () => {
                         <button
                             onClick={() => {
                                 if (navigator.share) {
-                                    const sweepstakesUrl = `${window.location.origin}/sweepstakes/${sweepstakes.id}`;
+                                    const sweepstakesUrl = `<span class="math-inline">\{window\.location\.origin\}/sweepstakes/</span>{sweepstakes.id}`;
 
                                     const cleanTitle = sweepstakes.title
                                         ? sweepstakes.title.replace(
@@ -810,7 +828,7 @@ const SweepstakesDetailPage: React.FC = () => {
                                         })
                                         .catch(console.error);
                                 } else {
-                                    const sweepstakesUrl = `${window.location.origin}/sweepstakes/${sweepstakes.id}`;
+                                    const sweepstakesUrl = `<span class="math-inline">\{window\.location\.origin\}/sweepstakes/</span>{sweepstakes.id}`;
                                     navigator.clipboard.writeText(
                                         sweepstakesUrl,
                                     );
@@ -936,7 +954,7 @@ const SweepstakesDetailPage: React.FC = () => {
                                 let processedDescription =
                                     sweepstakes.description
                                         .replace(
-                                            //g, // Исправлено регулярное выражение
+                                            /<gallery>(.*?)<\/gallery>/g, // Исправлено регулярное выражение
                                             "",
                                         )
                                         .replace(
@@ -958,9 +976,9 @@ const SweepstakesDetailPage: React.FC = () => {
                                                         "}",
                                                     ].includes(lastChar)
                                                 ) {
-                                                    return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
+                                                    return `<a href="<span class="math-inline">\{match\.slice\(0, \-1\)\}" target\="\_blank" rel\="noopener noreferrer" class\="text\-orange\-500 hover\:underline"\></span>{match.slice(0, -1)}</a>${lastChar}`;
                                                 }
-                                                return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
+                                                return `<a href="<span class="math-inline">\{match\}" target\="\_blank" rel\="noopener noreferrer" class\="text\-orange\-500 hover\:underline"\></span>{match}</a>`;
                                             },
                                         )
                                         .replace(/\n\n/g, "<br><br>")
@@ -968,7 +986,7 @@ const SweepstakesDetailPage: React.FC = () => {
 
                                 if (searchQuery) {
                                     const searchRegex = new RegExp(
-                                        `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+                                        `(<span class="math-inline">\{searchQuery\.replace\(/\[\.\*\+?^</span>{}()|[\]\\]/g, "\\$&")})`,
                                         "gi",
                                     );
                                     return processedDescription.replace(

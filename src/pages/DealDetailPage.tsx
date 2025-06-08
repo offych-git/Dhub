@@ -16,6 +16,7 @@ import { getValidImageUrl, handleImageError } from "../utils/imageUtils";
 import { highlightText } from "../utils/highlightText";
 import VoteControls from "../components/deals/VoteControls.tsx";
 import { triggerNativeHaptic } from "../utils/nativeBridge";
+import ReactGA4 from 'react-ga4'; // <-- Добавлен импорт ReactGA4
 
 const DealDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -50,7 +51,8 @@ const DealDetailPage: React.FC = () => {
 
         // Проверяем, есть ли в описании JSON с дополнительными изображениями
         if (deal.description) {
-            const match = deal.description.match(/<!-- DEAL_IMAGES: (.*?) -->/);
+            // Строка 54 (Правильно)
+const match = deal.description.match(/<gallery>(.*?)<\/gallery>/);
             if (match && match[1]) {
                 try {
                     // Пытаемся распарсить JSON с изображениями
@@ -71,13 +73,6 @@ const DealDetailPage: React.FC = () => {
                 }
             }
         }
-
-        // // Отладочная информация
-        // if (id === '73b11531-278d-46e1-9c4a-f674110b6ec5') {
-        //   console.log('Deal ID:', id);
-        //   console.log('Количество изображений:', images.length);
-        //   console.log('Изображения:', images);
-        // }
 
         return images;
     }, [deal, id]);
@@ -136,8 +131,6 @@ const DealDetailPage: React.FC = () => {
         setTouchStart(null);
         setTouchEnd(null);
     };
-
-    // Функция генерации ценовой истории удалена
 
     useEffect(() => {
         // Прокручиваем страницу вверх при открытии деталей сделки
@@ -294,6 +287,26 @@ const DealDetailPage: React.FC = () => {
             setTimeout(attemptToFind, 1500);
         }
     }, [searchParams, deal, comments, highlightedCommentId, id]); // Добавляем id сделки в зависимости
+
+    // <-- НОВЫЙ useEffect для отслеживания события view_item -->
+    useEffect(() => {
+        if (deal && !loading) { // Убедитесь, что данные сделки загружены и страница не в состоянии загрузки
+            ReactGA4.event({ //
+                category: "Content View", // Категория события
+                action: "View Item Detail", // Действие
+                label: `Deal: ${deal.title}`, // Метка для более информативной метки
+                item_id: deal.id, // Пользовательские параметры GA4
+                item_name: deal.title,
+                content_type: 'deal',
+                price: deal.currentPrice, // Можно добавить цену для отслеживания
+                original_price: deal.originalPrice, // Исходная цена
+                store_name: deal.store?.name, // Название магазина
+                category_name: deal.category?.name // Название категории
+            });
+            console.log(`GA4: View Item Detail event sent for Deal ID: ${deal.id}`);
+        }
+    }, [id, deal, loading]); // Зависимости: id (для новой страницы), deal (для полной загрузки данных) и loading (чтобы событие не отправлялось, пока данные не готовы)
+    // <-- КОНЕЦ НОВОГО useEffect -->
 
     const loadDeal = async () => {
         try {
@@ -1153,7 +1166,7 @@ const DealDetailPage: React.FC = () => {
                                 // Сначала подготавливаем описание
                                 let processedDescription = deal.description
                                     // Сначала удаляем технический блок с JSON изображений
-                                    .replace(/<!-- DEAL_IMAGES: .*? -->/g, "")
+                                    .replace(/<gallery>(.*?)<\/gallery>/g, "")
                                     // Обрабатываем URL в тексте с улучшенным регулярным выражением
                                     .replace(
                                         /(https?:\/\/[^\s<>"]+)/g,

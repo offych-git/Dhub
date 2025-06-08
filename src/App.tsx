@@ -1,6 +1,8 @@
 // App.tsx (ВАШЕГО ВЕБ-САЙТА)
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'; // Добавлен useLocation
+import ReactGA4 from 'react-ga4'; // Импортирован react-ga4
+
 import { AuthProvider } from './contexts/AuthContext';
 import { GlobalStateProvider } from './contexts/GlobalStateContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -44,6 +46,27 @@ import initGlobalInteractions from './utils/globalInteractions';
 import initWebViewConsole from './utils/webViewConsole';
 
 import { supabase } from './lib/supabase';
+
+// Ваш реальный Measurement ID для Google Analytics 4
+const GA4_MEASUREMENT_ID = "G-N0VDTWZSBV";
+
+// Инициализируем GA4 один раз при загрузке приложения
+ReactGA4.initialize(GA4_MEASUREMENT_ID);
+
+// Вспомогательный компонент для отслеживания просмотров страниц
+const GAListener: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Отправляем событие просмотра страницы при каждой смене URL
+    // location.pathname - путь страницы (например, /deals/123)
+    // location.search - параметры запроса (например, ?q=test)
+    ReactGA4.send({ hitType: "pageview", page: location.pathname + location.search });
+    console.log(`GA4: Pageview sent for ${location.pathname + location.search}`);
+  }, [location]); // Зависимость от location означает, что эффект будет повторно запускаться при изменении URL
+
+  return null; // Этот компонент не рендерит ничего в DOM
+};
 
 function App() {
   useEffect(() => {
@@ -92,6 +115,9 @@ function App() {
 
   return (
     <Router>
+      {/* Добавляем GAListener внутри Router, чтобы он имел доступ к useLocation */}
+      <GAListener /> 
+
       <AuthProvider>
         <GlobalStateProvider>
           <ThemeProvider>
@@ -106,7 +132,6 @@ function App() {
                   <Route path="/facebook-data-deletion" element={<FacebookDataDeletionPage />} />
 
                   {/* ПУБЛИЧНЫЕ ДИНАМИЧЕСКИЕ МАРШРУТЫ (без AppLayout и PrivateRoute, с :id) */}
-                  {/* Важно: эти специфичные маршруты должны быть определены раньше более общих! */}
                   <Route path="/promos/:id" element={<PromoDetailPage />} />
                   <Route path="/deals/:id" element={<DealDetailPage />} />
                   <Route path="/sweepstakes/:id" element={<SweepstakesDetailPage />} />
@@ -118,8 +143,6 @@ function App() {
                     <Route path="/" element={<DealsPage />} />
 
                     {/* Общие страницы-списки, которые публичны, но используют AppLayout */}
-                    {/* ВАЖНО: '/promos' и '/sweepstakes' должны быть ЗДЕСЬ,
-                       после своих динамических аналогов '/promos/:id' и '/sweepstakes/:id' */}
                     <Route path="/promos" element={<PromosPage />} />
                     <Route path="/sweepstakes" element={<SweepstakesPage />} />
                     <Route path="/discussions" element={<DiscussionsPage />} />

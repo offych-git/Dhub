@@ -14,6 +14,7 @@ import CommentInput from "../components/comments/CommentInput";
 import AdminActions from "../components/admin/AdminActions";
 import { highlightText } from "../utils/highlightText";
 import { triggerNativeHaptic } from "../utils/nativeBridge";
+import ReactGA4 from 'react-ga4'; // Добавлен импорт
 
 const PromoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -132,6 +133,24 @@ const PromoDetailPage: React.FC = () => {
       }
     }
   }, [id, user, sortBy]);
+
+  // --> НОВЫЙ БЛОК ДЛЯ GOOGLE ANALYTICS <--
+  useEffect(() => {
+    // Убедимся, что данные promo загружены и процесс загрузки завершен
+    if (promo && !loading) {
+        ReactGA4.event({
+            category: "Content View",
+            action: "View Item Detail",
+            label: `Promo: ${promo.title}`,
+            item_id: promo.id,
+            item_name: promo.title,
+            content_type: 'promo',
+            // store_name и category_name убраны, т.к. этих данных нет в объекте promo
+        });
+        console.log(`GA4: View Item Detail event sent for Promo ID: ${promo.id}`);
+    }
+  }, [id, promo, loading]); // Зависимости: id, promo и loading
+  // --> КОНЕЦ НОВОГО БЛОКА <--
 
   useEffect(() => {
     if (highlightedCommentId) {
