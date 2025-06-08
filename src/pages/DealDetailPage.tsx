@@ -1217,7 +1217,9 @@ const DealDetailPage: React.FC = () => {
                         }}
                     />
                 </div>
-
+<div className="text-center text-gray-500 text-sm mt-6 mb-6">
+                    If you purchase something through a post on our site, WeDealz may get a small share of the sale.
+                </div>
                 {/* Блок с ценовой историей был удалён */}
 
                 <div className="mt-6" id="comments-section">

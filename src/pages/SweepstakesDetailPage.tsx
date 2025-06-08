@@ -1070,7 +1070,9 @@ const SweepstakesDetailPage: React.FC = () => {
                         }}
                     />
                 </div>
-
+<div className="text-center text-gray-500 text-sm mt-6 mb-6">
+                    If you purchase something through a post on our site, WeDealz may get a small share of the sale.
+                </div>
                 <div className="mt-6">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-white font-medium">

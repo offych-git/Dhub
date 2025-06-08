@@ -235,9 +235,9 @@ const SweepstakesPage: React.FC = () => {
   let displaySweepstakes = [...sweepstakes];
 
   return (
-    <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
+    <div className="pb-16 pt-3 bg-gray-900 min-h-screen">
       {/* Информационная строка о розыгрышах */}
-      <div className="bg-[#c1c1c1] dark:bg-gray-700/90 text-gray-500 dark:text-gray-200 text-[10px] text-center py-1 px-2">
+      <div className="text-[10px] text-center py-1 px-2">
         We may get paid by brands for sweepstakes, including promoted items.
       </div>
 
