@@ -485,7 +485,7 @@ const SweepstakesDetailPage: React.FC = () => {
     }
 
     return (
-        <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
+        <div className="pb-16 pt-12 bg-gray-900 min-h-screen">
             <div className="web-page-header fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center">
