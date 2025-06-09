@@ -1,3 +1,15 @@
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, Outlet, Link, useLocation } from "react-router-dom";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useAuth } from "../../contexts/AuthContext";
+import Header from "../ui/Header";
+import Navigation from "../ui/Navigation";
+import ScrollToTop from "../ui/ScrollToTop";
+import { LogIn, LogOut, Sun, Moon } from "lucide-react";
+import { triggerNativeHaptic } from "../../utils/nativeBridge";
+import { supabase } from "../../lib/supabase";
+
 // Расширяем Window, если это не сделано в глобальном файле d.ts
 declare global {
   interface Window {
@@ -28,10 +40,6 @@ window.nativeAppResumed = async function () {
     console.warn(
       "[WEB] Network is offline after resume delay. Skipping data refresh.",
     );
-    // Можно отправить сообщение в RN, чтобы показать пользователю уведомление о сети, если нужно
-    // if (window.ReactNativeWebView) {
-    //   window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'NETWORK_STATUS', payload: { online: false } }));
-    // }
     return;
   }
 
@@ -41,10 +49,6 @@ window.nativeAppResumed = async function () {
 
   try {
     // Вызовите здесь ваши функции для перезагрузки/обновления данных.
-    // Убедитесь, что эти функции существуют и доступны в window или импортированы и вызваны корректно.
-    // Они должны использовать operationWithRetry для надежности.
-
-    // Пример:
     if (typeof window.refreshDeals === "function") {
       console.log("[WEB] Calling refreshDeals() on resume...");
       await window.refreshDeals();
@@ -57,7 +61,6 @@ window.nativeAppResumed = async function () {
       console.log("[WEB] Calling refreshModerationData() on resume...");
       await window.refreshModerationData();
     }
-    // Добавьте вызовы других функций обновления данных, которые подвержены ошибкам при возобновлении
 
     console.log("[WEB] Data refresh on resume attempted/completed.");
   } catch (error) {
@@ -69,26 +72,11 @@ window.nativeAppResumed = async function () {
 };
 // --- КОНЕЦ ОБНОВЛЕННОЙ ФУНКЦИИ ---
 
-// Остальной код вашего AppLayout.tsx из артефакта web_applayout_app_content_ready_v1
-// (импорты, сам компонент AppLayout и т.д.)
-// Важно: Убедитесь, что useEffect, который отправлял APP_CONTENT_READY из AppLayout,
-// либо удален, либо его задержка (veryShortDelay) значительно меньше, чем у этого nativeAppResumed,
-// и он не будет конфликтовать. Идеально - если APP_CONTENT_READY шлют сами страницы.
-import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, Outlet, Link, useLocation } from "react-router-dom";
-import { useLanguage } from "../../contexts/LanguageContext";
-import { useTheme } from "../../contexts/ThemeContext";
-import { useAuth } from "../../contexts/AuthContext";
-import Header from "../ui/Header";
-import Navigation from "../ui/Navigation";
-import ScrollToTop from "../ui/ScrollToTop";
-import { LogIn, LogOut, Sun, Moon } from "lucide-react";
-import { triggerNativeHaptic } from "../../utils/nativeBridge";
-
 const AppLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSiteChrome, setShowSiteChrome] = useState(true);
   const contentReadySentRef = useRef(false);
+  const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
 
   const { t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
@@ -96,6 +84,33 @@ const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const activeScreenPath = location.pathname + location.search;
+
+  // Эффект для загрузки имени пользователя из таблицы profiles
+  useEffect(() => {
+    const fetchDisplayName = async () => {
+      if (user?.id) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('display_name, email')
+            .eq('id', user.id)
+            .single();
+
+          if (error) throw error;
+
+          // Используем display_name, если есть, иначе email
+          setUserDisplayName(data?.display_name || data?.email?.split('@')[0] || null);
+        } catch (error) {
+          console.error("Error fetching display name for AppLayout:", error);
+          setUserDisplayName(user.email?.split('@')[0] || null); // Фолбэк на email при ошибке
+        }
+      } else {
+        setUserDisplayName(null); // Сбросить имя, если пользователь не авторизован
+      }
+    };
+
+    fetchDisplayName();
+  }, [user?.id, user?.email]);
 
   useEffect(() => {
     const checkEnvironment = () => {
@@ -114,43 +129,36 @@ const AppLayout: React.FC = () => {
       if (isLikelyGenericWebView || isEmbeddedViaParam) {
         setShowSiteChrome(false);
       } else {
-        // В режиме isNativeApp, CSS будет скрывать хром.
-        // showSiteChrome=true позволит JS-логике компонентов хедера/футера работать (если они не проверяют window.isNativeApp напрямую для отключения)
-        // и сохранит вашу логику отступов pt-28.
         setShowSiteChrome(true);
       }
       if (window.isNativeApp) {
         console.log(
-          "[AppLayout Website] Detected OUR RN app (isNativeApp=true). CSS will hide chrome. showSiteChrome for JS logic remains true (unless other conditions met).",
+          "[WEB] Detected OUR RN app (isNativeApp=true). CSS will hide chrome. showSiteChrome for JS logic remains true (unless other conditions met).",
         );
       }
     };
     checkEnvironment();
   }, []);
 
-  // Этот useEffect может быть не нужен, если конкретные страницы (DealsPage и т.д.)
-  // будут сами отправлять APP_CONTENT_READY. Если он остается как fallback,
-  // убедитесь, что он не конфликтует с сигналами от дочерних страниц.
   useEffect(() => {
     contentReadySentRef.current = false;
     if (
       window.isNativeApp &&
       window.ReactNativeWebView &&
-      !contentReadySentRef.current // Проверка, чтобы отправить только один раз за этот цикл рендера/зависимостей
+      !contentReadySentRef.current
     ) {
-      const initialLayoutReadyDelay = 150; // Очень короткая задержка
+      const initialLayoutReadyDelay = 150;
 
       const timer = setTimeout(() => {
-        // Дополнительная проверка, так как дочерний компонент мог уже отправить сообщение
         if (!contentReadySentRef.current) {
           console.log(
-            `[AppLayout Website - Fallback/Initial Shell] Sending APP_CONTENT_READY after ${initialLayoutReadyDelay}ms for path:`,
+            `[WEB] Sending APP_CONTENT_READY after ${initialLayoutReadyDelay}ms for path:`,
             activeScreenPath,
           );
           window.ReactNativeWebView?.postMessage(
             JSON.stringify({ type: "APP_CONTENT_READY" }),
           );
-          contentReadySentRef.current = true; // Помечаем, что AppLayout отправил (или попытался)
+          contentReadySentRef.current = true;
         }
       }, initialLayoutReadyDelay);
 
@@ -196,34 +204,40 @@ const AppLayout: React.FC = () => {
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
+
+      {/* Боковое меню - показываем для всех пользователей */}
       <div
         className={`fixed top-0 left-0 h-full w-64 bg-gray-800 z-30 transform transition-transform duration-300 ease-in-out flex flex-col ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
+        {/* Профиль пользователя - показываем только для авторизованных */}
         {user && (
           <div className="p-4 border-b border-gray-700 flex-shrink-0">
             <div className="flex items-center">
               <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden">
                 <img
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.email || "User")}&background=random`}
-                  alt={user.email || "User Avatar"}
+                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName || "User")}&background=random`}
+                  alt={userDisplayName || "User Avatar"}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="ml-3">
                 <div className="text-white font-medium">
-  {user.user_metadata?.display_name || user.email?.split("@")[0]} {/* Предполагаем, что display_name будет в user_metadata */}
-</div>
-<div className="text-gray-400 text-sm">{user.email}</div>
+                  {userDisplayName || "Пользователь"}
+                </div>
                 <div className="text-gray-400 text-sm">{user.email}</div>
               </div>
             </div>
           </div>
         )}
+
+        {/* Заголовок меню - показываем для всех */}
         <div className="p-4 border-b border-gray-700 flex-shrink-0">
           <h2 className="text-white text-xl font-bold">{t("common.menu")}</h2>
         </div>
+
+        {/* Навигация - показываем для всех */}
         <div className="flex-1 overflow-y-auto">
           <nav className="space-y-2 p-4">
             <Link
@@ -247,6 +261,8 @@ const AppLayout: React.FC = () => {
             >
               {t("navigation.sweepstakes")}
             </Link>
+            
+            {/* Разделы только для авторизованных пользователей */}
             {user && (
               <>
                 <Link
@@ -275,13 +291,14 @@ const AppLayout: React.FC = () => {
                   className="block py-2 px-4 text-white hover:bg-gray-700 rounded-md"
                   onClick={() => setIsSidebarOpen(false)}
                 >
-                  {t("navigation.notificationSettings") ||
-                    "Notification Settings"}
+                  {t("navigation.notificationSettings") || "Notification Settings"}
                 </Link>
               </>
             )}
           </nav>
         </div>
+
+        {/* Нижняя панель с кнопками - показываем для всех */}
         <div className="p-4 border-t border-gray-700 flex-shrink-0 space-y-2">
           <button
             onClick={() => {
