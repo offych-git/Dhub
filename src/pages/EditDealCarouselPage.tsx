@@ -211,9 +211,9 @@ const EditDealCarouselPage: React.FC = () => {
       onSave={handleAddToModeration}
       customHeaderComponent={
         <div className="flex items-center">
-          <button onClick={() => navigate('deals')} className="text-white">
-            <ArrowLeft className="h-6 w-6" />
-          </button>
+          {/*<button onClick={() => navigate('deals')} className="text-white">*/}
+          {/*  <ArrowLeft className="h-6 w-6" />*/}
+          {/*</button>*/}
           <h1 className="text-white text-lg font-medium ml-4">Edit Carousel Deal</h1>
         </div>
       }
