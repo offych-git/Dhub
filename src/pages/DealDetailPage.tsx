@@ -512,6 +512,8 @@ const toggleFavorite = async () => {
         return;
     }
 
+
+
     // -->> НАЧИНАЕМ НОВУЮ ДИАГНОСТИКУ ЗДЕСЬ <<--
     console.log("User check passed. Current 'isFavorite' state:", isFavorite);
 
@@ -538,6 +540,16 @@ const toggleFavorite = async () => {
 
             if (error) throw error; // Если есть ошибка, передаем ее в catch
             console.log("INSERT request successful.");
+
+    console.log(`GA4: Sending 'add_to_favorites' for Deal: ${deal.title}`);
+    ReactGA4.event({
+        category: 'Engagement',
+        action: 'add_to_favorites',
+        label: deal.title,
+        item_id: deal.id,
+        item_name: deal.title,
+        content_type: 'deal'
+    });
         }
 
         // Этот код обновляет иконку в интерфейсе
@@ -549,6 +561,27 @@ const toggleFavorite = async () => {
         console.error("Error inside toggleFavorite try...catch block:", error);
     }
 };
+
+
+const handleVisitDealClick = () => {
+  // Проверяем, что у нас есть все данные для отправки
+  if (!deal) return;
+
+  console.log(`GA4: Sending 'click_outbound' for Deal: ${deal.title}`);
+
+  ReactGA4.event({
+    category: 'Outbound Link',
+    action: 'Click Visit Deal',
+    label: deal.title,
+
+    // Пользовательские параметры для детального анализа
+    item_id: deal.id,
+    item_name: deal.title,
+    content_type: 'deal',
+    destination_url: deal.url
+  });
+};
+
     // Define a type for comment tree nodes
     type CommentTreeNode = {
         id: string;
@@ -1167,6 +1200,7 @@ const toggleFavorite = async () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mt-4 bg-orange-500 text-white py-3 rounded-md flex items-center justify-center font-medium"
+onClick={handleVisitDealClick}
                     >
                         <span>Visit Deal</span>
                         <ExternalLink className="h-4 w-4 ml-2" />

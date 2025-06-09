@@ -31,6 +31,22 @@ const PromoDetailPage: React.FC = () => {
   const isExpired =
     promo?.expires_at && new Date(promo.expires_at) < new Date();
 
+const handleVisitStoreClick = () => {
+  if (!promo) return;
+
+  console.log(`GA4: Sending 'click_outbound' for Promo: ${promo.title}`);
+
+  ReactGA4.event({
+    category: 'Outbound Link',
+    action: 'Click Visit Store',
+    label: promo.title,
+    item_id: promo.id,
+    item_name: promo.title,
+    content_type: 'promo',
+    destination_url: promo.discount_url
+  });
+};
+
   type CommentTreeNode = {
     id: string;
     content: string;
@@ -513,6 +529,7 @@ const PromoDetailPage: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
               className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center"
+onClick={handleVisitStoreClick}
             >
               <span>Visit Store</span>
               <ExternalLink className="h-4 w-4 ml-2" />

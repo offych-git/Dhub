@@ -332,6 +332,22 @@ const SweepstakesDetailPage: React.FC = () => {
         triggerNativeHaptic("impactLight");
     };
 
+const handleVisitSweepstakesClick = () => {
+  if (!sweepstakes) return;
+
+  console.log(`GA4: Sending 'click_outbound' for Sweepstakes: ${sweepstakes.title}`);
+
+  ReactGA4.event({
+    category: 'Outbound Link',
+    action: 'Click Participate',
+    label: sweepstakes.title,
+    item_id: sweepstakes.id,
+    item_name: sweepstakes.title,
+    content_type: 'sweepstakes',
+    destination_url: sweepstakes.url
+  });
+};
+
     type CommentTreeNode = {
         id: string;
         content: string;
@@ -931,6 +947,7 @@ const SweepstakesDetailPage: React.FC = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mt-4 bg-orange-500 text-white py-3 rounded-md flex items-center justify-center font-medium"
+onClick={handleVisitSweepstakesClick}
                     >
                         <span>Участвовать в розыгрыше</span>
                         <ExternalLink className="h-4 w-4 ml-2" />

@@ -52,7 +52,8 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
   const selectedStoreName =
     stores.find((store) => store.id === selectedStoreId)?.name || "";
   const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
-  const [sweepstakesImage, setSweepstakesImage] = useState<File | null>(null);
+  const [sweepstakesImageFile, setSweepstakesImageFile] = useState<File | null>(null); // Для временного хранения File объекта до загрузки
+const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(initialData?.image_url || null); // Для постоянного публичного URL
   const [imageUrl, setImageUrl] = useState<string | null>(
     initialData?.image || null,
   );
