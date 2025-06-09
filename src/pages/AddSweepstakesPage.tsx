@@ -16,7 +16,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { useAuth } from "../contexts/AuthContext";
-import { useAdmin } from "../hooks/useAdmin";
+import { useAdmin } from "../hooks/useAdmin"; // Fixed import path for useAdmin hook
 import { useLanguage } from "../contexts/LanguageContext";
 import { supabase } from "../lib/supabase";
 import StoreBottomSheet from "../components/deals/StoreBottomSheet";
@@ -52,8 +52,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
   const selectedStoreName =
     stores.find((store) => store.id === selectedStoreId)?.name || "";
   const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
-  const [sweepstakesImageFile, setSweepstakesImageFile] = useState<File | null>(null); // Для временного хранения File объекта до загрузки
-const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(initialData?.image_url || null); // Для постоянного публичного URL
+  const [sweepstakesImage, setSweepstakesImage] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(
     initialData?.image || null,
   );
@@ -141,6 +140,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
     },
   });
 
+  // Отладочная информация при инициализации компонента
   useEffect(() => {
     console.log("📋 AddSweepstakesPage инициализирована");
     console.log("📋 Режим редактирования:", isEditing);
@@ -152,18 +152,12 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
     title: initialData?.title || "",
     description: initialData?.description || "",
     dealUrl: initialData?.dealUrl || "",
-    // ИСПРАВЛЕНО: Логика инициализации expiryDate для отображения в календарике
-    expiryDate: initialData?.expires_at
-      ? (() => {
-          const expiresAtDate = new Date(initialData.expires_at);
-          const year = expiresAtDate.getFullYear();
-          const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
-          const day = expiresAtDate.getDate().toString().padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        })()
+    expiryDate: initialData?.expiryDate
+      ? initialData.expiryDate.split("T")[0]
       : "",
   });
 
+  // Отслеживаем состояние валидации каждого поля отдельно
   const [validationState, setValidationState] = useState({
     title: true,
     description: true,
@@ -182,9 +176,10 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
     );
   }, [isStoreSheetOpen]);
 
+  // Image compression function
   const compressImage = async (file: File): Promise<File> => {
     const options = {
-      maxSizeMB: 0.2,
+      maxSizeMB: 0.2, // 200KB
       maxWidthOrHeight: 1200,
       useWebWorker: true,
       fileType: "image/jpeg",
@@ -204,7 +199,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
 
     try {
       setIsUploadingImage(true);
-      const file = files[0];
+      const file = files[0]; // Take only the first file
 
       if (!file.type.startsWith("image/")) {
         throw new Error("Please select only image files");
@@ -223,6 +218,8 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
     }
   };
 
+  // Category functionality removed as per requirements
+
   const validateForm = () => {
     if (!formData.title.trim()) {
       setError("Title is required");
@@ -234,6 +231,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
       return false;
     }
 
+    // Проверяем, есть ли хотя бы одно из изображений - новое загруженное или существующее
     if (!sweepstakesImage && !imageUrl) {
       setError("Please upload an image");
       return false;
@@ -265,14 +263,17 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
   };
 
   useEffect(() => {
+    // Проверяем каждое обязательное поле отдельно
     const titleValid = formData.title.trim() !== "";
     const descriptionValid = formData.description.trim() !== "";
+    // При редактировании считаем изображение валидным, если есть либо новое загруженное изображение, либо URL существующего
     const imageValid = sweepstakesImage !== null || imageUrl !== null;
     const urlValid =
       /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(
         formData.dealUrl,
       );
 
+    // Если указана дата, проверяем что она не раньше текущей
     let expiryDateValid = true;
     if (formData.expiryDate) {
       const selectedDate = new Date(formData.expiryDate);
@@ -281,6 +282,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
       expiryDateValid = selectedDate >= today;
     }
 
+    // Обновляем состояние валидации
     setValidationState({
       title: titleValid,
       description: descriptionValid,
@@ -289,6 +291,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
       expiryDate: expiryDateValid,
     });
 
+    // Общая проверка формы
     const isFormValid =
       titleValid &&
       descriptionValid &&
@@ -306,7 +309,9 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
     });
   }, [formData, sweepstakesImage]);
 
+  // Инициализируем форму только в режиме редактирования
   useEffect(() => {
+    // Если это режим редактирования и есть начальные данные
     if (isEditing && initialData) {
       console.log("Режим редактирования: используем initialData");
       setFormData((prev) => ({
@@ -327,6 +332,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
     e.preventDefault();
     setLoading(true);
 
+    // Проверка аутентификации пользователя
     if (!user || !user.id) {
       console.error("User not authenticated or user ID is missing.");
       setError("Для создания розыгрыша необходимо войти в систему.");
@@ -337,6 +343,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
     try {
       let uploadedImageUrl = "";
 
+      // Upload image if available
       if (sweepstakesImage) {
         const fileExt = sweepstakesImage.name.split(".").pop();
         const fileName = `${Math.random()}.${fileExt}`;
@@ -357,8 +364,10 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
         uploadedImageUrl = urlData.publicUrl;
       }
 
-      let originalUserId = user.id;
+      // Получаем оригинального создателя розыгрыша при редактировании
+      let originalUserId = user.id; // Используем не опциональный доступ к user.id
 
+      // Если это редактирование существующего розыгрыша, получаем оригинального создателя
       if (isEditing && sweepstakesId) {
         console.log(
           "Получаем данные оригинального розыгрыша для сохранения создателя",
@@ -371,6 +380,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
             .single();
 
           if (!fetchError && existingData && existingData.user_id) {
+            // Сохраняем оригинального пользователя только если он существует
             originalUserId = existingData.user_id;
             console.log("Оригинальный создатель розыгрыша:", originalUserId);
           } else {
@@ -384,30 +394,25 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
         }
       }
 
+      // Prepare sweepstakes data
       const sweepstakesData = {
         title: formData.title,
         description: formData.description,
         current_price: 0,
         original_price: null,
         store_id: selectedStoreId || null,
-        category_id: 1,
+        category_id: 1, // Установка дефолтной категории вместо null
         subcategories: [],
+        // Используем новое изображение только если оно было загружено
         image_url: sweepstakesImage
           ? uploadedImageUrl
           : initialData?.image || null,
         deal_url: formData.dealUrl,
-        user_id: originalUserId,
-        // ИСПРАВЛЕНО: Логика сохранения expires_at для AddSweepstakesPage
-        expires_at: formData.expiryDate
-          ? (() => {
-              const selectedDate = new Date(formData.expiryDate); // 'YYYY-MM-DD' в локальном времени
-              selectedDate.setHours(23, 59, 59, 999); // Устанавливаем конец дня в локальном времени
-              return selectedDate.toISOString(); // Преобразуем в UTC ISO-строку
-            })()
-          : null,
+        user_id: originalUserId, // Используем оригинального создателя при редактировании
+        expires_at: formData.expiryDate || null,
         is_hot: allowHotToggle ? formData.isHot : false,
         type: "sweepstakes",
-        status: "pending",
+        status: "pending", // Устанавливаем начальный статус 'pending' для модерации
       };
 
       console.log("Отправляемые данные розыгрыша:", {
@@ -419,6 +424,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
       let data, error;
 
       if (isEditing && sweepstakesId) {
+        // Проверяем текущий статус розыгрыша перед обновлением
         const { data: currentSweepstake, error: currentSweepstakeError } =
           await supabase
             .from("deals")
@@ -431,11 +437,14 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
           throw new Error(currentSweepstakeError.message);
         }
 
+        // Если розыгрыш уже был одобрен и не происходит автоматическое одобрение,
+        // меняем статус на "pending" для повторной модерации
         if (currentSweepstake.status === "approved" && !allowHotToggle) {
           sweepstakesData.status = "pending";
         }
 
         console.log("Обновление существующего розыгрыша:", sweepstakesId);
+        // Обновляем существующий розыгрыш
         const { data: updatedData, error: updateError } = await supabase
           .from("deals")
           .update(sweepstakesData)
@@ -453,6 +462,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
 
         console.log("Розыгрыш успешно обновлен:", data);
       } else {
+        // Создаем новый розыгрыш
         console.log("Создание нового розыгрыша...");
         const { data: newData, error: insertError } = await supabase
           .from("deals")
@@ -471,6 +481,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
         console.log("Розыгрыш успешно создан:", data);
       }
 
+      // Дополнительная проверка полученных данных
       if (!data || !data.id) {
         console.error(
           "Получены некорректные данные после операции с розыгрышем:",
@@ -481,6 +492,9 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
         );
       }
 
+      // Добавляем в очередь модерации в двух случаях:
+      // 1. Новый розыгрыш
+      // 2. Редактирование розыгрыша, который уже был одобрен
       if (
         (!isEditing || (isEditing && sweepstakesData.status === "pending")) &&
         addToModerationQueue
@@ -497,9 +511,11 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
             "Ошибка при добавлении в очередь модерации:",
             moderationError,
           );
+          // Продолжаем выполнение даже при ошибке модерации
         }
       }
 
+      // Вызываем функцию обратного вызова, если она определена
       if (isEditing && typeof onEditSuccess === "function" && data.id) {
         console.log(
           "Вызываем onEditSuccess после успешного редактирования розыгрыша",
@@ -511,10 +527,12 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
         }
       }
 
+      // Перенаправляем на страницу просмотра розыгрыша
       navigate(`/sweepstakes/${data.id}`);
     } catch (error) {
       console.error("Error in handleSubmit:", error);
 
+      // Добавляем подробное логирование ошибок
       if (error instanceof Error) {
         console.error("Error details:", {
           name: error.name,
@@ -523,6 +541,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
         });
       }
 
+      // Форматируем сообщение об ошибке для пользователя
       let errorMessage = "Failed to create/update sweepstakes";
 
       if (error instanceof Error) {
@@ -550,6 +569,8 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
     }
     return null;
   }, [formData.currentPrice, formData.originalPrice]);
+
+  // Определение editor перемещено выше
 
   useEffect(() => {
     if (editor) {
@@ -639,9 +660,11 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
     });
   }, [isStoreSheetOpen, selectedStoreId]);
 
+  // Define checkImagesInEditor function that was missing
   const checkImagesInEditor = () => {
     if (!editor) return;
 
+    // This is just a stub function since you removed image management functionality
     console.log("Editor content checked");
   };
 
@@ -1088,6 +1111,7 @@ const [sweepstakesImageUrl, setSweepstakesImageUrl] = useState<string | null>(in
             text-decoration: underline;
           }
 
+          /* Mobile-friendly formatting buttons */
           @media (max-width: 640px) {
             .formatting-button {
               padding: 8px !important;
