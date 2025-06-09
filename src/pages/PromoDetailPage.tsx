@@ -349,7 +349,7 @@ const PromoDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="pb-16 pt-16 bg-gray-900 min-h-screen">
+    <div className="pb-16 pt-4 bg-gray-900 min-h-screen">
       <div className="web-page-header fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -367,7 +367,7 @@ const PromoDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="main-content-area px-4 pt-6">
+      <div className="main-content-area px-4 pt-0">
         <div className="flex items-center justify-between">
           <h2 className="text-white text-xl font-medium">
             {searchQuery

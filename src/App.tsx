@@ -113,9 +113,8 @@ function App() {
     };
   }, []);
 
-  return (
+return (
     <Router>
-      {/* Добавляем GAListener внутри Router, чтобы он имел доступ к useLocation */}
       <GAListener /> 
 
       <AuthProvider>
@@ -124,32 +123,33 @@ function App() {
             <ModerationProvider>
               <LanguageProvider>
                 <Routes>
-                  {/* ПУБЛИЧНЫЕ БАЗОВЫЕ МАРШРУТЫ (без AppLayout и PrivateRoute) */}
+                  {/* ПУБЛИЧНЫЕ БАЗОВЫЕ МАРШРУТЫ (без AppLayout) */}
                   <Route path="/auth" element={<AuthPage />} />
                   <Route path="/auth/reset-password" element={<AuthPage isResetPasswordPage={true} />} />
                   <Route path="/auth/callback" element={<AuthPage />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                   <Route path="/facebook-data-deletion" element={<FacebookDataDeletionPage />} />
-
-                  {/* ПУБЛИЧНЫЕ ДИНАМИЧЕСКИЕ МАРШРУТЫ (без AppLayout и PrivateRoute, с :id) */}
-                  <Route path="/promos/:id" element={<PromoDetailPage />} />
-                  <Route path="/deals/:id" element={<DealDetailPage />} />
-                  <Route path="/sweepstakes/:id" element={<SweepstakesDetailPage />} />
-                  <Route path="/category/:categoryId" element={<CategoryItemsPage />} />
+                  
+                  {/* УБИРАЕМ СТАРЫЕ МАРШРУТЫ ДЛЯ ДЕТАЛЕЙ ОТСЮДА
+                  */}
 
                   {/* МАРШРУТЫ, ИСПОЛЬЗУЮЩИЕ ОБЩИЙ LAYOUT (AppLayout) */}
                   <Route element={<AppLayout />}>
-                    {/* Публичная домашняя страница */}
-                    <Route path="/" element={<DealsPage />} />
+                    {/* 👇 ВОТ СЮДА МЫ ПЕРЕМЕСТИЛИ МАРШРУТЫ ДЕТАЛЕЙ 👇 */}
+                    <Route path="/promos/:id" element={<PromoDetailPage />} />
+                    <Route path="/deals/:id" element={<DealDetailPage />} />
+                    <Route path="/sweepstakes/:id" element={<SweepstakesDetailPage />} />
+                    <Route path="/category/:categoryId" element={<CategoryItemsPage />} />
 
-                    {/* Общие страницы-списки, которые публичны, но используют AppLayout */}
+                    {/* Все остальные ваши маршруты, которые уже были здесь */}
+                    <Route path="/" element={<DealsPage />} />
                     <Route path="/promos" element={<PromosPage />} />
                     <Route path="/sweepstakes" element={<SweepstakesPage />} />
+                    {/* ... и все остальные ваши публичные и приватные маршруты ... */}
                     <Route path="/discussions" element={<DiscussionsPage />} />
                     <Route path="/categories" element={<CategoriesPage />} />
                     <Route path="/search" element={<SearchPage />} />
 
-                    {/* ПРИВАТНЫЕ МАРШРУТЫ (Обычно требуют PrivateRoute и используют AppLayout) */}
                     <Route path="/deals/new" element={<PrivateRoute><AddDealPage /></PrivateRoute>} />
                     <Route path="/deals/new-carousel" element={<PrivateRoute><AddDealPageNew /></PrivateRoute>} />
                     <Route path="/edit-carousel/:id" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} />
@@ -163,17 +163,15 @@ function App() {
                     <Route path="/moderation/settings" element={<PrivateRoute><ModerationSettingsPage /></PrivateRoute>} />
                     <Route path="/user-subscriptions" element={<PrivateRoute><UserSubscriptionsPage /></PrivateRoute>} />
 
-                    {/* Страницы профиля и настроек пользователя (обычно приватные) */}
                     <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
                     <Route path="/saved" element={<PrivateRoute><SavedItemsPage /></PrivateRoute>} />
                     <Route path="/comments" element={<PrivateRoute><UserCommentsPage /></PrivateRoute>} />
                     <Route path="/posted" element={<PrivateRoute><UserPostedItemsPage /></PrivateRoute>} />
                     <Route path="/settings/notifications" element={<PrivateRoute><NotificationSettingsPage /></PrivateRoute>} />
                     <Route path="/user-settings" element={<PrivateRoute><UserSettingsPage /></PrivateRoute>} />
-
                   </Route>
 
-                  {/* ЗАПАСНОЙ МАРШРУТ (ВСЕГДА В САМОМ КОНЦЕ) */}
+                  {/* ЗАПАСНОЙ МАРШРУТ */}
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </LanguageProvider>

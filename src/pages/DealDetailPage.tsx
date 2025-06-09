@@ -52,7 +52,7 @@ const DealDetailPage: React.FC = () => {
         // Проверяем, есть ли в описании JSON с дополнительными изображениями
         if (deal.description) {
             // Строка 54 (Правильно)
-const match = deal.description.match(/<gallery>(.*?)<\/gallery>/);
+            const match = deal.description.match(/<!-- DEAL_IMAGES: (.*?) -->/);
             if (match && match[1]) {
                 try {
                     // Пытаемся распарсить JSON с изображениями
@@ -503,32 +503,52 @@ const match = deal.description.match(/<gallery>(.*?)<\/gallery>/);
         setIsFavorite(!!favorite);
     };
 
-    const toggleFavorite = async () => {
-    console.log("toggleFavorite called. User object:", user); 
+const toggleFavorite = async () => {
+    console.log("toggleFavorite called. User object:", user);
 
-        if (!user) {
-        console.log("User is not logged in. Redirecting to /auth."); 
+    if (!user) {
+        // Эту часть мы уже проверили, пользователь существует.
+        navigate("/auth");
+        return;
+    }
 
-            navigate("/auth");
-            return;
-        }
+    // -->> НАЧИНАЕМ НОВУЮ ДИАГНОСТИКУ ЗДЕСЬ <<--
+    console.log("User check passed. Current 'isFavorite' state:", isFavorite);
 
+    try {
         if (isFavorite) {
-            await supabase
+            // Попытка удалить из избранного
+            console.log("Attempting to DELETE favorite...");
+            const { error } = await supabase
                 .from("deal_favorites")
                 .delete()
                 .eq("deal_id", id)
                 .eq("user_id", user.id);
+
+            if (error) throw error; // Если есть ошибка, передаем ее в catch
+            console.log("DELETE request successful.");
+
         } else {
-            await supabase.from("deal_favorites").insert({
+            // Попытка добавить в избранное
+            console.log("Attempting to INSERT favorite...");
+            const { error } = await supabase.from("deal_favorites").insert({
                 deal_id: id,
                 user_id: user.id,
             });
+
+            if (error) throw error; // Если есть ошибка, передаем ее в catch
+            console.log("INSERT request successful.");
         }
 
+        // Этот код обновляет иконку в интерфейсе
         setIsFavorite(!isFavorite);
         triggerNativeHaptic("impactLight");
-    };
+
+    } catch (error) {
+        // Если на любом из этапов (delete или insert) произошла ошибка, мы увидим ее здесь
+        console.error("Error inside toggleFavorite try...catch block:", error);
+    }
+};
     // Define a type for comment tree nodes
     type CommentTreeNode = {
         id: string;
@@ -632,7 +652,7 @@ const match = deal.description.match(/<gallery>(.*?)<\/gallery>/);
         : 0;
 
     return (
-        <div className="pb-16 pt-12 bg-gray-900 min-h-screen">
+        <div className="pb-16 pt-4 bg-gray-900 min-h-screen">
             <div className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10 page-content-header">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center">

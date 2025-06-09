@@ -372,7 +372,8 @@ const DealCard: React.FC<DealCardProps> = ({
                       "Перенаправление на страницу редактирования обычной сделки:",
                       `/deals/${deal.id}/edit`,
                     );
-                    navigate(`/deals/${deal.id}/edit`);
+                    // ПРАВИЛЬНО
+navigate(`/edit-deal/${deal.id}`);
                   }
                 }}
                 className="ml-3 text-orange-500 flex items-center"

@@ -107,26 +107,12 @@ const EditDealCarouselPage: React.FC = () => {
           original_price: data.original_price !== null ? data.original_price.toString() : '',
           category: data.category_id || '',
           deal_url: data.deal_url || '',
-          // ИСПРАВЛЕНО: Логика инициализации expiryDate для отображения в календарике
-          expiry_date: data.expires_at
-            ? (() => {
-                const expiresAtDate = new Date(data.expires_at);
-                const year = expiresAtDate.getFullYear();
-                const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
-                const day = expiresAtDate.getDate().toString().padStart(2, '0');
-                return `${year}-${month}-${day}`;
-              })()
-            : '',
-          // ИСПРАВЛЕНО: Логика инициализации expires_at для отображения в календарике
-          expires_at: data.expires_at
-            ? (() => {
-                const expiresAtDate = new Date(data.expires_at);
-                const year = expiresAtDate.getFullYear();
-                const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
-                const day = expiresAtDate.getDate().toString().padStart(2, '0');
-                return `${year}-${month}-${day}`;
-              })()
-            : '',
+          expiry_date: data.expires_at ? (typeof data.expires_at === 'string' && !data.expires_at.includes('T') 
+            ? data.expires_at 
+            : new Date(data.expires_at).toISOString().split('T')[0]) : '',
+          expires_at: data.expires_at ? (typeof data.expires_at === 'string' && !data.expires_at.includes('T') 
+            ? data.expires_at 
+            : new Date(data.expires_at).toISOString().split('T')[0]) : '',
           is_hot: !!data.is_hot,
           store_id: data.store_id || null,
           dealImages: [] // Будет заполнено ниже
@@ -134,9 +120,6 @@ const EditDealCarouselPage: React.FC = () => {
 
         // Извлекаем карусель изображений из описания
         let imageUrls: string[] = [];
-        
-        // Регулярное выражение для поиска JSON-блока с изображениями
-        const imageJsonRegex = /([\s\S]*?)/;
 
         // Всегда добавляем основное изображение первым элементом массива
         if (data.image_url) {
@@ -146,7 +129,7 @@ const EditDealCarouselPage: React.FC = () => {
 
         // Далее пытаемся извлечь дополнительные изображения из комментария в описании
         if (data.description) {
-          const match = data.description.match(imageJsonRegex); // ИСПРАВЛЕНО
+          const match = data.description.match(/<!-- DEAL_IMAGES: (.*?) -->/);
           if (match && match[1]) {
             try {
               const parsedImages = JSON.parse(match[1]);
@@ -162,7 +145,7 @@ const EditDealCarouselPage: React.FC = () => {
               }
 
               // Очищаем описание от JSON с изображениями
-              transformedData.description = data.description.replace(imageJsonRegex, '').trim(); // ИСПРАВЛЕНО
+              transformedData.description = data.description.replace(/<!-- DEAL_IMAGES: .*? -->/, '').trim();
             } catch (e) {
               console.error('Error parsing carousel images:', e);
             }
