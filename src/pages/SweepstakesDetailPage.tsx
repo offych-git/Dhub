@@ -957,12 +957,15 @@ const SweepstakesDetailPage: React.FC = () => {
                                             /<gallery>(.*?)<\/gallery>/g, // Исправлено регулярное выражение
                                             "",
                                         )
+                                        // Обрабатываем URL в тексте с улучшенным регулярным выражением
                                         .replace(
                                             /(https?:\/\/[^\s<>"]+)/g,
                                             (match) => {
+                                                // Проверяем, заканчивается ли URL специальным символом
                                                 const lastChar = match.charAt(
                                                     match.length - 1,
                                                 );
+                                                // Проверяем специальные символы наконце URL
                                                 if (
                                                     [
                                                         ",",
@@ -976,12 +979,16 @@ const SweepstakesDetailPage: React.FC = () => {
                                                         "}",
                                                     ].includes(lastChar)
                                                 ) {
-                                                    return `<a href="<span class="math-inline">\{match\.slice\(0, \-1\)\}" target\="\_blank" rel\="noopener noreferrer" class\="text\-orange\-500 hover\:underline"\></span>{match.slice(0, -1)}</a>${lastChar}`;
+                                                    // Исключаем последний символ из ссылки (href и текста) и добавляем его после тега </a>
+                                                    return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
                                                 }
-                                                return `<a href="<span class="math-inline">\{match\}" target\="\_blank" rel\="noopener noreferrer" class\="text\-orange\-500 hover\:underline"\></span>{match}</a>`;
+                                                // Если URL не заканчивается специальным символом из списка, создаем ссылку как обычно
+                                                return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
                                             },
                                         )
+                                        //    // Обрабатываем двойные переносы строк (пустые строки)
                                         .replace(/\n\n/g, "<br><br>")
+                                        // Затем обрабатываем обычные переносы строк
                                         .replace(/\n/g, "<br>");
 
                                 if (searchQuery) {

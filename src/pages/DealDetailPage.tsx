@@ -1063,7 +1063,7 @@ const toggleFavorite = async () => {
                                 24 * 60 * 60 * 1000 && (
                                 <button
                                     onClick={() =>
-                                        navigate(`/deals/${deal.id}/edit`)
+                                        navigate(`/edit-deal/${deal.id}`)
                                     }
                                     className="ml-3 text-orange-500 flex items-center"
                                 >
