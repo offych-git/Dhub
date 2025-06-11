@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-do
 import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase'; // Эта строка должна быть единственным импортом supabase
 
 interface AuthPageProps {
   isResetPasswordPage?: boolean;
@@ -73,19 +73,62 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       }
       console.log(`[WEBSITE /auth LOG] AuthPage unmounted. Title restored to: "${originalTitle}"`);
     };
-  }, [isSignUp, isResetPassword, accessToken]); // Зависимости обновлены для корректной работы
+  }, [isSignUp, isResetPassword, accessToken]);
 
   // Главный useEffect для обработки специальных потоков (сброс пароля, OAuth callback)
   useEffect(() => {
     const checkForSpecialFlowsAndRedirect = async () => {
       const currentSearchParams = new URLSearchParams(window.location.search);
-      const token = currentSearchParams.get('token');
-      const type = currentSearchParams.get('type');
+      const tokenFromQuery = currentSearchParams.get('token');
+      const typeFromQuery = currentSearchParams.get('type');
+
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const recoveryTokenFromHash = hashParams.get('token');
+      const recoveryTypeFromHash = hashParams.get('type');
+      const oauthAccessTokenFromHash = hashParams.get('access_token');
+      const errorFromHash = hashParams.get('error_description');
+      const errorCodeFromHash = hashParams.get('error_code');
+
+
+      // --- ШАГ 1: ПЕРВЫМ ДЕЛОМ ОБРАБАТЫВАЕМ ОШИБКИ ИЗ URL ---
+      if (errorFromHash) {
+          console.error(`[AUTH_PAGE] Supabase Error: ${decodeURIComponent(errorFromHash)} (Code: ${errorCodeFromHash})`);
+          setError(decodeURIComponent(errorFromHash));
+          // Очистить URL от ошибок, чтобы избежать их повторной обработки или некорректного поведения
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+      }
+
+
+      // --- ШАГ 2: ПРИОРИТЕТНАЯ ОБРАБОТКА СБРОСА ПАРОЛЯ ---
+      // Проверяем, что тип именно 'recovery' и что есть токен, который Supabase использует для восстановления
+      if (recoveryTypeFromHash === 'recovery' && recoveryTokenFromHash) {
+          console.log('[WEBSITE /auth LOG] Detected password recovery flow from hash.');
+          
+          setIsResetPassword(true);
+          setAccessToken(recoveryTokenFromHash);
+
+          // Очищаем хеш, чтобы убрать токены сессии после успешного сброса
+          // Это предотвратит повторное срабатывание логики OAuth, которая теперь не нужна
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+
+          // Если мы изначально не на странице сброса пароля, но получили токен, перенаправляем
+          if (!isResetPasswordPage) {
+              console.log('[WEBSITE /auth LOG] Redirecting to reset password page with token');
+              navigate(`/auth/reset-password?redirect=${encodeURIComponent(decodedRedirectTo)}&redirectTitle=${encodeURIComponent(finalRedirectTitle)}`, {
+                  replace: true,
+                  state: { token: recoveryTokenFromHash, type: 'recovery' }
+              });
+          } else {
+              console.log('[WEBSITE /auth LOG] Already on reset password page, processing recovery token.');
+          }
+          return; // ОЧЕНЬ ВАЖНО: выходим после обработки recovery
+      }
 
       // Логика для SignUp confirmation
-      if (type === 'signup') {
-        try {
-          console.log('[WEBSITE /auth LOG] Detected signup confirmation flow');
+      // Проверяем type 'signup' как в query string, так и в hash
+      if (typeFromQuery === 'signup' || typeFromHash === 'signup') {
+          console.log('[WEBSITE /auth LOG] Detected signup confirmation flow.');
           setSuccessMessage('Регистрация успешно завершена! Переход на страницу профиля...');
           if (finalRedirectTitle) {
             document.title = finalRedirectTitle;
@@ -93,37 +136,19 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
           setTimeout(() => {
             navigate('/profile', { replace: true });
           }, 1500);
+          window.history.replaceState({}, document.title, window.location.pathname);
           return;
-        } catch (err) {
-          console.error('[WEBSITE /auth LOG] Error handling signup flow:', err);
-          setError('Произошла ошибка при подтверждении регистрации.');
-        }
-      } else if (token && type === 'recovery') { // Обработка восстановления пароля
-        try {
-          setIsResetPassword(true);
-          setAccessToken(token);
-          if (!isResetPasswordPage) {
-            console.log('[WEBSITE /auth LOG] Redirecting to reset password page with token');
-            navigate(`/auth/reset-password?redirect=${encodeURIComponent(decodedRedirectTo)}&redirectTitle=${encodeURIComponent(finalRedirectTitle)}`, {
-              replace: true,
-              state: { token, type }
-            });
-          }
-        } catch (err) {
-          console.error('[WEBSITE /auth LOG] Error handling recovery flow:', err);
-          setError('Произошла ошибка при обработке ссылки сброса пароля.');
-        }
-      } else if (window.location.hash) { // Обработка OAuth callback
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const oauthAccessToken = hashParams.get('access_token');
+      }
 
-        if (oauthAccessToken) {
-          console.log('[WEBSITE /auth LOG] Found OAuth token in hash, attempting to verify session.');
+      // --- ШАГ 3: ОБРАБОТКА ОБЫЧНОГО OAuth callback ---
+      // Этот блок сработает только если это НЕ recovery и НЕ signup, но есть access_token в хеше
+      if (oauthAccessTokenFromHash) {
+          console.log('[WEBSITE /auth LOG] Found OAuth access_token in hash, attempting to verify session.');
           setLoading(true);
           setTimeout(async () => {
               const { data: { session }, error: sessionError } = await supabase.auth.getSession();
               
-              if (session && session.user) { // Если сессия успешно установлена
+              if (session && session.user) {
                   console.log('[WEBSITE /auth LOG] Supabase session successfully established from OAuth callback.');
                   setSuccessMessage('Вход через Facebook успешно выполнен!');
                   window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
@@ -131,12 +156,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
                     document.title = finalRedirectTitle;
                   }
                   navigate(decodedRedirectTo, { replace: true });
-              } else if (sessionError) { // Обработка ошибок сессии
+              } else if (sessionError) {
                   console.error('[WEBSITE /auth LOG] Error getting Supabase session after OAuth:', sessionError);
                   setError('Ошибка при установке сессии после Facebook входа: ' + sessionError.message);
                   window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
                   navigate('/auth', { replace: true });
-              } else { // Если токен найден, но сессия не установлена
+              } else {
                   console.warn('[WEBSITE /auth LOG] OAuth token found, but Supabase session not immediately established.');
                   setError('Вход через Facebook не удался. Пожалуйста, попробуйте снова.');
                   window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
@@ -144,12 +169,20 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
               }
               setLoading(false);
           }, 100);
-        }
+          return;
       }
     };
 
     checkForSpecialFlowsAndRedirect();
   }, [location, navigate, isResetPasswordPage, user, searchParams, decodedRedirectTo, finalRedirectTitle]);
+
+  useEffect(() => {
+    if (location.state?.token) {
+      console.log('[WEBSITE /auth LOG] Found token in navigation state');
+      setAccessToken(location.state.token);
+      setIsResetPassword(true);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const initializeProfileForNewUser = async () => {
@@ -217,14 +250,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
     initializeProfileForNewUser();
 
   }, [user, supabase]);
-
-  useEffect(() => {
-    if (location.state?.token) {
-      console.log('[WEBSITE /auth LOG] Found token in navigation state');
-      setAccessToken(location.state.token);
-      setIsResetPassword(true);
-    }
-  }, [location.state]);
 
   useEffect(() => {
     const validateConfig = async () => {
