@@ -82,11 +82,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       const tokenFromQuery = currentSearchParams.get('token');
       const typeFromQuery = currentSearchParams.get('type');
 
+      console.log(new URLSearchParams(window.location.hash))
+
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       // --- ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЕ ОБЪЯВЛЕНИЯ ВСЕХ ПЕРЕМЕННЫХ ИЗ HASH В НАЧАЛЕ ФУНКЦИИ ---
-      const recoveryTokenFromHash = hashParams.get('token');
+      // const tokenFromHash = hashParams.get('token');
       const recoveryTypeFromHash = hashParams.get('type');
-      const oauthAccessTokenFromHash = hashParams.get('access_token');
+      const access_token = hashParams.get('access_token');
+      const refresh_token = hashParams.get('refresh_token');
       const errorFromHash = hashParams.get('error_description');
       const errorCodeFromHash = hashParams.get('error_code');
 
@@ -103,27 +106,52 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
 
       // --- ШАГ 2: ПРИОРИТЕТНАЯ ОБРАБОТКА СБРОСА ПАРОЛЯ ---
       // Проверяем, что тип именно 'recovery' и что есть токен, который Supabase использует для восстановления
-      if (recoveryTypeFromHash === 'recovery' && recoveryTokenFromHash) {
-          console.log('[WEBSITE /auth LOG] Detected password recovery flow from hash.');
-          
-          setIsResetPassword(true);
-          setAccessToken(recoveryTokenFromHash);
+      if (recoveryTypeFromHash === 'recovery') {
+        console.log('[WEBSITE /auth LOG] Detected password recovery flow from hash.');
 
-          // Очищаем хеш, чтобы убрать токены сессии после успешного сброса
-          // Это предотвратит повторное срабатывание логики OAuth, которая теперь не нужна
+        if (!access_token || !refresh_token) {
+          console.warn("[WEBSITE /auth LOG] Missing access_token or refresh_token in hash for recovery.");
+          setError("Ссылка для сброса пароля недействительна или устарела.");
+          return;
+        }
+
+        try {
+          const { error } = await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+
+          if (error) {
+            console.error("[AUTH_PAGE] Failed to restore session", error);
+            setError("Не удалось восстановить сессию. Ссылка недействительна или устарела.");
+            return;
+          }
+
+          setIsResetPassword(true);
+          setAccessToken(access_token);
+
+          // Очищаем хеш, чтобы избежать повторной обработки
           window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
 
-          // Если мы изначально не на странице сброса пароля, но получили токен, перенаправляем
+          // Если мы не на странице сброса пароля, перенаправляем
           if (!isResetPasswordPage) {
-              console.log('[WEBSITE /auth LOG] Redirecting to reset password page with token');
-              navigate(`/auth/reset-password?redirect=${encodeURIComponent(decodedRedirectTo)}&redirectTitle=${encodeURIComponent(finalRedirectTitle)}`, {
-                  replace: true,
-                  state: { token: recoveryTokenFromHash, type: 'recovery' }
-              });
+            console.log('[WEBSITE /auth LOG] Redirecting to reset password page with token');
+            navigate(
+              `/auth/reset-password?redirect=${encodeURIComponent(decodedRedirectTo)}&redirectTitle=${encodeURIComponent(finalRedirectTitle)}`,
+              {
+                replace: true,
+                state: { token: access_token, type: 'recovery' },
+              }
+            );
           } else {
-              console.log('[WEBSITE /auth LOG] Already on reset password page, processing recovery token.');
+            console.log('[WEBSITE /auth LOG] Already on reset password page, processing recovery token.');
           }
-          return; // ОЧЕНЬ ВАЖНО: выходим после обработки recovery
+        } catch (err) {
+          console.error("[AUTH_PAGE] Exception during recovery flow:", err);
+          setError("Ошибка при восстановлении доступа. Попробуйте снова.");
+        }
+
+        return; // Обязательно завершаем обработку
       }
 
       // Логика для SignUp confirmation
@@ -143,7 +171,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
 
       // --- ШАГ 3: ОБРАБОТКА ОБЫЧНОГО OAuth callback ---
       // Этот блок сработает только если это НЕ recovery и НЕ signup, но есть access_token в хеше
-      if (oauthAccessTokenFromHash) {
+      if (access_token) {
           console.log('[WEBSITE /auth LOG] Found OAuth access_token in hash, attempting to verify session.');
           setLoading(true);
           setTimeout(async () => {
