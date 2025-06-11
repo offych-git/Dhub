@@ -57,14 +57,7 @@ const EditSweepstakesPage: React.FC = () => {
       console.log('🔍 ID розыгрыша из параметров:', id);
     }
     
-    // Очищаем все кеши при загрузке страницы редактирования
-    if (id) {
-      // Очищаем кеш редактирования
-      localStorage.removeItem(`form_sweepstake_edit_${id}`);
-      // Очищаем кеш нового розыгрыша (на всякий случай)
-      localStorage.removeItem('form_sweepstake_new');
-      console.log('🧹 Кеш данных розыгрыша очищен для получения свежих данных');
-    }
+    // НЕ ОЧИЩАЕМ КЕШ ЗДЕСЬ, чтобы можно было загрузить черновик
 
     const loadSweepstakesData = async () => {
       try {
@@ -74,58 +67,67 @@ const EditSweepstakesPage: React.FC = () => {
           return;
         }
 
-        // Всегда загружаем свежие данные с сервера, не используем localStorage
-        console.log('Загружаем свежие данные розыгрыша с сервера...');
-
-        // Загружаем данные розыгрыша с сервера, уточняя специальный тип 'sweepstakes'
-        const { data, error } = await supabase
-          .from('deals')
-          .select(`
-            *,
-            profiles:user_id(id, email, display_name)
-          `)
-          .eq('id', id)
-          .eq('type', 'sweepstakes') // Уточняем, что нужен розыгрыш
-          .maybeSingle();
-
-        if (error) {
-          console.error('🔴 Ошибка при загрузке данных розыгрыша:', error);
-          throw error;
+        // Попытка загрузить черновик из localStorage
+        let initialLoadData = null;
+        const draftKey = `sweepstakesDraft_${id}`;
+        const storedDraft = localStorage.getItem(draftKey);
+        if (storedDraft) {
+          try {
+            initialLoadData = JSON.parse(storedDraft);
+            console.log('✅ Загружен черновик из localStorage:', initialLoadData);
+          } catch (parseError) {
+            console.error('🔴 Ошибка парсинга черновика из localStorage:', parseError);
+            localStorage.removeItem(draftKey); // Очистить испорченный черновик
+          }
         }
 
-        if (!data) {
-          console.error('🔴 Ошибка: розыгрыш не найден');
-          setError('Розыгрыш не найден');
-          setLoading(false);
-          return;
+        // Если черновика нет или он испорчен, загружаем свежие данные с сервера
+        if (!initialLoadData) {
+          console.log('Загружаем свежие данные розыгрыша с сервера...');
+          const { data, error } = await supabase
+            .from('deals')
+            .select(`
+              *,
+              profiles:user_id(id, email, display_name)
+            `)
+            .eq('id', id)
+            .eq('type', 'sweepstakes')
+            .maybeSingle();
+
+          if (error) {
+            console.error('🔴 Ошибка при загрузке данных розыгрыша:', error);
+            throw error;
+          }
+
+          if (!data) {
+            console.error('🔴 Ошибка: розыгрыш не найден');
+            setError('Розыгрыш не найден');
+            setLoading(false);
+            return;
+          }
+
+          console.log('✅ Данные розыгрыша успешно загружены с сервера:', data);
+
+          initialLoadData = {
+            id: data.id,
+            title: data.title,
+            description: data.description,
+            dealUrl: data.deal_url,
+            expiryDate: data.expires_at
+              ? (() => {
+                  const expiresAtDate = new Date(data.expires_at);
+                  const year = expiresAtDate.getFullYear();
+                  const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
+                  const day = expiresAtDate.getDate().toString().padStart(2, '0');
+                  return `${year}-${month}-${day}`;
+                })()
+              : '',
+            image: data.image_url,
+            isHot: !!data.is_hot
+          };
         }
 
-        console.log('✅ Данные розыгрыша успешно загружены:', data);
-
-        // Трансформируем данные для AddSweepstakesPage
-        const sweepstakeFullData = {
-          id: data.id,
-          title: data.title,
-          description: data.description,
-          dealUrl: data.deal_url,
-          // ИСПРАВЛЕНО: Логика инициализации expiryDate для отображения в календарике
-          expiryDate: data.expires_at
-            ? (() => {
-                const expiresAtDate = new Date(data.expires_at);
-                const year = expiresAtDate.getFullYear();
-                const month = (expiresAtDate.getMonth() + 1).toString().padStart(2, '0');
-                const day = expiresAtDate.getDate().toString().padStart(2, '0');
-                return `${year}-${month}-${day}`;
-              })()
-            : '',
-          image: data.image_url,
-          isHot: !!data.is_hot
-        };
-
-        setSweepstakesData(sweepstakeFullData);
-
-        // Сохраняем данные в localStorage для восстановления при переключении вкладок
-        localStorage.setItem(`form_sweepstake_edit_${id}`, JSON.stringify(sweepstakeFullData));
+        setSweepstakesData(initialLoadData);
 
       } catch (err: any) {
         console.error('🔴 Ошибка:', err);
@@ -190,7 +192,11 @@ const EditSweepstakesPage: React.FC = () => {
         submitButton: 'Обновить розыгрыш',
         pageTitle: 'Редактирование розыгрыша'
       }}
-      onEditSuccess={handleAddToModeration}
+      onEditSuccess={async (editedId) => {
+        await handleAddToModeration(editedId);
+        // Очищаем черновик после успешного редактирования и отправки
+        localStorage.removeItem(`sweepstakesDraft_${editedId}`);
+      }}
     />
   );
 };

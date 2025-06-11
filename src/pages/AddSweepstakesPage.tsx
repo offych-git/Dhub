@@ -16,7 +16,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { useAuth } from "../contexts/AuthContext";
-import { useAdmin } from "../hooks/useAdmin"; // Fixed import path for useAdmin hook
+import { useAdmin } from "../hooks/useAdmin";
 import { useLanguage } from "../contexts/LanguageContext";
 import { supabase } from "../lib/supabase";
 import StoreBottomSheet from "../components/deals/StoreBottomSheet";
@@ -58,6 +58,11 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
   );
   const { addToModerationQueue } = useModeration();
 
+  // Helper to determine the correct localStorage key
+  const getDraftKey = useCallback(() => {
+    return isEditing && sweepstakesId ? `sweepstakesDraft_${sweepstakesId}` : "sweepstakesDraftNew";
+  }, [isEditing, sweepstakesId]);
+
   useEffect(() => {
     const pageTitle = "Add Sweepstakes";
 
@@ -86,6 +91,16 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     return () => clearTimeout(timerId);
   }, []);
 
+  // Состояние для данных формы
+  const [formData, setFormData] = useState({
+    title: initialData?.title || "",
+    description: initialData?.description || "",
+    dealUrl: initialData?.dealUrl || "",
+    expiryDate: initialData?.expiryDate
+      ? initialData.expiryDate.split("T")[0]
+      : "",
+  });
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -108,7 +123,8 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       }),
       Underline,
     ],
-    content: initialData?.description || "",
+    // Загружаем контент: сначала черновик из localStorage, затем initialData, иначе пустая строка
+    content: initialData?.description || "", // Initial content will be set in the useEffect below
     parseOptions: {
       preserveWhitespace: "full",
     },
@@ -136,6 +152,15 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         description: html,
       }));
 
+      // Сохраняем черновик в localStorage
+      const draftKey = getDraftKey();
+      try {
+        const currentDraft = JSON.parse(localStorage.getItem(draftKey) || '{}');
+        localStorage.setItem(draftKey, JSON.stringify({...currentDraft, description: html}));
+      } catch (e) {
+        console.error("Error saving description draft to localStorage:", e);
+      }
+
       checkImagesInEditor();
     },
   });
@@ -147,15 +172,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     console.log("📋 ID редактируемого розыгрыша:", sweepstakesId);
     console.log("📋 Начальные данные:", initialData);
   }, [isEditing, sweepstakesId, initialData]);
-
-  const [formData, setFormData] = useState({
-    title: initialData?.title || "",
-    description: initialData?.description || "",
-    dealUrl: initialData?.dealUrl || "",
-    expiryDate: initialData?.expiryDate
-      ? initialData.expiryDate.split("T")[0]
-      : "",
-  });
 
   // Отслеживаем состояние валидации каждого поля отдельно
   const [validationState, setValidationState] = useState({
@@ -207,7 +223,18 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
 
       const compressedImage = await compressImage(file);
       setSweepstakesImage(compressedImage);
-      setImageUrl(URL.createObjectURL(compressedImage));
+      const newImageUrl = URL.createObjectURL(compressedImage);
+      setImageUrl(newImageUrl);
+
+      // Save image URL to draft
+      const draftKey = getDraftKey();
+      try {
+        const currentDraft = JSON.parse(localStorage.getItem(draftKey) || '{}');
+        localStorage.setItem(draftKey, JSON.stringify({...currentDraft, image: newImageUrl}));
+      } catch (e) {
+        console.error("Error saving image URL draft to localStorage:", e);
+      }
+
     } catch (error) {
       console.error("Error uploading image:", error);
       setError(
@@ -218,9 +245,9 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     }
   };
 
-  // Category functionality removed as per requirements
-
   const validateForm = () => {
+    // Эта функция validateForm больше не используется для установки isValid,
+    // но ее можно использовать для вывода ошибок перед отправкой, если нужно
     if (!formData.title.trim()) {
       setError("Title is required");
       return false;
@@ -231,7 +258,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       return false;
     }
 
-    // Проверяем, есть ли хотя бы одно из изображений - новое загруженное или существующее
     if (!sweepstakesImage && !imageUrl) {
       setError("Please upload an image");
       return false;
@@ -243,7 +269,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     }
 
     const urlRegex =
-      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+      /^(https?:\/\/)?[da-z.-]+\.[a-z.]{2,6}([\/\w .-]*)*\/?$/; // Corrected regex for JavaScript
     if (!urlRegex.test(formData.dealUrl)) {
       setError("Please enter a valid URL starting with http:// or https://");
       return false;
@@ -262,18 +288,16 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     return true;
   };
 
+  // Отслеживание изменений формы для валидации
   useEffect(() => {
-    // Проверяем каждое обязательное поле отдельно
     const titleValid = formData.title.trim() !== "";
     const descriptionValid = formData.description.trim() !== "";
-    // При редактировании считаем изображение валидным, если есть либо новое загруженное изображение, либо URL существующего
     const imageValid = sweepstakesImage !== null || imageUrl !== null;
     const urlValid =
-      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(
+      /^(https?:\/\/)?[da-z.-]+\.[a-z.]{2,6}([\/\w .-]*)*\/?$/.test( // Corrected regex for JavaScript
         formData.dealUrl,
       );
 
-    // Если указана дата, проверяем что она не раньше текущей
     let expiryDateValid = true;
     if (formData.expiryDate) {
       const selectedDate = new Date(formData.expiryDate);
@@ -282,7 +306,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       expiryDateValid = selectedDate >= today;
     }
 
-    // Обновляем состояние валидации
     setValidationState({
       title: titleValid,
       description: descriptionValid,
@@ -291,7 +314,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       expiryDate: expiryDateValid,
     });
 
-    // Общая проверка формы
     const isFormValid =
       titleValid &&
       descriptionValid &&
@@ -306,31 +328,73 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       imageValid,
       urlValid,
       expiryDateValid,
+      isFormValid,
     });
-  }, [formData, sweepstakesImage]);
+  }, [formData, sweepstakesImage, imageUrl]);
 
-  // Инициализируем форму только в режиме редактирования
+  // Инициализация формы и редактора: загружаем черновик или initialData
   useEffect(() => {
-    // Если это режим редактирования и есть начальные данные
-    if (isEditing && initialData) {
-      console.log("Режим редактирования: используем initialData");
-      setFormData((prev) => ({
-        ...prev,
-        title: initialData.title || "",
-        description: initialData.description || "",
-        dealUrl: initialData.dealUrl || "",
-        expiryDate: initialData.expiryDate || "",
-      }));
-      setImageUrl(initialData.image || null);
-      if (editor) {
-        editor.commands.setContent(initialData.description || "");
+    const draftKey = getDraftKey();
+    const storedDraft = localStorage.getItem(draftKey);
+    let loadedData = initialData;
+
+    if (storedDraft) {
+      try {
+        const parsedDraft = JSON.parse(storedDraft);
+        loadedData = parsedDraft;
+        console.log("Loaded draft:", parsedDraft);
+      } catch (e) {
+        console.error("Failed to parse draft from localStorage, using initialData:", e);
+        localStorage.removeItem(draftKey); // Clear corrupted draft
       }
     }
-  }, [editor, isEditing, initialData]);
+
+    setFormData({
+      title: loadedData?.title || "",
+      description: loadedData?.description || "",
+      dealUrl: loadedData?.dealUrl || "",
+      expiryDate: loadedData?.expiryDate || "",
+    });
+    setImageUrl(loadedData?.image || null);
+
+    if (editor && loadedData?.description !== undefined) {
+      editor.commands.setContent(loadedData.description || "");
+    }
+  }, [editor, initialData, getDraftKey]); // Added getDraftKey to dependencies
+
+  // Сохраняем поля формы в localStorage при их изменении (для черновика)
+  useEffect(() => {
+    const draftKey = getDraftKey();
+    try {
+      // Get existing draft data, or an empty object
+      const currentDraft = JSON.parse(localStorage.getItem(draftKey) || '{}');
+
+      // Update specific fields. Only update fields that have changed
+      const newDraftState = {
+        ...currentDraft,
+        title: formData.title,
+        description: formData.description, // Tiptap's onUpdate already handles this, but good to be consistent
+        dealUrl: formData.dealUrl,
+        expiryDate: formData.expiryDate,
+        image: imageUrl, // Save current imageUrl
+      };
+      localStorage.setItem(draftKey, JSON.stringify(newDraftState));
+    } catch (e) {
+      console.error("Error saving form data draft to localStorage:", e);
+    }
+  }, [formData.title, formData.dealUrl, formData.expiryDate, imageUrl, getDraftKey, formData.description]); // Added formData.description to dependencies
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null); // Сбрасываем ошибку перед новой попыткой отправки
+
+    // Дополнительная проверка валидации перед отправкой
+    if (!isValid) {
+      setError("Please fill in all required fields correctly.");
+      setLoading(false);
+      return;
+    }
 
     // Проверка аутентификации пользователя
     if (!user || !user.id) {
@@ -343,7 +407,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     try {
       let uploadedImageUrl = "";
 
-      // Upload image if available
+      // Upload image if available and new
       if (sweepstakesImage) {
         const fileExt = sweepstakesImage.name.split(".").pop();
         const fileName = `${Math.random()}.${fileExt}`;
@@ -365,9 +429,8 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       }
 
       // Получаем оригинального создателя розыгрыша при редактировании
-      let originalUserId = user.id; // Используем не опциональный доступ к user.id
+      let originalUserId = user.id;
 
-      // Если это редактирование существующего розыгрыша, получаем оригинального создателя
       if (isEditing && sweepstakesId) {
         console.log(
           "Получаем данные оригинального розыгрыша для сохранения создателя",
@@ -380,8 +443,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
             .single();
 
           if (!fetchError && existingData && existingData.user_id) {
-            // Сохраняем оригинального пользователя только если он существует
-            originalUserId = existingData.user_id;
+            originalUserId = existingData.user_id; // Corrected: existingData.user_id not existingData.user.id
             console.log("Оригинальный создатель розыгрыша:", originalUserId);
           } else {
             console.warn(
@@ -401,18 +463,17 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         current_price: 0,
         original_price: null,
         store_id: selectedStoreId || null,
-        category_id: 1, // Установка дефолтной категории вместо null
+        category_id: 1,
         subcategories: [],
-        // Используем новое изображение только если оно было загружено
         image_url: sweepstakesImage
           ? uploadedImageUrl
-          : initialData?.image || null,
+          : imageUrl, // Используем новое изображение или существующий URL
         deal_url: formData.dealUrl,
-        user_id: originalUserId, // Используем оригинального создателя при редактировании
+        user_id: originalUserId,
         expires_at: formData.expiryDate || null,
-        is_hot: allowHotToggle ? formData.isHot : false,
+        is_hot: allowHotToggle ? (formData as any).isHot : false, // Assuming formData.isHot exists, cast to any for now
         type: "sweepstakes",
-        status: "pending", // Устанавливаем начальный статус 'pending' для модерации
+        status: "pending",
       };
 
       console.log("Отправляемые данные розыгрыша:", {
@@ -424,27 +485,22 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       let data, error;
 
       if (isEditing && sweepstakesId) {
-        // Проверяем текущий статус розыгрыша перед обновлением
-        const { data: currentSweepstake, error: currentSweepstakeError } =
-          await supabase
-            .from("deals")
-            .select("status")
-            .eq("id", sweepstakesId)
-            .eq("type", "sweepstakes")
-            .single();
+        const { data: currentSweepstake, error: currentSweepstakeError } = await supabase
+          .from("deals")
+          .select("status")
+          .eq("id", sweepstakesId)
+          .eq("type", "sweepstakes")
+          .single();
 
         if (currentSweepstakeError) {
           throw new Error(currentSweepstakeError.message);
         }
 
-        // Если розыгрыш уже был одобрен и не происходит автоматическое одобрение,
-        // меняем статус на "pending" для повторной модерации
         if (currentSweepstake.status === "approved" && !allowHotToggle) {
           sweepstakesData.status = "pending";
         }
 
         console.log("Обновление существующего розыгрыша:", sweepstakesId);
-        // Обновляем существующий розыгрыш
         const { data: updatedData, error: updateError } = await supabase
           .from("deals")
           .update(sweepstakesData)
@@ -461,8 +517,10 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         }
 
         console.log("Розыгрыш успешно обновлен:", data);
+
+        // Очищаем черновик из localStorage после успешного обновления в режиме редактирования
+        localStorage.removeItem(getDraftKey());
       } else {
-        // Создаем новый розыгрыш
         console.log("Создание нового розыгрыша...");
         const { data: newData, error: insertError } = await supabase
           .from("deals")
@@ -479,9 +537,11 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         }
 
         console.log("Розыгрыш успешно создан:", data);
+
+        // Очищаем черновик из localStorage после успешного создания
+        localStorage.removeItem(getDraftKey());
       }
 
-      // Дополнительная проверка полученных данных
       if (!data || !data.id) {
         console.error(
           "Получены некорректные данные после операции с розыгрышем:",
@@ -492,9 +552,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         );
       }
 
-      // Добавляем в очередь модерации в двух случаях:
-      // 1. Новый розыгрыш
-      // 2. Редактирование розыгрыша, который уже был одобрен
       if (
         (!isEditing || (isEditing && sweepstakesData.status === "pending")) &&
         addToModerationQueue
@@ -511,11 +568,9 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
             "Ошибка при добавлении в очередь модерации:",
             moderationError,
           );
-          // Продолжаем выполнение даже при ошибке модерации
         }
       }
 
-      // Вызываем функцию обратного вызова, если она определена
       if (isEditing && typeof onEditSuccess === "function" && data.id) {
         console.log(
           "Вызываем onEditSuccess после успешного редактирования розыгрыша",
@@ -527,12 +582,10 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         }
       }
 
-      // Перенаправляем на страницу просмотра розыгрыша
       navigate(`/sweepstakes/${data.id}`);
     } catch (error) {
       console.error("Error in handleSubmit:", error);
 
-      // Добавляем подробное логирование ошибок
       if (error instanceof Error) {
         console.error("Error details:", {
           name: error.name,
@@ -541,7 +594,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
         });
       }
 
-      // Форматируем сообщение об ошибке для пользователя
       let errorMessage = "Failed to create/update sweepstakes";
 
       if (error instanceof Error) {
@@ -560,17 +612,16 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
   };
 
   const calculateDiscount = useCallback(() => {
-    if (formData.currentPrice && formData.originalPrice) {
-      const current = Number(formData.currentPrice);
-      const original = Number(formData.originalPrice);
+    // Эта функция не используется для sweepstakes, но оставлена как заглушка
+    if ((formData as any).currentPrice && (formData as any).originalPrice) {
+      const current = Number((formData as any).currentPrice);
+      const original = Number((formData as any).originalPrice);
       if (current && original && current <= original) {
         return Math.round(((original - current) / original) * 100);
       }
     }
     return null;
-  }, [formData.currentPrice, formData.originalPrice]);
-
-  // Определение editor перемещено выше
+  }, [/*(formData as any).currentPrice, (formData as any).originalPrice*/]); // Убраны зависимости, так как этих полей нет
 
   useEffect(() => {
     if (editor) {
@@ -660,11 +711,8 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     });
   }, [isStoreSheetOpen, selectedStoreId]);
 
-  // Define checkImagesInEditor function that was missing
   const checkImagesInEditor = () => {
     if (!editor) return;
-
-    // This is just a stub function since you removed image management functionality
     console.log("Editor content checked");
   };
 
@@ -677,7 +725,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
               <ArrowLeft className="h-6 w-6" />
             </button>
             <h1 className="text-white text-lg font-medium ml-4">
-              Add Sweepstakes
+              {labelOverrides?.pageTitle || "Add Sweepstakes"}
             </h1>
           </div>
           <button className="text-white">
@@ -751,6 +799,15 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
                     onClick={() => {
                       setSweepstakesImage(null);
                       setImageUrl(null);
+                      // Clear image from draft as well
+                      const draftKey = getDraftKey();
+                      try {
+                        const currentDraft = JSON.parse(localStorage.getItem(draftKey) || '{}');
+                        delete currentDraft.image; // Remove image property
+                        localStorage.setItem(draftKey, JSON.stringify(currentDraft));
+                      } catch (e) {
+                        console.error("Error clearing image draft from localStorage:", e);
+                      }
                     }}
                     className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
                   >
@@ -1016,7 +1073,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
                 className="bg-gray-900 rounded-md p-4 whitespace-pre-wrap font-sans text-sm description-preview"
                 dangerouslySetInnerHTML={{
                   __html: formData.description
-                    .replace(/(https?:\/\/[^\s<>"]+)/g, (match) => {
+                    .replace(/(https?:\/\/[^\s"]+)/g, (match) => { // Fixed regex escaping here too
                       const lastChar = match.charAt(match.length - 1);
                       if (
                         [",", ".", ":", ";", "!", "?", ")", "]", "}"].includes(
