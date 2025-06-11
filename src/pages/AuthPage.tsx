@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-do
 import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug';
-import { supabase } from '../lib/supabase'; // Эта строка должна быть единственным импортом supabase
+import { supabase } from '../lib/supabase';
 
 interface AuthPageProps {
   isResetPasswordPage?: boolean;
@@ -83,6 +83,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       const typeFromQuery = currentSearchParams.get('type');
 
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      // --- ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЕ ОБЪЯВЛЕНИЯ ПЕРЕМЕННЫХ ИЗ HASH ---
       const recoveryTokenFromHash = hashParams.get('token');
       const recoveryTypeFromHash = hashParams.get('type');
       const oauthAccessTokenFromHash = hashParams.get('access_token');
@@ -127,7 +128,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
 
       // Логика для SignUp confirmation
       // Проверяем type 'signup' как в query string, так и в hash
-      if (typeFromQuery === 'signup' || typeFromHash === 'signup') {
+      if (typeFromQuery === 'signup' || (typeFromHash && typeFromHash === 'signup')) { // Добавлена проверка typeFromHash для signup
           console.log('[WEBSITE /auth LOG] Detected signup confirmation flow.');
           setSuccessMessage('Регистрация успешно завершена! Переход на страницу профиля...');
           if (finalRedirectTitle) {
@@ -564,15 +565,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
             disabled={loading}
             className="w-full bg-orange-500 text-white py-3 rounded-md font-medium flex items-center justify-center"
           >
-            {loading ?
-              (
+            {loading ? (
               <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
+            ) : (
               <>
                 {accessToken ? 'Обновить пароль' : isResetPassword ? 'Отправить инструкции' : isSignUp ? 'Регистрация' : 'Вход'}
                 <ArrowRight className="h-5 w-5 ml-2" />
               </>
-              )}
+            )}
           </button>
         </form>
 
