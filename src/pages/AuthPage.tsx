@@ -83,7 +83,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       const typeFromQuery = currentSearchParams.get('type');
 
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      // --- ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЕ ОБЪЯВЛЕНИЯ ПЕРЕМЕННЫХ ИЗ HASH ---
+      // --- ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЕ ОБЪЯВЛЕНИЯ ВСЕХ ПЕРЕМЕННЫХ ИЗ HASH В НАЧАЛЕ ФУНКЦИИ ---
       const recoveryTokenFromHash = hashParams.get('token');
       const recoveryTypeFromHash = hashParams.get('type');
       const oauthAccessTokenFromHash = hashParams.get('access_token');
@@ -128,7 +128,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
 
       // Логика для SignUp confirmation
       // Проверяем type 'signup' как в query string, так и в hash
-      if (typeFromQuery === 'signup' || (typeFromHash && typeFromHash === 'signup')) { // Добавлена проверка typeFromHash для signup
+      if (typeFromQuery === 'signup' || (typeFromHash && typeFromHash === 'signup')) {
           console.log('[WEBSITE /auth LOG] Detected signup confirmation flow.');
           setSuccessMessage('Регистрация успешно завершена! Переход на страницу профиля...');
           if (finalRedirectTitle) {
