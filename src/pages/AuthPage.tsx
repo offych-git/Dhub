@@ -381,7 +381,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
             }
             setTimeout(() => navigate(decodedRedirectTo), 2000);
           } else if (result?.user) {
-            setSuccessMessage('Аккаунт создан! Пожалуйста, проверьте ваш email для подтверждения.');
+            setSuccessMessage('Аккаунт создан! Пожалуйста, проверьте ваш email (и папку spam) для подтверждения.');
           } else {
             throw new Error('Регистрация не удалась с неизвестной ошибкой');
           }
