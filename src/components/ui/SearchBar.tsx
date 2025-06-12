@@ -146,7 +146,7 @@ const SearchBar: React.FC = () => {
     <div className="relative mx-4 mt-3 mb-0">
       <form onSubmit={handleSearchSubmit} autoComplete="off">
         <div className="flex items-center bg-gray-700 rounded-lg px-4 py-2">
-          <Search className="h-5 w-5 text-gray-400 mr-2" />
+          {/* Иконка лупы слева удалена */}
           <input
             type="text"
             value={searchTerm}
@@ -173,7 +173,11 @@ const SearchBar: React.FC = () => {
             className="ml-2 bg-orange-500 text-white px-3 py-1 rounded-md text-sm"
             disabled={isSearching}
           >
-            {isSearching ? "Searching..." : "Search"}
+            {isSearching ? (
+              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Search className="h-5 w-5" />
+            )}
           </button>
         </div>
       </form>
