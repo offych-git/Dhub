@@ -454,17 +454,11 @@ const PromosPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center space-x-2 mb-2">
-                    <div className="bg-gray-700 px-2 py-1 rounded border border-gray-600">
-                      {user ? (
-                        <span className="text-orange-500 font-mono text-sm">
-                          {promo.code}
-                        </span>
-                      ) : (
-                        <span className="italic text-gray-400 text-sm">
-                          Login to see code
-                        </span>
-                      )}
-                    </div>
+<div className="bg-gray-700 px-2 py-1 rounded border border-gray-600">
+                  <span className="text-orange-500 font-mono text-sm">
+                    {promo.code}
+                  </span>
+                </div>
                     {user && (
                       <button
                         className={`text-sm transition-colors duration-200 ${

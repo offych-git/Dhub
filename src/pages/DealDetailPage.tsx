@@ -1193,27 +1193,17 @@ const handleVisitDealClick = () => {
 
                     <VoteControls dealId={deal.id} />
                 </div>
+                <a
+                    href={deal.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 bg-orange-500 text-white py-3 rounded-md flex items-center justify-center font-medium"
+                    onClick={handleVisitDealClick}
+                >
+                    <span>Visit Deal</span>
+                    <ExternalLink className="h-4 w-4 ml-2" />
+                </a>
 
-                {user ? (
-                    <a
-                        href={deal.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-4 bg-orange-500 text-white py-3 rounded-md flex items-center justify-center font-medium"
-onClick={handleVisitDealClick}
-                    >
-                        <span>Visit Deal</span>
-                        <ExternalLink className="h-4 w-4 ml-2" />
-                    </a>
-                ) : (
-    <button
-        onClick={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
-        className="mt-4 bg-gray-500 text-white py-3 rounded-md flex items-center justify-center font-medium w-full cursor-pointer"
-    >
-        <span>Login to see deal</span>
-        <ExternalLink className="h-4 w-4 ml-2" />
-    </button>
-                )}
 
                 <div className="mt-6">
                     <h3 className="text-white font-medium mb-2">Description</h3>

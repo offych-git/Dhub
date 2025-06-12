@@ -8,7 +8,6 @@ export const translations = {
       profile: "My Profile",
       sweepstakes: "Sweepstakes",
       moderation: "Moderation",
-      // Добавленные/обновленные ключи
       savedItems: "Saved Items",
       myComments: "My Comments",
       notificationSettings: "Notification Settings",
@@ -35,13 +34,28 @@ export const translations = {
       no_items_in_category: "No items in selected category",
       statusPending: "Pending Review",
       statusRejected: "Rejected",
-      // Добавленные ключи
       darkMode: "Dark Mode",
       lightMode: "Light Mode",
     },
     auth: {
       signIn: "Sign In",
       signOut: "Sign Out",
+    },
+    // Ключи для CommentInput
+    commentInput: { // <-- ДОБАВЛЕН НОВЫЙ БЛОК ПЕРЕВОДОВ ДЛЯ CommentInput
+      loginPrompt: "Please login to leave a comment.",
+      loginButton: "Login",
+      addCommentPlaceholder: "Add a comment...",
+      writeReplyPlaceholder: "Write a reply...",
+      copyCode: "Copy Code",
+      copied: "Copied!",
+      commentButton: "Comment",
+      replyButton: "Reply",
+      addImage: "Add image",
+      cancel: "Cancel",
+      maxImagesAlert: "Maximum 2 images allowed",
+      emptyCommentError: "Comment cannot be empty.",
+      postCommentError: "Failed to post comment. Please try again."
     },
     // Categories
     electronics: "Electronics",
@@ -67,7 +81,6 @@ export const translations = {
       profile: "Мой профиль",
       sweepstakes: "Розыгрыши",
       moderation: "Модерация",
-      // Добавленные/обновленные ключи
       savedItems: "Сохраненное",
       myComments: "Мои комментарии",
       notificationSettings: "Настройки уведомлений",
@@ -94,13 +107,28 @@ export const translations = {
       no_items_in_category: "Нет элементов в выбранной категории",
       statusPending: "На модерации",
       statusRejected: "Отклонен",
-      // Добавленные ключи
       darkMode: "Темная тема",
       lightMode: "Светлая тема",
     },
     auth: {
       signIn: "Войти",
       signOut: "Выйти",
+    },
+    // Ключи для CommentInput
+    commentInput: { // <-- ДОБАВЛЕН НОВЫЙ БЛОК ПЕРЕВОДОВ ДЛЯ CommentInput
+      loginPrompt: "Войдите, чтобы оставить комментарий.",
+      loginButton: "Войти",
+      addCommentPlaceholder: "Оставьте свой комментарий...",
+      writeReplyPlaceholder: "Напишите ответ...",
+      copyCode: "Копировать код",
+      copied: "Скопировано!",
+      commentButton: "Комментировать",
+      replyButton: "Ответить",
+      addImage: "Добавить изображение",
+      cancel: "Отмена",
+      maxImagesAlert: "Максимум 2 изображения разрешено",
+      emptyCommentError: "Комментарий не может быть пустым.",
+      postCommentError: "Не удалось опубликовать комментарий. Пожалуйста, попробуйте еще раз."
     },
     // Categories
     electronics: "Электроника",
@@ -126,7 +154,6 @@ export const translations = {
       profile: "Mi Perfil",
       sweepstakes: "Sorteos",
       moderation: "Moderación",
-      // Добавленные/обновленные ключи
       savedItems: "Guardados",
       myComments: "Mis Comentarios",
       notificationSettings: "Configuración de Notificaciones",
@@ -153,13 +180,28 @@ export const translations = {
       no_items_in_category: "No hay elementos en la categoría seleccionada",
       statusPending: "Pendiente de revisión",
       statusRejected: "Rechazado",
-      // Добавленные ключи
       darkMode: "Modo Oscuro",
       lightMode: "Modo Claro",
     },
     auth: {
       signIn: "Iniciar Sesión",
       signOut: "Cerrar Sesión",
+    },
+    // Ключи для CommentInput
+    commentInput: { // <-- ДОБАВЛЕН НОВЫЙ БЛОК ПЕРЕВОДОВ ДЛЯ CommentInput
+      loginPrompt: "Por favor, inicie sesión para dejar un comentario.",
+      loginButton: "Iniciar Sesión",
+      addCommentPlaceholder: "Añadir un comentario...",
+      writeReplyPlaceholder: "Escribir una respuesta...",
+      copyCode: "Copiar Código",
+      copied: "¡Copiado!",
+      commentButton: "Comentar",
+      replyButton: "Responder",
+      addImage: "Añadir imagen",
+      cancel: "Cancelar",
+      maxImagesAlert: "Máximo 2 imágenes permitidas",
+      emptyCommentError: "El comentario no puede estar vacío.",
+      postCommentError: "Error al publicar el comentario. Inténtelo de nuevo."
     },
     // Categories
     electronics: "Electrónica",

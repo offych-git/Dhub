@@ -457,36 +457,23 @@ const handleVisitStoreClick = () => {
         {/* ЭТОТ БЛОК БЫЛ ПЕРЕМЕЩЕН ВЫШЕ */}
         <div className="mt-4 bg-gray-800 rounded-lg p-4">
           {/* Условный рендеринг ТОЛЬКО для промокода и кнопки "Copy Code" */}
-          {user ? ( // Если пользователь авторизован, показываем промокод
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="bg-gray-700 px-3 py-1.5 rounded border border-gray-600">
-                <span className="text-orange-500 font-mono">{promo.code}</span>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  navigator.clipboard.writeText(promo.code);
-                  setCopiedCodeId(promo.id);
-                  setTimeout(() => setCopiedCodeId(null), 2000);
-                }}
-                className={`font-medium px-3 py-1.5 rounded border ${copiedCodeId === promo.id ? "bg-green-500 text-white border-green-500" : "text-orange-500 border-orange-500"}`}
-              >
-                {copiedCodeId === promo.id ? "Copied!" : "Copy Code"}
-              </button>
+         <div className="flex items-center space-x-2 mb-4">
+            <div className="bg-gray-700 px-3 py-1.5 rounded border border-gray-600">
+              <span className="text-orange-500 font-mono">{promo.code}</span>
             </div>
-          ) : ( // Если пользователь не авторизован, показываем сообщение и кнопку для просмотра промокода
-            <div className="mb-4">
-              <p className="text-center text-gray-400 mb-2">Login to see this promo code.</p>
-              <button
-                onClick={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
-                className="bg-orange-500 text-white py-2 px-4 rounded-md flex items-center justify-center font-medium w-full"
-              >
-                <span>Login to see promo code</span>
-                <ExternalLink className="h-4 w-4 ml-2" />
-              </button>
-            </div>
-          )}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigator.clipboard.writeText(promo.code);
+                setCopiedCodeId(promo.id);
+                setTimeout(() => setCopiedCodeId(null), 2000);
+              }}
+              className={`font-medium px-3 py-1.5 rounded border ${copiedCodeId === promo.id ? "bg-green-500 text-white border-green-500" : "text-orange-500 border-orange-500"}`}
+            >
+              {copiedCodeId === promo.id ? "Copied!" : "Copy Code"}
+            </button>
+          </div>
 
           {/* ЭТОТ БЛОК ТЕПЕРЬ ВСЕГДА ВИДИМ */}
           <div
@@ -523,26 +510,16 @@ const handleVisitStoreClick = () => {
               do_refresh={true}
               onAuthRedirect={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
           />
-          {user ? ( // Если пользователь авторизован, кнопка Visit Store активна
-            <a
-              href={promo.discount_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center"
-onClick={handleVisitStoreClick}
-            >
-              <span>Visit Store</span>
-              <ExternalLink className="h-4 w-4 ml-2" />
-            </a>
-          ) : ( // Если пользователь не авторизован, кнопка Visit Store неактивна
-            <button
-              disabled
-              className="bg-gray-500 text-white px-4 py-2 rounded-md flex items-center cursor-not-allowed opacity-70"
-            >
-              <span>Visit Store</span>
-              <ExternalLink className="h-4 w-4 ml-2" />
-            </button>
-          )}
+          <a
+            href={promo.discount_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center"
+            onClick={handleVisitStoreClick}
+          >
+            <span>Visit Store</span>
+            <ExternalLink className="h-4 w-4 ml-2" />
+          </a>
         </div>
 
         {/* Добавляем блок с надписью о партнерских ссылках */}

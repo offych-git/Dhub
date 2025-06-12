@@ -941,26 +941,16 @@ const handleVisitSweepstakesClick = () => {
                 </div>
 
                 {/* Блок с кнопкой "Участвовать в розыгрыше" или "Войдите, чтобы участвовать" */}
-                {user ? (
-                    <a
-                        href={sweepstakes.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-4 bg-orange-500 text-white py-3 rounded-md flex items-center justify-center font-medium"
-onClick={handleVisitSweepstakesClick}
-                    >
-                        <span>Участвовать в розыгрыше</span>
-                        <ExternalLink className="h-4 w-4 ml-2" />
-                    </a>
-                ) : (
-                    <button
-                        onClick={() => navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`)}
-                        className="mt-4 bg-gray-500 text-white py-3 rounded-md flex items-center justify-center font-medium w-full cursor-pointer"
-                    >
-                        <span>Войдите, чтобы участвовать</span>
-                        <ExternalLink className="h-4 w-4 ml-2" />
-                    </button>
-                )}
+                <a
+                    href={sweepstakes.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 bg-orange-500 text-white py-3 rounded-md flex items-center justify-center font-medium"
+                    onClick={handleVisitSweepstakesClick}
+                >
+                    <span>Участвовать в розыгрыше</span>
+                    <ExternalLink className="h-4 w-4 ml-2" />
+                </a>
 
                 <div className="mt-6">
                     <h3 className="text-white font-medium mb-2">Описание</h3>
