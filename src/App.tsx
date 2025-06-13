@@ -1,7 +1,7 @@
-// App.tsx (ВАШЕГО ВЕБ-САЙТА)
+// App.tsx (Без кода для WebView)
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'; // Добавлен useLocation
-import ReactGA4 from 'react-ga4'; // Импортирован react-ga4
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import ReactGA4 from 'react-ga4';
 
 import { AuthProvider } from './contexts/AuthContext';
 import { GlobalStateProvider } from './contexts/GlobalStateContext';
@@ -11,6 +11,7 @@ import { ModerationProvider } from './contexts/ModerationContext';
 import './index.css';
 import AppLayout from './components/layout/AppLayout';
 import AuthPage from './pages/AuthPage';
+// ... все остальные импорты страниц ...
 import DealsPage from './pages/DealsPage';
 import DealDetailPage from './pages/DealDetailPage';
 import AddDealPage from './pages/AddDealPage';
@@ -42,80 +43,36 @@ import SearchPage from './pages/SearchPage';
 import FacebookDataDeletionPage from './pages/FacebookDataDeletionPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 
+
 import initGlobalInteractions from './utils/globalInteractions';
-import initWebViewConsole from './utils/webViewConsole';
+// Удален импорт initWebViewConsole
 
-import { supabase } from './lib/supabase';
-
-// Ваш реальный Measurement ID для Google Analytics 4
 const GA4_MEASUREMENT_ID = "G-N0VDTWZSBV";
 
-// Инициализируем GA4 один раз при загрузке приложения
 ReactGA4.initialize(GA4_MEASUREMENT_ID);
 
-// Вспомогательный компонент для отслеживания просмотров страниц
 const GAListener: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Отправляем событие просмотра страницы при каждой смене URL
-    // location.pathname - путь страницы (например, /deals/123)
-    // location.search - параметры запроса (например, ?q=test)
     ReactGA4.send({ hitType: "pageview", page: location.pathname + location.search });
     console.log(`GA4: Pageview sent for ${location.pathname + location.search}`);
-  }, [location]); // Зависимость от location означает, что эффект будет повторно запускаться при изменении URL
+  }, [location]);
 
-  return null; // Этот компонент не рендерит ничего в DOM
+  return null;
 };
 
 function App() {
   useEffect(() => {
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isWebView =
-      userAgent.includes('wv') ||
-      userAgent.includes('fbav') ||
-      userAgent.includes('instagram') ||
-      userAgent.includes('snapchat') ||
-      (userAgent.includes('iphone') && !userAgent.includes('safari')) ||
-      new URLSearchParams(window.location.search).has('embedded');
-
-    if (isWebView) {
-      document.body.classList.add('embedded-app');
-    } else {
-      document.body.classList.add('standalone-browser');
-    }
-
+    // Оставляем только инициализацию, не связанную с WebView
     initGlobalInteractions();
-    initWebViewConsole();
 
-    (window as any).supabase = supabase;
-
-    if ((window as any).ReactNativeWebViewFramework &&
-        typeof (window as any).ReactNativeWebViewFramework.signalSupabaseReady === 'function') {
-      console.log('[WEBSITE App.tsx] Signaling Supabase is ready to ReactNativeWebViewFramework.');
-      (window as any).ReactNativeWebViewFramework.signalSupabaseReady();
-    } else {
-      console.warn('[WEBSITE App.tsx] ReactNativeWebViewFramework.signalSupabaseReady not found immediately. Setting a timeout to try again.');
-      const timeoutId = setTimeout(() => {
-        if ((window as any).ReactNativeWebViewFramework &&
-            typeof (window as any).ReactNativeWebViewFramework.signalSupabaseReady === 'function') {
-          console.log('[WEBSITE App.tsx] Signaling Supabase is ready to ReactNativeWebViewFramework (delayed attempt).');
-          (window as any).ReactNativeWebViewFramework.signalSupabaseReady();
-        } else {
-          console.error('[WEBSITE App.tsx] ReactNativeWebViewFramework.signalSupabaseReady still not found after delay.');
-        }
-      }, 1500);
-      return () => clearTimeout(timeoutId);
-    }
-
-    return () => {
-      document.body.classList.remove('embedded-app', 'standalone-browser');
-    };
+    // Весь код для определения WebView и связи с ReactNative полностью удален
   }, []);
 
-return (
+  return (
     <Router>
-      <GAListener /> 
+      <GAListener />
 
       <AuthProvider>
         <GlobalStateProvider>
@@ -123,42 +80,39 @@ return (
             <ModerationProvider>
               <LanguageProvider>
                 <Routes>
-                  {/* ПУБЛИЧНЫЕ БАЗОВЫЕ МАРШРУТЫ (без AppLayout) */}
+                  {/* ПУБЛИЧНЫЕ БАЗОВЫЕ МАРШРУТЫ */}
                   <Route path="/auth" element={<AuthPage />} />
                   <Route path="/auth/reset-password" element={<AuthPage isResetPasswordPage={true} />} />
                   <Route path="/auth/callback" element={<AuthPage />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                   <Route path="/facebook-data-deletion" element={<FacebookDataDeletionPage />} />
                   
-                  {/* УБИРАЕМ СТАРЫЕ МАРШРУТЫ ДЛЯ ДЕТАЛЕЙ ОТСЮДА
-                  */}
-
-                  {/* МАРШРУТЫ, ИСПОЛЬЗУЮЩИЕ ОБЩИЙ LAYOUT (AppLayout) */}
+                  {/* МАРШРУТЫ, ИСПОЛЬЗУЮЩИЕ ОБЩИЙ LAYOUT */}
                   <Route element={<AppLayout />}>
-                    {/* 👇 ВОТ СЮДА МЫ ПЕРЕМЕСТИЛИ МАРШРУТЫ ДЕТАЛЕЙ 👇 */}
                     <Route path="/promos/:id" element={<PromoDetailPage />} />
                     <Route path="/deals/:id" element={<DealDetailPage />} />
                     <Route path="/sweepstakes/:id" element={<SweepstakesDetailPage />} />
                     <Route path="/category/:categoryId" element={<CategoryItemsPage />} />
 
-                    {/* Все остальные ваши маршруты, которые уже были здесь */}
                     <Route path="/" element={<DealsPage />} />
                     <Route path="/promos" element={<PromosPage />} />
                     <Route path="/sweepstakes" element={<SweepstakesPage />} />
-                    {/* ... и все остальные ваши публичные и приватные маршруты ... */}
                     <Route path="/discussions" element={<DiscussionsPage />} />
                     <Route path="/categories" element={<CategoriesPage />} />
                     <Route path="/search" element={<SearchPage />} />
 
+                    {/* Приватные маршруты */}
                     <Route path="/deals/new" element={<PrivateRoute><AddDealPage /></PrivateRoute>} />
                     <Route path="/deals/new-carousel" element={<PrivateRoute><AddDealPageNew /></PrivateRoute>} />
-                    <Route path="/edit-carousel/:id" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} />
+                    <Route path="/deals/:id/edit" element={<PrivateRoute><EditDealPage /></PrivateRoute>} />
+                    <Route path="/deals/:id/edit-carousel" element={<PrivateRoute><EditDealCarouselPage /></PrivateRoute>} />
+
                     <Route path="/promos/new" element={<PrivateRoute><AddPromoPage /></PrivateRoute>} />
                     <Route path="/promos/:id/edit" element={<PrivateRoute><EditPromoPage /></PrivateRoute>} />
+                    
                     <Route path="/sweepstakes/new" element={<PrivateRoute><AddSweepstakesPage /></PrivateRoute>} />
-                    <Route path="/edit-deal/:id" element={<PrivateRoute><EditDealPage /></PrivateRoute>} />
-                    <Route path="/edit-promo/:id" element={<PrivateRoute><EditPromoPage /></PrivateRoute>} />
-                    <Route path="/edit-sweepstakes/:id" element={<PrivateRoute><EditSweepstakesPage /></PrivateRoute>} />
+                    <Route path="/sweepstakes/:id/edit" element={<PrivateRoute><EditSweepstakesPage /></PrivateRoute>} />
+                    
                     <Route path="/moderation" element={<PrivateRoute><ModerationPage /></PrivateRoute>} />
                     <Route path="/moderation/settings" element={<PrivateRoute><ModerationSettingsPage /></PrivateRoute>} />
                     <Route path="/user-subscriptions" element={<PrivateRoute><UserSubscriptionsPage /></PrivateRoute>} />
