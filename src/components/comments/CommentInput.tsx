@@ -1,13 +1,9 @@
-// src/components/comments/CommentInput.tsx
-
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import imageCompression from 'browser-image-compression';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { createMentionNotification } from '../../utils/mentions';
 import { handleImageError } from '../../utils/imageUtils';
-import { useLanguage } from '../../contexts/LanguageContext';
 
 interface CommentInputProps {
   sourceType: 'deal_comment' | 'promo_comment';
@@ -25,9 +21,6 @@ const CommentInput: React.FC<CommentInputProps> = ({
   onCancel
 }) => {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const { t } = useLanguage(); 
-  
   const [comment, setComment] = useState('');
   const [mentionSearch, setMentionSearch] = useState('');
   const [images, setImages] = useState<File[]>([]);
@@ -36,25 +29,8 @@ const CommentInput: React.FC<CommentInputProps> = ({
   const [showMentions, setShowMentions] = useState(false);
   const [mentionUsers, setMentionUsers] = useState<any[]>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
-  const inputRef = useRef<HTMLTextAreaElement>(null); // Этот ref уже был, используем его
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const mentionsRef = useRef<HTMLDivElement>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // --- НАЧАЛО ИЗМЕНЕНИЙ ---
-  // Функция, которая принудительно прокручивает поле ввода в видимую зону
-  const handleFocus = () => {
-    // Небольшая задержка, чтобы клавиатура успела анимироваться
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-      }
-    }, 300);
-  };
-  // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -88,8 +64,8 @@ const CommentInput: React.FC<CommentInputProps> = ({
     const position = e.target.selectionStart || 0;
     setComment(value);
     setCursorPosition(position);
-    setError(null);
 
+    // Check if we're in a mention context
     const lastAtSymbol = value.lastIndexOf('@', position);
     if (lastAtSymbol !== -1) {
       const spaceAfterAt = value.indexOf(' ', lastAtSymbol);
@@ -139,12 +115,13 @@ const CommentInput: React.FC<CommentInputProps> = ({
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + images.length > 2) {
-      alert(t('commentInput.maxImagesAlert'));
+      alert('Maximum 2 images allowed');
       return;
     }
 
     const newImages = files.slice(0, 2 - images.length);
 
+    // Compress images before preview
     const compressedImages = await Promise.all(
       newImages.map(file => compressImage(file))
     );
@@ -161,20 +138,10 @@ const CommentInput: React.FC<CommentInputProps> = ({
     setPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async () => {
-    setError(null);
-    
-    if (!user) {
-      console.warn('Неавторизованный пользователь пытается оставить комментарий. Перенаправление на авторизацию.');
-      const currentPath = window.location.pathname + window.location.search;
-      navigate(`/auth?redirect=${encodeURIComponent(currentPath)}`);
-      return;
-    }
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    if (!comment.trim()) {
-      setError(t('commentInput.emptyCommentError'));
-      return;
-    }
+  const handleSubmit = async () => {
+    if (!user || !comment.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
@@ -203,15 +170,18 @@ const CommentInput: React.FC<CommentInputProps> = ({
       }
 
       const table = sourceType === 'deal_comment' ? 'deal_comments' : 'promo_comments';
-      if (!user) {
-        throw new Error('User not authenticated (after async operations)');
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+      if (!currentUser) {
+        throw new Error('User not authenticated');
       }
 
-      const { data: commentData, error: insertError } = await supabase
+      // Insert the comment first
+      const { data: commentData, error } = await supabase
         .from(table)
         .insert({
           [sourceType === 'deal_comment' ? 'deal_id' : 'promo_id']: sourceId,
-          user_id: user.id,
+          user_id: currentUser.id,
           content: comment.trim(),
           parent_id: parentId,
           images: imageUrls
@@ -219,12 +189,15 @@ const CommentInput: React.FC<CommentInputProps> = ({
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (error) throw error;
       
+      // Логирование для отладки ID комментария
       console.log('Создан новый комментарий с ID:', commentData?.id);
       console.log('Данные комментария:', commentData);
 
+      // Process mentions and create notifications
       try {
+        // Логирование параметров перед вызовом функции
         console.log('--- Передача параметров в createMentionNotification ---');
         console.log('Параметр sourceType:', sourceType);
         console.log('Параметр sourceId (Deal/Promo ID):', sourceId);
@@ -237,12 +210,14 @@ const CommentInput: React.FC<CommentInputProps> = ({
           sourceId,
           comment.trim(),
           user.id,
-          commentData?.id
+          commentData?.id // Передаем ID нового комментария
         );
         
+        // Если это ответ на комментарий, создаем уведомление о ответе
         if (parentId) {
           console.log('Создаем уведомление о ответе на комментарий с ID:', parentId);
           
+          // Получаем информацию о родительском комментарии, чтобы узнать автора
           const parentTable = sourceType === 'deal_comment' ? 'deal_comments' : 'promo_comments';
           const { data: parentComment, error: parentError } = await supabase
             .from(parentTable)
@@ -255,16 +230,19 @@ const CommentInput: React.FC<CommentInputProps> = ({
           } else if (parentComment && parentComment.user_id && parentComment.user_id !== user.id) {
             console.log('Автор родительского комментария:', parentComment.user_id);
             
+            // Проверяем настройки пользователя (разрешены ли уведомления о ответах)
             const { data: userPrefs, error: prefsError } = await supabase
               .from('profiles')
               .select('notification_preferences')
               .eq('id', parentComment.user_id)
               .maybeSingle();
               
+            // Создаем уведомление, только если пользователь разрешил или если у него нет настроек
             if (!prefsError && 
                 (!userPrefs?.notification_preferences || 
                  userPrefs.notification_preferences.replies !== false)) {
               
+              // Создаем уведомление о ответе на комментарий
               const { error: notifError } = await supabase
                 .from('notifications')
                 .insert({
@@ -273,7 +251,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
                   content: comment.trim().substring(0, 100) + (comment.trim().length > 100 ? '...' : ''),
                   source_type: sourceType,
                   source_id: commentData?.id,
-                  entity_id: sourceId,
+                  entity_id: sourceId, // Здесь сохраняем ID сделки/промо
                   actor_id: user.id
                 });
                 
@@ -293,15 +271,15 @@ const CommentInput: React.FC<CommentInputProps> = ({
         }
       } catch (mentionError) {
         console.error('Error creating notifications:', mentionError);
+        // We don't want to block comment submission if notifications fail
       }
 
       onSubmit(comment, images);
       setComment('');
       setImages([]);
       setPreviews([]);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error posting comment:', error);
-      setError(error.message || t('commentInput.postCommentError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -309,97 +287,78 @@ const CommentInput: React.FC<CommentInputProps> = ({
 
   return (
     <div className="relative">
-      {!user ? (
-        <div className="bg-gray-800 rounded-md p-4 text-gray-400 text-center">
-          <p className="mb-3">{t('commentInput.loginPrompt')}</p>
-          <button
-            onClick={() => {
-              const currentPath = window.location.pathname + window.location.search;
-              navigate(`/auth?redirect=${encodeURIComponent(currentPath)}`);
-            }}
-            className="bg-orange-500 text-white py-2 px-4 rounded-md font-medium"
-          >
-            {t('commentInput.loginButton')}
-          </button>
-          {error && <div className="text-red-500 mt-2">{error}</div>}
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
-          {error && <div className="text-red-500 mb-2">{error}</div>}
-          <textarea
-            ref={inputRef}
-            onFocus={handleFocus} // <-- ДОБАВЛЕНО СОБЫТИЕ onFocus
-            value={comment}
-            onChange={handleInputChange}
-            placeholder={parentId ? t('commentInput.writeReplyPlaceholder') : t('commentInput.addCommentPlaceholder')}
-            className="w-full bg-gray-700 text-white placeholder-gray-400 rounded-md px-4 py-2 resize-none"
-            rows={3}
-            disabled={isSubmitting}
-          />
+      <div className="flex flex-col space-y-2">
+        <textarea
+          ref={inputRef}
+          value={comment}
+          onChange={handleInputChange}
+          placeholder={parentId ? "Write a reply..." : "Add a comment..."}
+          className="w-full bg-gray-700 text-white placeholder-gray-400 rounded-md px-4 py-2 resize-none"
+          rows={3}
+        />
 
-          {previews.length > 0 && (
-            <div className="flex gap-2 mt-2">
-              {previews.map((preview, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={preview}
-                    alt={`Preview ${index + 1}`}
-                    className="w-16 h-16 object-cover rounded cursor-pointer"
-                    onClick={() => window.open(preview, '_blank')}
-                    onError={handleImageError}
-                  />
-                  <button
-                    onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex justify-between items-center">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={images.length >= 2 || isSubmitting}
-              className={`text-gray-600 dark:text-gray-400 hover:text-orange-500 disabled:opacity-50`}
-            >
-              📎 {t('commentInput.addImage')}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-              multiple
-            />
-            <div className="flex space-x-2">
-              {onCancel && (
+        {/* Image previews */}
+        {previews.length > 0 && (
+          <div className="flex gap-2 mt-2">
+            {previews.map((preview, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={preview}
+                  alt={`Preview ${index + 1}`}
+                  className="w-16 h-16 object-cover rounded cursor-pointer"
+                  onClick={() => window.open(preview, '_blank')}
+                  onError={handleImageError}
+                />
                 <button
-                  onClick={onCancel}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-orange-500 dark:hover:text-white font-medium"
-                  disabled={isSubmitting}
+                  onClick={() => removeImage(index)}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
                 >
-                  {t('commentInput.cancel')}
+                  ×
                 </button>
-              )}
-              <button
-                type="submit"
-                disabled={!comment.trim() || isSubmitting}
-                className="bg-orange-500 text-white px-4 py-2 rounded-md disabled:opacity-50 flex items-center"
-              >
-                {isSubmitting ? (
-                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-2"></div>
-                ) : (
-                  parentId ? t('commentInput.replyButton') : t('commentInput.commentButton')
-                )}
-              </button>
-            </div>
+              </div>
+            ))}
           </div>
-        </form>
-      )}
+        )}
+
+        <div className="flex justify-between items-center">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={images.length >= 2}
+            className={`text-gray-600 dark:text-gray-400 hover:text-orange-500 disabled:opacity-50`}
+          >
+            📎 Add image
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+            multiple
+          />
+          <div className="flex space-x-2">
+            {onCancel && (
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-orange-500 dark:hover:text-white font-medium"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={handleSubmit}
+              disabled={!comment.trim() || isSubmitting}
+              className="bg-orange-500 text-white px-4 py-2 rounded-md disabled:opacity-50 flex items-center"
+            >
+              {isSubmitting ? (
+                <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-2"></div>
+              ) : (
+                parentId ? 'Reply' : 'Comment'
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {showMentions && mentionUsers.length > 0 && (
         <div
@@ -407,21 +366,21 @@ const CommentInput: React.FC<CommentInputProps> = ({
           className="absolute left-0 right-0 mt-1 bg-gray-800 rounded-md shadow-lg overflow-hidden z-10 max-h-60 overflow-y-auto"
           style={{ maxWidth: '100%', position: 'absolute' }}
         >
-          {mentionUsers.map(mentionUser => (
+          {mentionUsers.map(user => (
             <button
-              key={mentionUser.id}
+              key={user.id}
               className="w-full px-4 py-2 text-left hover:bg-gray-700 text-white"
-              onClick={() => insertMention(mentionUser.display_name)}
+              onClick={() => insertMention(user.display_name)}
             >
               <div className="flex items-center">
                 <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-600 mr-2">
                   <img
-                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(mentionUser.display_name || mentionUser.email)}&background=random`}
-                    alt={mentionUser.display_name || mentionUser.email}
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.display_name || user.email)}&background=random`}
+                    alt={user.display_name || user.email}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <span>{mentionUser.display_name || mentionUser.email.split('@')[0]}</span>
+                <span>{user.display_name || user.email.split('@')[0]}</span>
               </div>
             </button>
           ))}
