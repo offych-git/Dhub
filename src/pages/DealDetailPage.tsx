@@ -391,15 +391,17 @@ const DealDetailPage: React.FC = () => {
     const loadComments = async () => {
         if (!id) return;
 
+        // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
         const { data: comments, error } = await supabase
             .from("deal_comments")
             .select(
                 `
-        *,
-        profiles!deal_comments_user_id_fkey(id, email, display_name)
-      `,
+                *,
+                profiles ( id, email, display_name )
+                `,
             )
             .eq("deal_id", id);
+        // --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
         if (error) {
             console.error("Error loading comments:", error);
@@ -410,7 +412,6 @@ const DealDetailPage: React.FC = () => {
             return;
         }
 
-        // Sort comments before building the tree
         const sortedComments = [...comments].sort((a, b) => {
             switch (sortBy) {
                 case "oldest":
@@ -430,11 +431,9 @@ const DealDetailPage: React.FC = () => {
         });
 
         if (!error && comments) {
-            // Build comment tree
             const commentMap = new Map();
-            const rootComments = [];
+            const rootComments: any[] = [];
 
-            // First pass: create map of all comments
             comments.forEach((comment) => {
                 commentMap.set(comment.id, {
                     ...comment,
@@ -442,21 +441,21 @@ const DealDetailPage: React.FC = () => {
                 });
             });
 
-            // Second pass: build tree structure
             sortedComments.forEach((comment) => {
                 const commentWithReplies = commentMap.get(comment.id);
                 if (comment.parent_id) {
                     const parent = commentMap.get(comment.parent_id);
                     if (parent) {
                         parent.replies.push(commentWithReplies);
+                    } else {
+                        rootComments.push(commentWithReplies);
                     }
                 } else {
                     rootComments.push(commentWithReplies);
                 }
             });
 
-            // Sort replies recursively
-            const sortReplies = (comments) => {
+            const sortReplies = (comments: any[]) => {
                 comments.forEach((comment) => {
                     if (comment.replies && comment.replies.length > 0) {
                         comment.replies.sort((a, b) => {
@@ -683,6 +682,12 @@ const handleVisitDealClick = () => {
                   100,
           )
         : 0;
+console.log("--- DEBUG INFO ---");
+console.log("Loading State:", loading);
+console.log("Error State:", error);
+console.log("Comment Count State:", commentCount);
+console.log("Comments Array to Render:", JSON.stringify(comments, null, 2));
+console.log("--------------------");
 
     return (
         <div className="pb-16 pt-4 bg-gray-900 min-h-screen">
