@@ -1,3 +1,5 @@
+// src/components/comments/CommentInput.tsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import imageCompression from 'browser-image-compression';
@@ -5,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { createMentionNotification } from '../../utils/mentions';
 import { handleImageError } from '../../utils/imageUtils';
-import { useLanguage } from '../../contexts/LanguageContext'; // <-- ДОБАВЛЕН ИМПОРТ useLanguage
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface CommentInputProps {
   sourceType: 'deal_comment' | 'promo_comment';
@@ -24,7 +26,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { t } = useLanguage(); // <-- ПОЛУЧАЕМ ФУНКЦИЮ ПЕРЕВОДА t
+  const { t } = useLanguage(); 
   
   const [comment, setComment] = useState('');
   const [mentionSearch, setMentionSearch] = useState('');
@@ -34,10 +36,25 @@ const CommentInput: React.FC<CommentInputProps> = ({
   const [showMentions, setShowMentions] = useState(false);
   const [mentionUsers, setMentionUsers] = useState<any[]>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null); // Этот ref уже был, используем его
   const mentionsRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // --- НАЧАЛО ИЗМЕНЕНИЙ ---
+  // Функция, которая принудительно прокручивает поле ввода в видимую зону
+  const handleFocus = () => {
+    // Небольшая задержка, чтобы клавиатура успела анимироваться
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }, 300);
+  };
+  // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -122,7 +139,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + images.length > 2) {
-      alert(t('commentInput.maxImagesAlert')); // Используем t()
+      alert(t('commentInput.maxImagesAlert'));
       return;
     }
 
@@ -155,7 +172,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
     }
 
     if (!comment.trim()) {
-      setError(t('commentInput.emptyCommentError')); // Используем t()
+      setError(t('commentInput.emptyCommentError'));
       return;
     }
 
@@ -284,7 +301,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
       setPreviews([]);
     } catch (error: any) {
       console.error('Error posting comment:', error);
-      setError(error.message || t('commentInput.postCommentError')); // Используем t()
+      setError(error.message || t('commentInput.postCommentError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -311,6 +328,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
           {error && <div className="text-red-500 mb-2">{error}</div>}
           <textarea
             ref={inputRef}
+            onFocus={handleFocus} // <-- ДОБАВЛЕНО СОБЫТИЕ onFocus
             value={comment}
             onChange={handleInputChange}
             placeholder={parentId ? t('commentInput.writeReplyPlaceholder') : t('commentInput.addCommentPlaceholder')}
