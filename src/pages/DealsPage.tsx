@@ -67,26 +67,24 @@ const DealsPage: React.FC = () => {
           .not("type", "eq", "sweepstakes");
 
         // Apply tab-specific ordering and filtering directly in the Supabase query
-        if (activeTab === "hot") {
-          // Assuming 'is_hot' is a boolean column or you have a popularity threshold in your DB
-          query = query
-            .or(
-              `is_hot.eq.true,popularity.gte.${DEAL_SETTINGS.hotThreshold || 10}`,
-            )
-            .order("popularity", { ascending: false }) // Order hot deals by popularity
-            .order("updated_at", { ascending: false }); // Then by updated_at for ties
-        } else if (activeTab === "discussed") {
-          query = query
-            .order("comment_count", { ascending: false }) // Order by comment count
-            .order("updated_at", { ascending: false }); // Then by updated_at
-        } else if (activeTab === "free") {
-          query = query
-            .eq("current_price", 0)
-            .order("created_at", { ascending: false }); // Order by creation date
-        } else {
-          // 'new' tab or default
-          query = query.order("created_at", { ascending: false }); // Order by creation date
-        }
+if (activeTab === "hot") {
+  query = query
+    .or(
+      `is_hot.eq.true,popularity.gte.${DEAL_SETTINGS.hotThreshold || 10}`,
+    )
+    .order("created_at", { ascending: false });
+} else if (activeTab === "discussed") {
+  query = query
+    .order("comment_count", { ascending: false })
+    .order("updated_at", { ascending: false });
+} else if (activeTab === "free") {
+  query = query
+    .eq("current_price", 0)
+    .order("created_at", { ascending: false });
+} else {
+  // 'new' tab or default
+  query = query.order("created_at", { ascending: false });
+}
 
         // Apply category and store filters
         if (selectedCategories.length > 0) {
@@ -237,8 +235,12 @@ const DealsPage: React.FC = () => {
   }, [loadDeals]);
 
   const handleTabChange = (tab: string) => {
+  console.log(`Переключаемся на вкладку: ${tab}`);
+  console.log('Текущие выбранные категории:', selectedCategories);
     setActiveTab(tab);
     sessionStorage.setItem("activeDealsTab", tab);
+ setSelectedCategories([]);
+  setSelectedStores([]);
   };
 
   const handleFilterChange = (type: "categories" | "stores", ids: string[]) => {
