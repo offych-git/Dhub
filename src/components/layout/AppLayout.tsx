@@ -1,3 +1,4 @@
+// AppLayout.tsx
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -18,37 +19,27 @@ declare global {
       postMessage: (message: string) => void;
     };
     nativeAppResumed?: () => void;
-    // Функции для обновления данных, которые вы определите или уже используете
-    // Эти функции должны быть определены в вашем коде и, в идеале, использовать operationWithRetry
     refreshDeals?: () => Promise<void>;
     refreshPromoCodes?: () => Promise<void>;
     refreshModerationData?: () => Promise<void>;
-    // ... другие функции обновления
   }
 }
 
-// --- ОБНОВЛЕННАЯ ФУНКЦИЯ window.nativeAppResumed ---
 window.nativeAppResumed = async function () {
   console.log(
     "[WEB] App resumed signal received. Waiting briefly before data refresh...",
   );
-
-  // Добавляем небольшую задержку (например, 50 мс), чтобы дать сети "проснуться"
-  await new Promise((resolve) => setTimeout(resolve, 50)); // Можете подобрать это значение
-
+  await new Promise((resolve) => setTimeout(resolve, 50));
   if (!navigator.onLine) {
     console.warn(
       "[WEB] Network is offline after resume delay. Skipping data refresh.",
     );
     return;
   }
-
   console.log(
     "[WEB] Network is online. Attempting to refresh critical data after resume delay...",
   );
-
   try {
-    // Вызовите здесь ваши функции для перезагрузки/обновления данных.
     if (typeof window.refreshDeals === "function") {
       console.log("[WEB] Calling refreshDeals() on resume...");
       await window.refreshDeals();
@@ -61,7 +52,6 @@ window.nativeAppResumed = async function () {
       console.log("[WEB] Calling refreshModerationData() on resume...");
       await window.refreshModerationData();
     }
-
     console.log("[WEB] Data refresh on resume attempted/completed.");
   } catch (error) {
     console.error(
@@ -70,7 +60,6 @@ window.nativeAppResumed = async function () {
     );
   }
 };
-// --- КОНЕЦ ОБНОВЛЕННОЙ ФУНКЦИИ ---
 
 const AppLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -85,7 +74,6 @@ const AppLayout: React.FC = () => {
   const location = useLocation();
   const activeScreenPath = location.pathname + location.search;
 
-  // Эффект для загрузки имени пользователя из таблицы profiles
   useEffect(() => {
     const fetchDisplayName = async () => {
       if (user?.id) {
@@ -95,20 +83,16 @@ const AppLayout: React.FC = () => {
             .select('display_name, email')
             .eq('id', user.id)
             .single();
-
           if (error) throw error;
-
-          // Используем display_name, если есть, иначе email
           setUserDisplayName(data?.display_name || data?.email?.split('@')[0] || null);
         } catch (error) {
           console.error("Error fetching display name for AppLayout:", error);
-          setUserDisplayName(user.email?.split('@')[0] || null); // Фолбэк на email при ошибке
+          setUserDisplayName(user.email?.split('@')[0] || null);
         }
       } else {
-        setUserDisplayName(null); // Сбросить имя, если пользователь не авторизован
+        setUserDisplayName(null);
       }
     };
-
     fetchDisplayName();
   }, [user?.id, user?.email]);
 
@@ -121,11 +105,9 @@ const AppLayout: React.FC = () => {
         userAgent.includes("instagram") ||
         userAgent.includes("snapchat") ||
         (userAgent.includes("iphone") && !userAgent.includes("safari"));
-
       const isEmbeddedViaParam = new URLSearchParams(
         window.location.search,
       ).has("embedded");
-
       if (isLikelyGenericWebView || isEmbeddedViaParam) {
         setShowSiteChrome(false);
       } else {
@@ -148,7 +130,6 @@ const AppLayout: React.FC = () => {
       !contentReadySentRef.current
     ) {
       const initialLayoutReadyDelay = 150;
-
       const timer = setTimeout(() => {
         if (!contentReadySentRef.current) {
           console.log(
@@ -161,7 +142,6 @@ const AppLayout: React.FC = () => {
           contentReadySentRef.current = true;
         }
       }, initialLayoutReadyDelay);
-
       return () => clearTimeout(timer);
     }
   }, [user, theme, activeScreenPath]);
@@ -181,16 +161,21 @@ const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen relative`}>
+    // --- НАЧАЛО ИЗМЕНЕНИЙ ---
+    // Добавляем flex и flex-col, чтобы этот контейнер стал гибкой колонкой.
+    // min-h-screen уже был, что хорошо - он заменяет min-height: 100vh.
+    <div className={`min-h-screen relative flex flex-col`}>
       <div className="site-header-wrapper">
         <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
       </div>
 
+      {/* Добавляем flex-grow, чтобы эта область растягивалась и занимала все свободное место */}
       <div
-        className={`content-area-for-padding ${showSiteChrome ? "pt-28" : "pt-0"}`}
+        className={`content-area-for-padding flex-grow ${showSiteChrome ? "pt-28" : "pt-0"}`}
       >
         <Outlet />
       </div>
+      {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
 
       <div className="site-navigation-wrapper">
         <Navigation />
@@ -205,13 +190,11 @@ const AppLayout: React.FC = () => {
         />
       )}
 
-      {/* Боковое меню - показываем для всех пользователей */}
       <div
         className={`fixed top-0 left-0 h-full w-64 bg-gray-800 z-30 transform transition-transform duration-300 ease-in-out flex flex-col ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Профиль пользователя - показываем только для авторизованных */}
         {user && (
           <div className="p-4 border-b border-gray-700 flex-shrink-0">
             <div className="flex items-center">
@@ -232,12 +215,10 @@ const AppLayout: React.FC = () => {
           </div>
         )}
 
-        {/* Заголовок меню - показываем для всех */}
         <div className="p-4 border-b border-gray-700 flex-shrink-0">
           <h2 className="text-white text-xl font-bold">{t("common.menu")}</h2>
         </div>
 
-        {/* Навигация - показываем для всех */}
         <div className="flex-1 overflow-y-auto">
           <nav className="space-y-2 p-4">
             <Link
@@ -262,7 +243,6 @@ const AppLayout: React.FC = () => {
               {t("navigation.sweepstakes")}
             </Link>
             
-            {/* Разделы только для авторизованных пользователей */}
             {user && (
               <>
                 <Link
@@ -298,7 +278,6 @@ const AppLayout: React.FC = () => {
           </nav>
         </div>
 
-        {/* Нижняя панель с кнопками - показываем для всех */}
         <div className="p-4 border-t border-gray-700 flex-shrink-0 space-y-2">
           <button
             onClick={() => {
