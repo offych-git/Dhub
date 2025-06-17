@@ -383,7 +383,7 @@ const PromosPage: React.FC = () => {
   });
 
   return (
-    <div className="pb-16 pt-3 bg-gray-900 min-h-screen">
+    <div className="pb-16 pt-12 bg-gray-900 min-h-screen">
       {/* Информационная строка о промоакциях */}
       <div className=" text-[10px] text-center py-1 px-2">
         We may get paid by brands for deals, including promoted items.

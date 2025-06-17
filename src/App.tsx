@@ -41,7 +41,7 @@ import UserSubscriptionsPage from './pages/UserSubscriptionsPage';
 import SearchPage from './pages/SearchPage';
 import FacebookDataDeletionPage from './pages/FacebookDataDeletionPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-
+import PrimeDay from './pages/PrimeDay';
 import initGlobalInteractions from './utils/globalInteractions';
 import initWebViewConsole from './utils/webViewConsole';
 
@@ -162,7 +162,7 @@ return (
                     <Route path="/moderation" element={<PrivateRoute><ModerationPage /></PrivateRoute>} />
                     <Route path="/moderation/settings" element={<PrivateRoute><ModerationSettingsPage /></PrivateRoute>} />
                     <Route path="/user-subscriptions" element={<PrivateRoute><UserSubscriptionsPage /></PrivateRoute>} />
-
+                    <Route path="/primeday" element={<PrivateRoute><PrimeDay /></PrivateRoute>} />
                     <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
                     <Route path="/saved" element={<PrivateRoute><SavedItemsPage /></PrivateRoute>} />
                     <Route path="/comments" element={<PrivateRoute><UserCommentsPage /></PrivateRoute>} />
