@@ -16,7 +16,7 @@ const productData = {
     "Электроника и Гаджеты": ["iPad", "Google Pixel", "Samsung телефон", "Samsung планшет", "Garmin часы", "Kindle", "Ноутбук", "Принтер", "Видеорегистратор", "Air Fryer", "Bluetooth колонка", "GoPro", "Meta Quest", "Ray Ban Meta очки", "Beats", "Shark", "Ring", "Nikon", "Canon", "Echo", "Fire TV", "Blink", "eero", "Power bank", "Steam Deck", "Razer"],
     "Бытовая Техника": ["Робот пылесос", "Roborock пылесос", "Breville кофемашина", "Philips кофемашина", "DeLonghi кофемашина", "KitchenAid", "KENWOOD", "Instant pot", "Крупная бытовая техника", "Очиститель воздуха", "Ninja Creami", "Nespresso", "Lavazza", "Электробритвы", "Le Creuset", "Anova", "T-fal", "Braun", "Philips"],
     "Дом и Сад": ["Dewalt", "Makita", "Гриль газовый", "Гриль на углях", "Коптильня", "Матрас", "Мебель для дома", "Уличная мебель", "Инструменты", "Генератор"],
-    "Мода и Аксессуары": ["Nike", "Adidas", "New Balance", "Victoria's Secret", "Tiffany", "Puma", "Carhartt", "Michael Kors", "Timberland", "Polo Ralph Lauren", "Crocs", "UGG", "Парфюмерия", "Lancome", "Чемоданы"],
+    "Мода и Аксессуары": ["Nike", "Adidas", "New Balance", "Victoria's Secret", "Puma", "Carhartt", "Michael Kors", "Timberland", "Polo Ralph Lauren", "Crocs", "UGG", "Парфюмерия", "Lancome", "Чемоданы"],
     "Дети": ["Roblox", "Minecraft", "Play-Doh", "Bluey", "Barbie", "MARVEL", "LEGO", "LOL", "Hot Wheels", "Britax", "Graco Nuna", "Stokke", "Bugaboo", "Все для детей"],
 "Животные": ["Litter Robot", "Товары для животных", "Корма", "Наполнитель"],
     "Разное": ["Tide", "Рюкзак", "Гифт карты", "Товары для охоты", "Maybelline", "CeraVe", "Olay", "Revlon", "Laneige", "Электрическая зубная щетка"],
