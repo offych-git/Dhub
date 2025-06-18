@@ -111,10 +111,10 @@ const handleVisitStoreClick = () => {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   useEffect(() => {
-    const pageTitle = "Promo Details";
+            const pageTitle = "Promo Details";
 
-    // Устанавливаем заголовок страницы в браузере
-    document.title = `${pageTitle} - WeDealz`;
+        // НЕ устанавливаем заголовок страницы в браузере - используем дефолтный из index.html
+        // document.title = `${pageTitle} - WeDealz`;
 
     console.log(
       `[PromocodeDetailPage Web] INFO: useEffect для отправки заголовка "${pageTitle}" запущен (с небольшой задержкой).`,
@@ -138,8 +138,8 @@ const handleVisitStoreClick = () => {
       }
     }, 50);
 
-    return () => clearTimeout(timerId);
-  }, []);
+            return () => clearTimeout(timerId);
+    }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
