@@ -31,6 +31,7 @@ const DealsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>(['active', 'expired']); // По умолчанию оба включены
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -92,6 +93,16 @@ if (activeTab === "hot") {
         }
         if (selectedStores.length > 0) {
           query = query.in("store_id", selectedStores);
+        }
+
+        // Apply status filter (active/expired)
+        if (selectedStatus.length > 0 && selectedStatus.length < 2) {
+          const now = new Date().toISOString();
+          if (selectedStatus.includes('active')) {
+            query = query.or(`expires_at.is.null,expires_at.gte.${now}`);
+          } else if (selectedStatus.includes('expired')) {
+            query = query.lt('expires_at', now);
+          }
         }
 
         // Apply user/admin status filters
@@ -225,6 +236,7 @@ if (activeTab === "hot") {
       activeTab,
       selectedCategories,
       selectedStores,
+      selectedStatus,
       dispatch,
     ],
   );
@@ -241,11 +253,13 @@ if (activeTab === "hot") {
     sessionStorage.setItem("activeDealsTab", tab);
  setSelectedCategories([]);
   setSelectedStores([]);
+  setSelectedStatus(['active', 'expired']); // Сбрасываем к значениям по умолчанию
   };
 
-  const handleFilterChange = (type: "categories" | "stores", ids: string[]) => {
+  const handleFilterChange = (type: "categories" | "stores" | "status", ids: string[]) => {
     if (type === "categories") setSelectedCategories(ids);
-    else setSelectedStores(ids);
+    else if (type === "stores") setSelectedStores(ids);
+    else if (type === "status") setSelectedStatus(ids);
   };
 
   useEffect(() => {
@@ -259,6 +273,7 @@ if (activeTab === "hot") {
     activeTab,
     selectedCategories,
     selectedStores,
+    selectedStatus,
     location.key,
     searchQuery,
     user?.id,
@@ -349,6 +364,7 @@ if (activeTab === "hot") {
       <FilterBar
         selectedCategories={selectedCategories}
         selectedStores={selectedStores}
+        selectedStatus={selectedStatus}
         onFilterChange={handleFilterChange}
       />
 

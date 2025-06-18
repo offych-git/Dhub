@@ -4,7 +4,7 @@ import { categories, stores, categoryIcons } from '../../data/mockData';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface FilterMenuProps {
-  type: 'categories' | 'stores';
+  type: 'categories' | 'stores' | 'status';
   isOpen: boolean;
   onToggle: () => void;
   selectedItems: string[];
@@ -21,7 +21,14 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
   onClear,
 }) => {
   const { t, language } = useLanguage();
-  const items = type === 'categories' ? categories : stores;
+  
+  // Status filter items
+  const statusItems = [
+    { id: 'active', name: t('filters.active') },
+    { id: 'expired', name: t('filters.expired') }
+  ];
+  
+  const items = type === 'categories' ? categories : type === 'stores' ? stores : statusItems;
   const label = t(`filters.${type}`);
 
   return (
@@ -55,7 +62,12 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                 onClick={() => onSelect(item.id)}
               >
                 {Icon && <Icon className="h-4 w-4 mr-2" />}
-                <span>{language === 'ru' ? item.name : t(item.id)}</span>
+                <span>
+                  {type === 'status' 
+                    ? item.name 
+                    : (language === 'ru' ? item.name : t(item.id))
+                  }
+                </span>
               </div>
             );
           })}

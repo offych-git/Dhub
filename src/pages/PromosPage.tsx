@@ -55,6 +55,7 @@ const PromosPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>(['active', 'expired']); // По умолчанию оба включены
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("q");
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
@@ -356,11 +357,13 @@ const PromosPage: React.FC = () => {
     return new Date(date).toLocaleDateString();
   };
 
-  const handleFilterChange = (type: "categories" | "stores", ids: string[]) => {
+  const handleFilterChange = (type: "categories" | "stores" | "status", ids: string[]) => {
     if (type === "categories") {
       setSelectedCategories(ids);
-    } else {
+    } else if (type === "stores") {
       setSelectedStores(ids);
+    } else if (type === "status") {
+      setSelectedStatus(ids);
     }
   };
 
@@ -379,6 +382,20 @@ const PromosPage: React.FC = () => {
         return false;
       }
     }
+    
+    // Фильтрация по статусу (активные/истёкшие)
+    if (selectedStatus.length > 0 && selectedStatus.length < 2) {
+      const now = new Date();
+      const isExpired = promo.expires_at && new Date(promo.expires_at) < now;
+      
+      if (selectedStatus.includes('active') && isExpired) {
+        return false;
+      }
+      if (selectedStatus.includes('expired') && !isExpired) {
+        return false;
+      }
+    }
+    
     return true;
   });
 
@@ -391,6 +408,7 @@ const PromosPage: React.FC = () => {
       <FilterBar
         selectedCategories={selectedCategories}
         selectedStores={selectedStores}
+        selectedStatus={selectedStatus}
         onFilterChange={handleFilterChange}
       />
 

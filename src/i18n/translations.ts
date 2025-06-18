@@ -16,7 +16,10 @@ export const translations = {
       title: "Filters",
       categories: "Categories",
       stores: "Stores",
+      status: "Status",
       all: "All",
+      active: "Active",
+      expired: "Expired",
     },
     common: {
       search: "Search brands, products, etc.",
@@ -89,7 +92,10 @@ export const translations = {
       title: "Фильтры",
       categories: "Категории",
       stores: "Магазины",
+      status: "Статус",
       all: "Все",
+      active: "Активные",
+      expired: "Истёкшие",
     },
     common: {
       search: "Поиск брендов, товаров и т.д.",
@@ -162,7 +168,10 @@ export const translations = {
       title: "Filtros",
       categories: "Categorías",
       stores: "Tiendas",
+      status: "Estado",
       all: "Todos",
+      active: "Activos",
+      expired: "Expirados",
     },
     common: {
       search: "Buscar marcas, productos, etc.",

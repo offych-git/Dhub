@@ -4,25 +4,36 @@ import FilterMenu from '../ui/FilterMenu';
 interface FilterBarProps {
   selectedCategories: string[];
   selectedStores: string[];
-  onFilterChange: (type: 'categories' | 'stores', ids: string[]) => void;
+  selectedStatus: string[];
+  onFilterChange: (type: 'categories' | 'stores' | 'status', ids: string[]) => void;
 }
 
 const FilterBar: React.FC<FilterBarProps> = ({
   selectedCategories,
   selectedStores,
+  selectedStatus,
   onFilterChange,
 }) => {
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [storeMenuOpen, setStoreMenuOpen] = useState(false);
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
 
   const handleCategoryClick = () => {
     setStoreMenuOpen(false);
+    setStatusMenuOpen(false);
     setCategoryMenuOpen(!categoryMenuOpen);
   };
 
   const handleStoreClick = () => {
     setCategoryMenuOpen(false);
+    setStatusMenuOpen(false);
     setStoreMenuOpen(!storeMenuOpen);
+  };
+
+  const handleStatusClick = () => {
+    setCategoryMenuOpen(false);
+    setStoreMenuOpen(false);
+    setStatusMenuOpen(!statusMenuOpen);
   };
 
   const handleCategorySelect = (id: string) => {
@@ -41,6 +52,14 @@ const FilterBar: React.FC<FilterBarProps> = ({
     setStoreMenuOpen(false);
   };
 
+  const handleStatusSelect = (id: string) => {
+    const newStatus = selectedStatus.includes(id)
+      ? selectedStatus.filter((statusId) => statusId !== id)
+      : [...selectedStatus, id];
+    onFilterChange('status', newStatus);
+    setStatusMenuOpen(false);
+  };
+
   return (
     <div className="px-4 mb-4">
       <div className="flex items-center text-gray-400 mb-2">
@@ -55,6 +74,17 @@ const FilterBar: React.FC<FilterBarProps> = ({
             onClear={() => {
               onFilterChange('categories', []);
               setCategoryMenuOpen(false);
+            }}
+          />
+          <FilterMenu
+            type="status"
+            isOpen={statusMenuOpen}
+            onToggle={handleStatusClick}
+            selectedItems={selectedStatus}
+            onSelect={handleStatusSelect}
+            onClear={() => {
+              onFilterChange('status', []);
+              setStatusMenuOpen(false);
             }}
           />
           <FilterMenu

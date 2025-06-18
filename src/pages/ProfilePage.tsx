@@ -607,16 +607,27 @@ const ProfilePage: React.FC = () => {
               role === "moderator" ||
               role === "admin" ||
               role === "super_admin") && (
-                <div className="px-4 py-3 flex items-center">
-                  <Shield className="h-5 w-5 text-orange-500 mr-3" />
-                  <button
-                    onClick={() => navigate("/moderation")}
-                    className="text-white flex-1 text-left"
-                  >
-                    Модерация
-                  </button>
-                  <ModerationCount />
-                </div>
+                <>
+                  <div className="px-4 py-3 flex items-center">
+                    <Shield className="h-5 w-5 text-orange-500 mr-3" />
+                    <button
+                      onClick={() => navigate("/moderation")}
+                      className="text-white flex-1 text-left"
+                    >
+                      Модерация
+                    </button>
+                    <ModerationCount />
+                  </div>
+                  <div className="px-4 py-3 flex items-center">
+                    <Bell className="h-5 w-5 text-purple-500 mr-3" />
+                    <button
+                      onClick={() => navigate("/admin/push-notifications")}
+                      className="text-white flex-1 text-left"
+                    >
+                      Push-уведомления
+                    </button>
+                  </div>
+                </>
               )}
           </div>
         </div>

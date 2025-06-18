@@ -37,6 +37,7 @@ import SweepstakesPage from './pages/SweepstakesPage';
 import EditSweepstakesPage from './pages/EditSweepstakesPage';
 import ModerationPage from './pages/ModerationPage';
 import ModerationSettingsPage from './pages/ModerationSettingsPage';
+import PushNotificationAdminPage from './pages/PushNotificationAdminPage';
 import UserSubscriptionsPage from './pages/UserSubscriptionsPage';
 import SearchPage from './pages/SearchPage';
 import FacebookDataDeletionPage from './pages/FacebookDataDeletionPage';
@@ -161,6 +162,7 @@ return (
                     <Route path="/edit-sweepstakes/:id" element={<PrivateRoute><EditSweepstakesPage /></PrivateRoute>} />
                     <Route path="/moderation" element={<PrivateRoute><ModerationPage /></PrivateRoute>} />
                     <Route path="/moderation/settings" element={<PrivateRoute><ModerationSettingsPage /></PrivateRoute>} />
+                    <Route path="/admin/push-notifications" element={<PrivateRoute><PushNotificationAdminPage /></PrivateRoute>} />
                     <Route path="/user-subscriptions" element={<PrivateRoute><UserSubscriptionsPage /></PrivateRoute>} />
                     <Route path="/primeday" element={<PrivateRoute><PrimeDay /></PrivateRoute>} />
                     <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
