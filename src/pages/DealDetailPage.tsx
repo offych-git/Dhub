@@ -133,6 +133,9 @@ const DealDetailPage: React.FC = () => {
     };
 
     useEffect(() => {
+        // Устанавливаем заголовок страницы в браузере
+        document.title = "Deal Details - WeDealz";
+        
         // Прокручиваем страницу вверх при открытии деталей сделки
         window.scrollTo(0, 0);
 

@@ -11,6 +11,9 @@ export const translations = {
       savedItems: "Saved Items",
       myComments: "My Comments",
       notificationSettings: "Notification Settings",
+      dealDetails: "Deal Details",
+      promoDetails: "Promo Details",
+      sweepstakeDetails: "Sweepstakes Details",
     },
     filters: {
       title: "Filters",
@@ -87,6 +90,9 @@ export const translations = {
       savedItems: "Сохраненное",
       myComments: "Мои комментарии",
       notificationSettings: "Настройки уведомлений",
+      dealDetails: "Детали скидки",
+      promoDetails: "Детали промокода",
+      sweepstakeDetails: "Детали розыгрыша",
     },
     filters: {
       title: "Фильтры",
@@ -163,6 +169,9 @@ export const translations = {
       savedItems: "Guardados",
       myComments: "Mis Comentarios",
       notificationSettings: "Configuración de Notificaciones",
+      dealDetails: "Detalles de Oferta",
+      promoDetails: "Detalles de Promoción",
+      sweepstakeDetails: "Detalles de Sorteo",
     },
     filters: {
       title: "Filtros",

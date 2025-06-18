@@ -41,7 +41,18 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, style }) => {
   }, [onMenuClick]);
 
   const getTitle = () => {
-    // ... ваш существующий код getTitle ...
+    // Проверяем специальные пути для детальных страниц
+    if (location.pathname.startsWith('/deals/') && location.pathname !== '/deals/new') {
+      return t("navigation.dealDetails");
+    }
+    if (location.pathname.startsWith('/promos/') && !location.pathname.includes('/edit')) {
+      return t("navigation.promoDetails");
+    }
+    if (location.pathname.startsWith('/sweepstakes/') && !location.pathname.includes('/edit')) {
+      return t("navigation.sweepstakeDetails");
+    }
+    
+    // Обычные пути
     switch (location.pathname) {
       case "/":
         return t("navigation.deals");

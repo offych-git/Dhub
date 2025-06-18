@@ -409,6 +409,9 @@ const handleVisitSweepstakesClick = () => {
     useEffect(() => {
         const pageTitle = "Sweepstakes Details";
 
+        // Устанавливаем заголовок страницы в браузере
+        document.title = `${pageTitle} - WeDealz`;
+
         console.log(
             `[SweepstakesDetailPage Web] INFO: useEffect для отправки заголовка "${pageTitle}" запущен (с небольшой задержкой).`,
         );

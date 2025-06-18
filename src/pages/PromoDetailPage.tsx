@@ -113,6 +113,9 @@ const handleVisitStoreClick = () => {
   useEffect(() => {
     const pageTitle = "Promo Details";
 
+    // Устанавливаем заголовок страницы в браузере
+    document.title = `${pageTitle} - WeDealz`;
+
     console.log(
       `[PromocodeDetailPage Web] INFO: useEffect для отправки заголовка "${pageTitle}" запущен (с небольшой задержкой).`,
     );
