@@ -24,6 +24,13 @@ interface User {
   email: string;
   push_token: string;
   language?: string;
+  push_tokens?: string[]; // Массив токенов для множественных устройств
+  deviceCount?: number;   // Количество устройств
+  devices?: Array<{       // Детали устройств
+    token: string;
+    type: string;
+    platform: string;
+  }>;
 }
 
 interface NotificationStats {
@@ -148,26 +155,96 @@ const PushNotificationAdminPage: React.FC = () => {
   // Load users with push tokens
   const loadUsers = async () => {
     try {
-      // Try to load with language column first
-      let { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, push_token, language')
-        .not('push_token', 'is', null);
+      console.log('🔍 Loading users with push tokens...');
       
-      // If language column doesn't exist, load without it
-      if (error && error.message.includes('column profiles.language does not exist')) {
-        console.warn('Language column not found, loading without language data');
-        const result = await supabase
+      // Сначала пробуем загрузить из новой таблицы user_devices
+      let { data: devicesData, error: devicesError } = await supabase
+        .from('user_devices')
+        .select(`
+          user_id,
+          push_token,
+          device_type,
+          platform,
+          profiles!inner(id, email, language)
+        `)
+        .not('push_token', 'is', null);
+
+      if (!devicesError && devicesData && devicesData.length > 0) {
+        console.log('✅ Loaded users from user_devices table:', devicesData.length);
+        
+        // Группируем устройства по пользователям
+        const userMap = new Map();
+        
+        devicesData.forEach(device => {
+          const userId = device.user_id;
+          const profile = device.profiles;
+          
+          if (!userMap.has(userId)) {
+            userMap.set(userId, {
+              id: userId,
+              email: profile.email,
+              language: profile.language || 'ru',
+              push_tokens: [], // Массив токенов для всех устройств
+              devices: []
+            });
+          }
+          
+          const user = userMap.get(userId);
+          user.push_tokens.push(device.push_token);
+          user.devices.push({
+            token: device.push_token,
+            type: device.device_type,
+            platform: device.platform
+          });
+        });
+        
+        // Преобразуем Map в массив и добавляем совместимость со старым форматом
+        const usersWithDevices = Array.from(userMap.values()).map(user => ({
+          ...user,
+          push_token: user.push_tokens[0], // Для совместимости со старым кодом
+          deviceCount: user.push_tokens.length
+        }));
+        
+        setUsers(usersWithDevices);
+        console.log('📱 Users with multiple devices loaded:', usersWithDevices.length);
+        
+      } else {
+        console.log('⚠️ user_devices table not found or empty, falling back to profiles...');
+        
+        // Fallback: загружаем из старой таблицы profiles
+        let { data, error } = await supabase
           .from('profiles')
-          .select('id, email, push_token')
+          .select('id, email, push_token, language')
           .not('push_token', 'is', null);
         
-        data = result.data?.map(user => ({ ...user, language: 'ru' })) || [];
-        error = result.error;
+        // If language column doesn't exist, load without it
+        if (error && error.message.includes('column profiles.language does not exist')) {
+          console.warn('Language column not found, loading without language data');
+          const result = await supabase
+            .from('profiles')
+            .select('id, email, push_token')
+            .not('push_token', 'is', null);
+          
+          data = result.data?.map(user => ({ 
+            ...user, 
+            language: 'ru',
+            push_tokens: [user.push_token], // Преобразуем в массив для совместимости
+            deviceCount: 1
+          })) || [];
+          error = result.error;
+        } else if (data) {
+          // Преобразуем старый формат в новый для совместимости
+          data = data.map(user => ({
+            ...user,
+            push_tokens: [user.push_token],
+            deviceCount: 1
+          }));
+        }
+        
+        if (error) throw error;
+        setUsers(data || []);
+        console.log('📱 Users loaded from profiles (fallback):', data?.length || 0);
       }
-      
-      if (error) throw error;
-      setUsers(data || []);
       
       // Если пользователь найден и у него есть токен, автоматически выбираем его
       if (userProfileStatus === 'found' && user?.id) {
@@ -187,10 +264,28 @@ const PushNotificationAdminPage: React.FC = () => {
         .from('profiles')
         .select('*', { count: 'exact', head: true });
       
-      const { count: usersWithTokens } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
+      // Пробуем получить статистику из новой таблицы user_devices
+      let { data: devicesData, error: devicesError } = await supabase
+        .from('user_devices')
+        .select('user_id')
         .not('push_token', 'is', null);
+      
+      let usersWithTokens = 0;
+      
+      if (!devicesError && devicesData && devicesData.length > 0) {
+        // Подсчитываем уникальных пользователей с устройствами
+        const uniqueUsers = new Set(devicesData.map(d => d.user_id));
+        usersWithTokens = uniqueUsers.size;
+        console.log('📊 Stats from user_devices:', usersWithTokens, 'users with', devicesData.length, 'devices');
+      } else {
+        // Fallback к старой таблице profiles
+        const { count } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .not('push_token', 'is', null);
+        usersWithTokens = count || 0;
+        console.log('📊 Stats from profiles (fallback):', usersWithTokens, 'users');
+      }
       
       const today = new Date().toISOString().split('T')[0];
       const { count: sentToday } = await supabase
@@ -200,7 +295,7 @@ const PushNotificationAdminPage: React.FC = () => {
       
       setStats({
         totalUsers: totalUsers || 0,
-        usersWithTokens: usersWithTokens || 0,
+        usersWithTokens,
         sentToday: sentToday || 0
       });
     } catch (error) {
@@ -298,9 +393,21 @@ const PushNotificationAdminPage: React.FC = () => {
     try {
       setIsLoading(true);
       
-      const targetTokens = users
+      // Собираем ВСЕ токены для выбранных пользователей (поддержка множественных устройств)
+      const targetTokens: string[] = [];
+      users
         .filter(u => recipients.includes(u.id))
-        .map(u => u.push_token);
+        .forEach(u => {
+          if (u.push_tokens && u.push_tokens.length > 0) {
+            // Новая система: используем все токены пользователя
+            targetTokens.push(...u.push_tokens);
+          } else if (u.push_token) {
+            // Старая система: используем единственный токен
+            targetTokens.push(u.push_token);
+          }
+        });
+
+      console.log(`📤 Sending to ${targetTokens.length} devices for ${recipients.length} users`);
 
       const { data, error } = await supabase.functions.invoke('send-push-notification', {
         body: {
@@ -693,10 +800,23 @@ const PushNotificationAdminPage: React.FC = () => {
                                     Это вы
                                   </span>
                                 )}
+                                {userItem.deviceCount && userItem.deviceCount > 1 && (
+                                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                    📱 {userItem.deviceCount} устройств
+                                  </span>
+                                )}
                               </span>
                               <p className="text-xs text-gray-500">
-                                {userItem.push_token.substring(0, 20)}...
+                                {userItem.push_tokens && userItem.push_tokens.length > 1 
+                                  ? `${userItem.push_tokens.length} токенов: ${userItem.push_tokens[0].substring(0, 15)}...`
+                                  : `${userItem.push_token.substring(0, 20)}...`
+                                }
                               </p>
+                              {userItem.devices && userItem.devices.length > 1 && (
+                                <p className="text-xs text-blue-600">
+                                  {userItem.devices.map(d => `${d.platform} (${d.type})`).join(', ')}
+                                </p>
+                              )}
                             </div>
                           </label>
                         ))}
