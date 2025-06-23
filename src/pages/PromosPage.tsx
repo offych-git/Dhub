@@ -425,7 +425,8 @@ const PromosPage: React.FC = () => {
               <Link
                 key={promo.id}
                 to={`/promos/${promo.id}`}
-                className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 transition-colors flex flex-col h-full"
+                className="bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors flex flex-col h-full relative"
+                style={{ overflow: 'visible' }}
               >
                 <div className="p-3 flex-1">
                   <div className="flex items-center justify-between mb-2">
@@ -580,14 +581,24 @@ const PromosPage: React.FC = () => {
                       {(role === "admin" ||
                         role === "moderator" ||
                         (user && user.id === promo.user.id)) && (
-                        <AdminActions
-                          className="ml-3 text-orange-500 flex items-center"
-                          onClick={(e) => e.stopPropagation()}
-                          type="promo"
-                          id={promo.id}
-                          userId={promo.user.id}
-                          onAction={fetchPromoCodes}
-                        />
+                        <div
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          className="ml-3 relative"
+                          style={{ overflow: 'visible' }}
+                        >
+                          <AdminActions
+                            className="text-orange-500 flex items-center"
+                            type="promo"
+                            id={promo.id}
+                            userId={promo.user.id}
+                            createdAt={promo.created_at}
+                            expiresAt={promo.expires_at}
+                            onAction={fetchPromoCodes}
+                          />
+                        </div>
                       )}
                     </div>
                   </div>

@@ -390,6 +390,7 @@ navigate(`/edit-deal/${deal.id}`);
                 id={deal.id}
                 userId={deal.postedBy.id}
                 createdAt={deal.createdAt}
+                expiresAt={deal.expires_at}
                 onAction={onDelete || (() => {})}
                 className="ml-3 border-l border-gray-700 pl-3"
               />
