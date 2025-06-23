@@ -17,6 +17,7 @@ import { highlightText } from "../utils/highlightText";
 import VoteControls from "../components/deals/VoteControls.tsx";
 import { triggerNativeHaptic } from "../utils/nativeBridge";
 import ReactGA4 from 'react-ga4'; // <-- Добавлен импорт ReactGA4
+import { LinkifiedHtml } from "../utils/linkUtils";
 
 const DealDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -1215,75 +1216,10 @@ console.log("--------------------");
 
                 <div className="mt-6">
                     <h3 className="text-white font-medium mb-2">Description</h3>
-                    <pre
+                    <LinkifiedHtml
+                        content={deal.description || ''}
+                        searchQuery={searchQuery}
                         className="description-text font-sans text-sm bg-transparent overflow-visible whitespace-pre-wrap border-0 p-0 m-0"
-                        dangerouslySetInnerHTML={{
-                            __html: (() => {
-                                // Сначала подготавливаем описание
-                                let processedDescription = deal.description
-                                    // Сначала удаляем технический блок с JSON изображений
-                                    .replace(/<gallery>(.*?)<\/gallery>/g, "")
-                                    // Обрабатываем URL в тексте с улучшенным регулярным выражением
-                                    .replace(
-                                        /(https?:\/\/[^\s<>"]+)/g,
-                                        (match) => {
-                                            // Проверяем, заканчивается ли URL специальным символом
-                                            const lastChar = match.charAt(
-                                                match.length - 1,
-                                            );
-                                            // Проверяем специальные символы на конце URL
-                                            if (
-                                                [
-                                                    ",",
-                                                    ".",
-                                                    ":",
-                                                    ";",
-                                                    "!",
-                                                    "?",
-                                                    ")",
-                                                    "]",
-                                                    "}",
-                                                ].includes(lastChar)
-                                            ) {
-                                                // Исключаем последний символ из ссылки (href и текста) и добавляем его после тега </a>
-                                                return `<a href="${match.slice(0, -1)}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match.slice(0, -1)}</a>${lastChar}`;
-                                            }
-                                            // Если URL не заканчивается специальным символом из списка, создаем ссылку как обычно
-                                            return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-orange-500 hover:underline">${match}</a>`;
-                                        },
-                                    )
-                                    // Обрабатываем двойные переносы строк (пустые строки)
-                                    .replace(/\n\n/g, "<br><br>")
-                                    // Затем обрабатываем обычные переносы строк
-                                    .replace(/\n/g, "<br>");
-
-                                // Если есть поисковый запрос, применяем прямую подсветку в HTML строке
-                                if (searchQuery) {
-                                    const searchRegex = new RegExp(
-                                        `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-                                        "gi",
-                                    );
-                                    return processedDescription.replace(
-                                        searchRegex,
-                                        '<span class="bg-orange-500 text-white px-0.5 rounded">$1</span>',
-                                    );
-                                }
-
-                                return processedDescription;
-                            })(),
-                        }}
-                        ref={(element) => {
-                            if (element) {
-                                const links = element.querySelectorAll("a");
-                                links.forEach((link) => {
-                                    link.setAttribute("target", "_blank");
-                                    link.setAttribute(
-                                        "rel",
-                                        "noopener noreferrer",
-                                    );
-                                });
-                            }
-                        }}
                     />
                 </div>
 

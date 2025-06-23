@@ -23,6 +23,7 @@ import { useGlobalState } from "../contexts/GlobalStateContext";
 import VoteControls from "../components/deals/VoteControls";
 import { useLanguage } from "../contexts/LanguageContext";
 import { triggerNativeHaptic } from "../utils/nativeBridge";
+import { decodeHtmlEntities } from "../utils/htmlUtils";
 
 interface PromoCode {
   id: string;
@@ -445,7 +446,7 @@ const PromosPage: React.FC = () => {
                   <div className="mb-2">
                     <div className="flex items-center">
                       <h3 className="text-white font-medium line-clamp-1">
-                        {promo.title}
+                        {decodeHtmlEntities(promo.title)}
                       </h3>
                       {promo.status === "pending" && (
                         <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
@@ -542,7 +543,7 @@ const PromosPage: React.FC = () => {
                             const promoUrl = `${window.location.origin}/promos/${promo.id}`;
                             navigator
                               .share({
-                                title: promo.title,
+                                title: decodeHtmlEntities(promo.title),
                                 url: promoUrl,
                               })
                               .catch(console.error);

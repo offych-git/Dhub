@@ -6,6 +6,7 @@ import { useGlobalState } from '../contexts/GlobalStateContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext'; // Добавление импорта AuthContext
 import { useSearchParams, useLocation } from 'react-router-dom';
+import { decodeHtmlEntities } from '../utils/htmlUtils';
 
 const formatRelativeTime = (date: Date) => {
   const now = new Date();
@@ -187,7 +188,7 @@ const SweepstakesPage: React.FC = () => {
 
         return {
           id: deal.id,
-          title: deal.title,
+          title: decodeHtmlEntities(deal.title),
           currentPrice: parseFloat(deal.current_price),
           originalPrice: deal.original_price ? parseFloat(deal.original_price) : undefined,
           store: { id: deal.store_id, name: deal.store_id || 'Sweepstakes' },

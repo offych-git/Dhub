@@ -15,6 +15,7 @@ import AdminActions from "../components/admin/AdminActions";
 import { highlightText } from "../utils/highlightText";
 import { triggerNativeHaptic } from "../utils/nativeBridge";
 import ReactGA4 from 'react-ga4'; // Добавлен импорт
+import { LinkifiedHtml } from "../utils/linkUtils";
 
 const PromoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -479,23 +480,10 @@ const handleVisitStoreClick = () => {
           </div>
 
           {/* ЭТОТ БЛОК ТЕПЕРЬ ВСЕГДА ВИДИМ */}
-          <div
+          <LinkifiedHtml
+            content={promo.description || ''}
+            searchQuery={searchQuery}
             className="text-gray-300"
-            dangerouslySetInnerHTML={{
-              __html: (() => {
-                if (searchQuery) {
-                  const searchRegex = new RegExp(
-                    `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-                    "gi",
-                  );
-                  return promo.description.replace(
-                    searchRegex,
-                    '<span class="bg-orange-500 text-white px-0.5 rounded">$1</span>',
-                  );
-                }
-                return promo.description;
-              })(),
-            }}
           />
 
           {promo.expires_at && (

@@ -8,6 +8,7 @@ import Tabs from "../components/deals/Tabs";
 import FilterBar from "../components/shared/FilterBar";
 import DealCard from "../components/deals/DealCard";
 import { DEAL_SETTINGS } from "../config/settings";
+import { decodeHtmlEntities } from "../utils/htmlUtils";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -169,7 +170,7 @@ if (activeTab === "hot") {
 
         const enrichedDeals = (data || []).map((deal) => ({
           id: deal.id,
-          title: deal.title,
+          title: decodeHtmlEntities(deal.title),
           type: deal.type,
           currentPrice: parseFloat(deal.current_price),
           originalPrice: deal.original_price
@@ -193,7 +194,7 @@ if (activeTab === "hot") {
             name: deal.display_name || deal.email?.split("@")[0] || "Anonymous",
             avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(deal.display_name || deal.email?.split("@")[0] || "Anonymous")}&background=random`,
           },
-          description: deal.description,
+          description: decodeHtmlEntities(deal.description),
           url: deal.deal_url,
           createdAt: new Date(deal.created_at),
           is_hot: deal.is_hot,

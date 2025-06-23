@@ -17,6 +17,7 @@ import { useSearchParams } from "react-router-dom"; // Added import
 import { highlightText } from "../../utils/highlightText"; // Added import
 import VoteControls from "../deals/VoteControls";
 import { triggerNativeHaptic } from "../../utils/nativeBridge";
+import { decodeHtmlEntities } from "../../utils/htmlUtils";
 
 interface DealCardProps {
   deal: Deal;
@@ -143,8 +144,8 @@ const DealCard: React.FC<DealCardProps> = ({
         >
           <h3 className="text-white font-medium text-sm line-clamp-2 cursor-pointer">
             {searchParams.get("q")
-              ? highlightText(deal.title, searchParams.get("q") || "")
-              : deal.title}
+              ? highlightText(decodeHtmlEntities(deal.title), searchParams.get("q") || "")
+              : decodeHtmlEntities(deal.title)}
           </h3>
 
           <div className="mt-1 flex items-center justify-between">
