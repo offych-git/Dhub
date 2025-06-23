@@ -177,13 +177,13 @@ const PushNotificationAdminPage: React.FC = () => {
         
         devicesData.forEach(device => {
           const userId = device.user_id;
-          const profile = device.profiles;
+          const profile = Array.isArray(device.profiles) ? device.profiles[0] : device.profiles;
           
           if (!userMap.has(userId)) {
             userMap.set(userId, {
               id: userId,
-              email: profile.email,
-              language: profile.language || 'ru',
+              email: profile?.email || 'Неизвестный email',
+              language: profile?.language || 'ru',
               push_tokens: [], // Массив токенов для всех устройств
               devices: []
             });
@@ -393,25 +393,12 @@ const PushNotificationAdminPage: React.FC = () => {
     try {
       setIsLoading(true);
       
-      // Собираем ВСЕ токены для выбранных пользователей (поддержка множественных устройств)
-      const targetTokens: string[] = [];
-      users
-        .filter(u => recipients.includes(u.id))
-        .forEach(u => {
-          if (u.push_tokens && u.push_tokens.length > 0) {
-            // Новая система: используем все токены пользователя
-            targetTokens.push(...u.push_tokens);
-          } else if (u.push_token) {
-            // Старая система: используем единственный токен
-            targetTokens.push(u.push_token);
-          }
-        });
-
-      console.log(`📤 Sending to ${targetTokens.length} devices for ${recipients.length} users`);
+      // Используем новую систему targetUserIds для автоматического сбора всех токенов пользователя
+      console.log(`📤 Sending to ${recipients.length} users (Edge Function will collect all their device tokens)`);
 
       const { data, error } = await supabase.functions.invoke('send-push-notification', {
         body: {
-          targetTokens,
+          targetUserIds: recipients, // ✅ Новый метод - Edge Function сам соберет все токены
           title,
           body: message,
           data: {
@@ -426,15 +413,15 @@ const PushNotificationAdminPage: React.FC = () => {
       if (error) throw error;
       
       if (data.success) {
-        const count = targetTokens.length;
         const isOnlyMe = testMode && recipients.length === 1 && recipients[0] === user?.id;
+        const deviceCount = data.deviceCount || recipients.length; // Используем количество устройств из ответа
         
         showAlert(
           isOnlyMe 
             ? '✅ Тестовое уведомление отправлено вам! Проверьте телефон.' 
             : testMode
-              ? `✅ Тестовое уведомление отправлено ${count} пользователям`
-              : `🎉 Массовое уведомление отправлено ${count} пользователям!`,
+              ? `✅ Тестовое уведомление отправлено на ${deviceCount} устройств`
+              : `🎉 Массовое уведомление отправлено на ${deviceCount} устройств!`,
           'success'
         );
         
