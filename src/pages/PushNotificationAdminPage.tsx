@@ -175,14 +175,14 @@ const PushNotificationAdminPage: React.FC = () => {
         // Группируем устройства по пользователям
         const userMap = new Map();
         
-        devicesData.forEach(device => {
+        devicesData.forEach((device: any) => {
           const userId = device.user_id;
-          const profile = Array.isArray(device.profiles) ? device.profiles[0] : device.profiles;
+          const profile = device.profiles;
           
           if (!userMap.has(userId)) {
             userMap.set(userId, {
               id: userId,
-              email: profile?.email || 'Неизвестный email',
+              email: profile?.email || 'Unknown',
               language: profile?.language || 'ru',
               push_tokens: [], // Массив токенов для всех устройств
               devices: []
@@ -393,12 +393,13 @@ const PushNotificationAdminPage: React.FC = () => {
     try {
       setIsLoading(true);
       
-      // Используем новую систему targetUserIds для автоматического сбора всех токенов пользователя
-      console.log(`📤 Sending to ${recipients.length} users (Edge Function will collect all their device tokens)`);
+      // ИСПОЛЬЗУЕМ НОВУЮ СИСТЕМУ МНОЖЕСТВЕННЫХ УСТРОЙСТВ
+      // Отправляем targetUserIds вместо targetTokens - так Edge Function сам соберет все токены
+      console.log(`📤 Sending to ${recipients.length} users (all their devices will receive notification)`);
 
-      const { data, error } = await supabase.functions.invoke('send-push-notification', {
+      const { data, error } = await supabase.functions.invoke('send-push-notification-v2', {
         body: {
-          targetUserIds: recipients, // ✅ Новый метод - Edge Function сам соберет все токены
+          targetUserIds: recipients, // Используем targetUserIds для множественных устройств!
           title,
           body: message,
           data: {
@@ -413,15 +414,15 @@ const PushNotificationAdminPage: React.FC = () => {
       if (error) throw error;
       
       if (data.success) {
+        const userCount = recipients.length;
         const isOnlyMe = testMode && recipients.length === 1 && recipients[0] === user?.id;
-        const deviceCount = data.deviceCount || recipients.length; // Используем количество устройств из ответа
         
         showAlert(
           isOnlyMe 
-            ? '✅ Тестовое уведомление отправлено вам! Проверьте телефон.' 
+            ? '✅ Тестовое уведомление отправлено вам на все ваши устройства! Проверьте телефон.' 
             : testMode
-              ? `✅ Тестовое уведомление отправлено на ${deviceCount} устройств`
-              : `🎉 Массовое уведомление отправлено на ${deviceCount} устройств!`,
+              ? `✅ Тестовое уведомление отправлено ${userCount} пользователям на все их устройства`
+              : `🎉 Массовое уведомление отправлено ${userCount} пользователям на все их устройства!`,
           'success'
         );
         
@@ -780,29 +781,39 @@ const PushNotificationAdminPage: React.FC = () => {
                               className="rounded border-gray-300"
                             />
                             <div className="flex-1">
-                              <span className="text-sm font-medium">
-                                {userItem.email || 'Пользователь без email'}
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium">
+                                  {userItem.email || 'Пользователь без email'}
+                                </span>
                                 {userItem.id === user?.id && (
-                                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                                     Это вы
                                   </span>
                                 )}
-                                {userItem.deviceCount && userItem.deviceCount > 1 && (
-                                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                    📱 {userItem.deviceCount} устройств
-                                  </span>
-                                )}
-                              </span>
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  (userItem.deviceCount || 1) > 1 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  📱 {userItem.deviceCount || 1} {(userItem.deviceCount || 1) === 1 ? 'устройство' : 'устройств'}
+                                </span>
+                              </div>
                               <p className="text-xs text-gray-500">
                                 {userItem.push_tokens && userItem.push_tokens.length > 1 
                                   ? `${userItem.push_tokens.length} токенов: ${userItem.push_tokens[0].substring(0, 15)}...`
-                                  : `${userItem.push_token.substring(0, 20)}...`
+                                  : `Токен: ${userItem.push_token?.substring(0, 20)}...`
                                 }
                               </p>
-                              {userItem.devices && userItem.devices.length > 1 && (
-                                <p className="text-xs text-blue-600">
-                                  {userItem.devices.map(d => `${d.platform} (${d.type})`).join(', ')}
-                                </p>
+                              {userItem.devices && userItem.devices.length > 0 && (
+                                <div className="text-xs text-blue-600 mt-1">
+                                  <span className="font-medium">Устройства: </span>
+                                  {userItem.devices.map((d, idx) => (
+                                    <span key={idx} className="inline-block mr-2 mb-1">
+                                      {d.platform === 'android' ? '🤖' : d.platform === 'ios' ? '📱' : '💻'} 
+                                      {d.platform} ({d.type === 'expo_go' ? 'Expo Go' : d.type === 'development_build' ? 'Dev Build' : d.type})
+                                    </span>
+                                  ))}
+                                </div>
                               )}
                             </div>
                           </label>
@@ -817,9 +828,14 @@ const PushNotificationAdminPage: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     Массовая рассылка
                   </h3>
-                  <p className="text-gray-600 mb-4">
-                    Уведомление будет отправлено <strong>{users.length} пользователям</strong> с push-токенами
-                  </p>
+                  <div className="text-gray-600 mb-4">
+                    <p>Уведомление будет отправлено <strong>{users.length} пользователям</strong> с push-токенами</p>
+                    <p className="text-sm mt-2">
+                      📱 Общее количество устройств: <strong>
+                        {users.reduce((total, user) => total + (user.deviceCount || 1), 0)}
+                      </strong>
+                    </p>
+                  </div>
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
                     <p className="text-red-800 text-sm">
                       ⚠️ Это действие нельзя отменить. Убедитесь, что уведомление готово к отправке.
@@ -849,17 +865,31 @@ const PushNotificationAdminPage: React.FC = () => {
                 <h2 className="text-xl font-bold text-gray-900 mb-2">
                   {testMode ? 'Тестовое уведомление' : 'Массовое уведомление'}
                 </h2>
-                <p className="text-gray-600">
-                  {testMode 
-                    ? `Создайте уведомление для ${selectedUsers.length} получателей`
-                    : `Создайте уведомление для ${getFilteredUsers().length} пользователей`
-                  }
-                  {!testMode && selectedLanguage !== 'all' && (
-                    <span className="block text-sm text-blue-600 mt-1">
-                      Фильтр по языку: {selectedLanguage}
-                    </span>
+                <div className="text-gray-600">
+                  {testMode ? (
+                    <p>
+                      Создайте уведомление для <strong>{selectedUsers.length}</strong> получателей
+                      <br />
+                      <span className="text-sm">
+                        📱 Будет отправлено на {users.filter(u => selectedUsers.includes(u.id))
+                          .reduce((total, user) => total + (user.deviceCount || 1), 0)} устройств
+                      </span>
+                    </p>
+                  ) : (
+                    <p>
+                      Создайте уведомление для <strong>{getFilteredUsers().length}</strong> пользователей
+                      <br />
+                      <span className="text-sm">
+                        📱 Будет отправлено на {getFilteredUsers().reduce((total, user) => total + (user.deviceCount || 1), 0)} устройств
+                      </span>
+                      {selectedLanguage !== 'all' && (
+                        <span className="block text-sm text-blue-600 mt-1">
+                          Фильтр по языку: {selectedLanguage}
+                        </span>
+                      )}
+                    </p>
                   )}
-                </p>
+                </div>
               </div>
 
                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -1040,19 +1070,33 @@ const PushNotificationAdminPage: React.FC = () => {
                  </div>
 
                  <div className="mt-4 text-center text-sm text-gray-600 px-2">
-                   <p>
-                     {testMode 
-                       ? `Будет отправлено ${selectedUsers.length} получателям`
-                       : `Будет отправлено ${getFilteredUsers().length} пользователям`
-                     }
-                   </p>
-                   {!testMode && selectedLanguage !== 'all' && (
-                     <p className="text-blue-600 font-medium mt-1">
-                       Только пользователи с языком: {selectedLanguage}
-                     </p>
-                   )}
-                   {testMode && selectedUsers.length === 1 && selectedUsers[0] === user?.id && (
-                     <p className="text-blue-600 font-medium mt-1">Отправка только вам для тестирования</p>
+                   {testMode ? (
+                     <div>
+                       <p>Будет отправлено <strong>{selectedUsers.length}</strong> получателям</p>
+                       <p className="text-xs mt-1">
+                         📱 На <strong>
+                           {users.filter(u => selectedUsers.includes(u.id))
+                             .reduce((total, user) => total + (user.deviceCount || 1), 0)}
+                         </strong> устройств
+                       </p>
+                       {selectedUsers.length === 1 && selectedUsers[0] === user?.id && (
+                         <p className="text-blue-600 font-medium mt-1">Отправка только вам для тестирования</p>
+                       )}
+                     </div>
+                   ) : (
+                     <div>
+                       <p>Будет отправлено <strong>{getFilteredUsers().length}</strong> пользователям</p>
+                       <p className="text-xs mt-1">
+                         📱 На <strong>
+                           {getFilteredUsers().reduce((total, user) => total + (user.deviceCount || 1), 0)}
+                         </strong> устройств
+                       </p>
+                       {selectedLanguage !== 'all' && (
+                         <p className="text-blue-600 font-medium mt-1">
+                           Только пользователи с языком: {selectedLanguage}
+                         </p>
+                       )}
+                     </div>
                    )}
                  </div>
                </div>
