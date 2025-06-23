@@ -546,7 +546,7 @@ const UserPostedItemsPage: React.FC = () => {
       )}
 
       <div
-        className={`main-content-area relative mx-4 mb-3 ${!isReactNativeView ? "pt-4" : "pt-4"}`}
+        className={`main-content-area relative mx-4 mb-3 ${!isReactNativeView ? "pt-0" : "pt-4"}`}
       >
         <div className="flex justify-center pb-2 mb-4">
           <div className="flex flex-nowrap items-center space-x-2 overflow-x-auto scrollbar-hide">

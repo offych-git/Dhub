@@ -143,7 +143,7 @@ const SearchBar: React.FC = () => {
   };
 
   return (
-    <div className="relative mx-4 mt-3 mb-0">
+    <div className="relative mx-4 mt-2 mb-0">
       <form onSubmit={handleSearchSubmit} autoComplete="off">
         <div className="flex items-center bg-gray-700 rounded-lg px-4 py-2">
           {/* Иконка лупы слева удалена */}

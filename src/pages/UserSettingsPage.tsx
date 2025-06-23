@@ -229,7 +229,7 @@ const UserSettingsPage: React.FC = () => {
       {/* ИЗМЕНЕНО: Добавлен класс main-content-area и отступ pt-16 (примерно высота хедера) */}
       {/* Ваш существующий pt-4 будет действовать, если бы хедер не был fixed. 
           Так как он fixed, нужен отступ равный его высоте. */}
-      <div className="main-content-area px-4 pt-6">
+      <div className="main-content-area px-4 pt-0">
         {error && (
           <div className="bg-red-500/90 text-white px-4 py-2 rounded-lg mb-4">
             {error}

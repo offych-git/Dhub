@@ -632,7 +632,7 @@ const UserCommentsPage: React.FC = () => {
            Я изменю pt-[6px] на pt-16 для консистентности, когда веб-хедер виден.
            Если isReactNativeView, то pt-4 (или pt-0, если хотите, чтобы RN-хедер управлял отступом). */}
       <div
-        className={`main-content-area relative mx-4 mb-3 ${!isReactNativeView ? "pt-6" : "pt-4"}`}
+        className={`main-content-area relative mx-4 mb-3 ${!isReactNativeView ? "pt-0" : "pt-4"}`}
       >
         <div className="flex items-center bg-gray-700 rounded-lg px-3 py-2 mb-4 shadow">
           <Search className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0" />

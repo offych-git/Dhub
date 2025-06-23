@@ -782,8 +782,8 @@ const PushNotificationAdminPage: React.FC = () => {
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-medium">
-                                  {userItem.email || 'Пользователь без email'}
+                              <span className="text-sm font-medium">
+                                {userItem.email || 'Пользователь без email'}
                                 </span>
                                 {userItem.id === user?.id && (
                                   <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
@@ -796,7 +796,7 @@ const PushNotificationAdminPage: React.FC = () => {
                                     : 'bg-gray-100 text-gray-600'
                                 }`}>
                                   📱 {userItem.deviceCount || 1} {(userItem.deviceCount || 1) === 1 ? 'устройство' : 'устройств'}
-                                </span>
+                                  </span>
                               </div>
                               <p className="text-xs text-gray-500">
                                 {userItem.push_tokens && userItem.push_tokens.length > 1 
@@ -834,7 +834,7 @@ const PushNotificationAdminPage: React.FC = () => {
                       📱 Общее количество устройств: <strong>
                         {users.reduce((total, user) => total + (user.deviceCount || 1), 0)}
                       </strong>
-                    </p>
+                  </p>
                   </div>
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
                     <p className="text-red-800 text-sm">
@@ -883,11 +883,11 @@ const PushNotificationAdminPage: React.FC = () => {
                         📱 Будет отправлено на {getFilteredUsers().reduce((total, user) => total + (user.deviceCount || 1), 0)} устройств
                       </span>
                       {selectedLanguage !== 'all' && (
-                        <span className="block text-sm text-blue-600 mt-1">
-                          Фильтр по языку: {selectedLanguage}
-                        </span>
-                      )}
-                    </p>
+                    <span className="block text-sm text-blue-600 mt-1">
+                      Фильтр по языку: {selectedLanguage}
+                    </span>
+                  )}
+                </p>
                   )}
                 </div>
               </div>
@@ -1092,10 +1092,10 @@ const PushNotificationAdminPage: React.FC = () => {
                          </strong> устройств
                        </p>
                        {selectedLanguage !== 'all' && (
-                         <p className="text-blue-600 font-medium mt-1">
-                           Только пользователи с языком: {selectedLanguage}
-                         </p>
-                       )}
+                     <p className="text-blue-600 font-medium mt-1">
+                       Только пользователи с языком: {selectedLanguage}
+                     </p>
+                   )}
                      </div>
                    )}
                  </div>

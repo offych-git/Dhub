@@ -335,7 +335,7 @@ const ProfilePage: React.FC = () => {
 
 
   return (
-    <div className="pb-8 pt-10 bg-gray-900 min-h-screen">
+    <div className="pb-8 pt-0 bg-gray-900 min-h-screen">
       <div className="px-4 pt-4">
         {error && (
           <div className="bg-red-500 text-white px-4 py-2 rounded mb-4">

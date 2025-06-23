@@ -354,7 +354,7 @@ const SavedItemsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="main-content-area px-4 pt-16">
+      <div className="main-content-area px-4 pt-0">
         <div className="flex space-x-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
           <button
             className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium ${
