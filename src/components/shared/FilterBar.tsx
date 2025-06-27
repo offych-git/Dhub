@@ -123,7 +123,14 @@ const FilterBar: React.FC<FilterBarProps> = ({
           >
             {selectedStatus.length > 0 ? (
               <>
-                <span>{selectedStatus.includes('active') ? t('filters.active') : t('filters.expired')}</span>
+                <span>
+                  {selectedStatus.length === 2 
+                    ? t('filters.all') || 'All'
+                    : selectedStatus.includes('active') 
+                      ? t('filters.active') 
+                      : t('filters.expired')
+                  }
+                </span>
                 <div
                   onClick={(e) => {
                     e.stopPropagation();

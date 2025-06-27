@@ -10,6 +10,7 @@ import {
   Settings,
   Shield,
   Info,
+  Smartphone,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -625,7 +626,16 @@ const ProfilePage: React.FC = () => {
                       className="text-white flex-1 text-left"
                     >
                       Push-уведомления
+                  </button>
+                  <div className="px-4 py-3 flex items-center">
+                    <Smartphone className="h-5 w-5 text-blue-500 mr-3" />
+                    <button
+                      onClick={() => navigate("/admin/mobile-announcements")}
+                      className="text-white flex-1 text-left"
+                    >
+                      Мобильные анонсы
                     </button>
+                    </div>
                   </div>
                 </>
               )}
