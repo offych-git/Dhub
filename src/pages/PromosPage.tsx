@@ -163,7 +163,7 @@ const PromosPage: React.FC = () => {
       let query = supabase
         .from("get_promos_with_stats")
         .select("*")
-        .order("updated_at", { ascending: false });
+        .order("created_at", { ascending: false });
 
       let favoriteIds: Set<string> = new Set();
       if (user) {
