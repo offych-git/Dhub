@@ -269,7 +269,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     }
 
     const urlRegex =
-      /^(https?:\/\/)?[da-z.-]+\.[a-z.]{2,6}([\/\w .-]*)*\/?$/; // Corrected regex for JavaScript
+      /^(https?:\/\/)[^\s/$.?#].[^\s]*$/i; // Corrected regex for JavaScript
     if (!urlRegex.test(formData.dealUrl)) {
       setError("Please enter a valid URL starting with http:// or https://");
       return false;
