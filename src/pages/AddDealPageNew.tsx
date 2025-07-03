@@ -80,6 +80,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
   // В новой системе нам не нужен активный индекс, так как первое изображение всегда главное
   const [mainImageIndex, setMainImageIndex] = useState(0); // Оставляем для совместимости с существующим кодом
   const { addToModerationQueue } = useModeration();
+  const [isDragActive, setIsDragActive] = useState(false);
 
   useEffect(() => {
     const pageTitle = "Add New Deal"; // Или ваш динамический заголовок
@@ -922,139 +923,99 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                 Deal Images * ({dealImages.length}/4)
               </label>
 
-              {dealImages.length > 0 && (
-                <div className="mb-4">
-                  {/* Отображение главного изображения */}
-                  <div className="relative h-48 bg-gray-800 rounded-lg overflow-hidden main-image-container">
-                    <img
-                      key={dealImages[0]?.id}
-                      src={dealImages[0]?.publicUrl}
-                      alt="Main deal image"
-                      className="w-full h-full object-contain main-image"
-                    />
+              <div
+                onDragOver={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragActive(true);
+                }}
+                onDragEnter={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragActive(true);
+                }}
+                onDragLeave={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragActive(false);
+                }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragActive(false);
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    // Ограничиваем до 4-х файлов
+                    const files = Array.from(e.dataTransfer.files).slice(0, 4 - dealImages.length);
+                    if (files.length > 0) {
+                      // Преобразуем обратно в FileList-подобный объект
+                      const dt = new DataTransfer();
+                      files.forEach(f => dt.items.add(f));
+                      handleDealImageUpload(dt.files);
+                    }
+                  }
+                }}
+                className={
+                  dealImages.length === 0
+                    ? `border-2 border-dashed rounded-lg p-4 text-center ` +
+                      (isUploadingImage
+                        ? "border-orange-500 bg-orange-500/10"
+                        : !validationState.dealImages
+                          ? "border-yellow-500"
+                          : isDragActive
+                            ? "border-blue-500 bg-blue-500/10"
+                            : "border-gray-700")
+                    : undefined
+                }
+                style={{ position: dealImages.length === 0 ? "relative" : undefined, transition: "border-color 0.2s, background 0.2s" }}
+              >
+                {dealImages.length > 0 && (
+                  <div className="mb-4">
+                    {/* Отображение главного изображения */}
+                    <div className="relative h-48 bg-gray-800 rounded-lg overflow-hidden main-image-container">
+                      <img
+                        key={dealImages[0]?.id}
+                        src={dealImages[0]?.publicUrl}
+                        alt="Main deal image"
+                        className="w-full h-full object-contain main-image"
+                      />
 
-                    {dealImages.length > 1 && (
-                      <div className="absolute bottom-2 left-2 bg-green-500/80 text-white font-semibold text-xs px-2 py-1 rounded-md">
-                        Главное изображение
+                      {dealImages.length > 1 && (
+                        <div className="absolute bottom-2 left-2 bg-green-500/80 text-white font-semibold text-xs px-2 py-1 rounded-md">
+                          Главное изображение
+                        </div>
+                      )}
+
+                      <div className="absolute top-2 right-2 bg-gray-900/70 text-white font-medium text-xs px-2 py-1 rounded-md">
+                        {`${dealImages.length}/4 изображений`}
                       </div>
-                    )}
-
-                    <div className="absolute top-2 right-2 bg-gray-900/70 text-white font-medium text-xs px-2 py-1 rounded-md">
-                      {`${dealImages.length}/4 изображений`}
                     </div>
-                  </div>
 
-                  {/* Миниатюры с улучшенным интерфейсом управления порядком */}
-                  {dealImages.length > 1 && (
-                    <div className="mt-4">
-                      <div className="text-gray-400 text-sm mb-2">
-                        Измените порядок изображений (первое — главное):
-                      </div>
-                      <div className="grid grid-cols-4 gap-3">
-                        {dealImages.map((image, index) => (
-                          <div
-                            key={image.id}
-                            className={`relative rounded-lg overflow-hidden border-2 ${
-                              index === 0
-                                ? "border-green-500 ring-2 ring-green-500"
-                                : "border-gray-700"
-                            }`}
-                          >
-                            {/* Кнопка удаления в правом верхнем углу */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveImage(image.id);
-                              }}
-                              className="absolute top-0 right-0 z-20 bg-red-500 hover:bg-red-600 text-white rounded-bl-md p-1"
-                              aria-label="Remove image"
-                              style={{ fontSize: 0 }}
+                    {/* Миниатюры с улучшенным интерфейсом управления порядком */}
+                    {dealImages.length > 1 && (
+                      <div className="mt-4">
+                        <div className="text-gray-400 text-sm mb-2">
+                          Измените порядок изображений (первое — главное):
+                        </div>
+                        <div className="grid grid-cols-4 gap-3">
+                          {dealImages.map((image, index) => (
+                            <div
+                              key={image.id}
+                              className={`relative rounded-lg overflow-hidden border-2 ${
+                                index === 0
+                                  ? "border-green-500 ring-2 ring-green-500"
+                                  : "border-gray-700"
+                              }`}
                             >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="10"
-                                height="10"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                              </svg>
-                            </button>
-                            <img
-                              src={image.publicUrl}
-                              alt={`Изображение ${index + 1}`}
-                              className="w-full h-16 object-cover"
-                            />
-
-                            {/* Метка позиции */}
-                            <div className="absolute top-0 left-0 bg-black bg-opacity-70 text-white text-xs font-bold px-1.5 py-0.5 rounded-br-md">
-                              {index + 1}
-                            </div>
-
-                            {/* Кнопки перемещения */}
-                            <div className="absolute bottom-0 left-0 right-0 flex justify-between bg-black bg-opacity-80 p-1">
-                              {/* Кнопка влево */}
+                              {/* Кнопка удаления в правом верхнем углу */}
                               <button
                                 type="button"
-                                disabled={index === 0}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (index > 0) {
-                                    const newImages = [...dealImages];
-                                    [newImages[index - 1], newImages[index]] = [
-                                      newImages[index],
-                                      newImages[index - 1],
-                                    ];
-                                    setDealImages(newImages);
-                                  }
+                                  handleRemoveImage(image.id);
                                 }}
-                                className={`text-white rounded-full p-1 ${
-                                  index === 0
-                                    ? "opacity-30"
-                                    : "bg-gray-700 hover:bg-gray-600"
-                                }`}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000svg"
-                                  width="10"
-                                  height="10"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <path d="M15 18l-6-6 6-6" />
-                                </svg>
-                              </button>
-
-                              {/* Кнопка вправо */}
-                              <button
-                                type="button"
-                                disabled={index === dealImages.length - 1}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (index < dealImages.length - 1) {
-                                    const newImages = [...dealImages];
-                                    [newImages[index], newImages[index + 1]] = [
-                                      newImages[index + 1],
-                                      newImages[index],
-                                    ];
-                                    setDealImages(newImages);
-                                  }
-                                }}
-                                className={`text-white rounded-full p-1 ${
-                                  index === dealImages.length - 1
-                                    ? "opacity-30"
-                                    : "bg-gray-700 hover:bg-gray-600"
-                                }`}
+                                className="absolute top-0 right-0 z-20 bg-red-500 hover:bg-red-600 text-white rounded-bl-md p-1"
+                                aria-label="Remove image"
+                                style={{ fontSize: 0 }}
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -1067,85 +1028,162 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                 >
-                                  <path d="M9 18l6-6-6-6" />
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
                               </button>
-                            </div>
+                              <img
+                                src={image.publicUrl}
+                                alt={`Изображение ${index + 1}`}
+                                className="w-full h-16 object-cover"
+                              />
 
-                            {/* Индикатор главного изображения */}
-                            {index === 0 && (
-                              <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-bl-md font-bold">
-                                Главное
+                              {/* Метка позиции */}
+                              <div className="absolute top-0 left-0 bg-black bg-opacity-70 text-white text-xs font-bold px-1.5 py-0.5 rounded-br-md">
+                                {index + 1}
                               </div>
-                            )}
-                          </div>
-                        ))}
+
+                              {/* Кнопки перемещения */}
+                              <div className="absolute bottom-0 left-0 right-0 flex justify-between bg-black bg-opacity-80 p-1">
+                                {/* Кнопка влево */}
+                                <button
+                                  type="button"
+                                  disabled={index === 0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (index > 0) {
+                                      const newImages = [...dealImages];
+                                      [newImages[index - 1], newImages[index]] = [
+                                        newImages[index],
+                                        newImages[index - 1],
+                                      ];
+                                      setDealImages(newImages);
+                                    }
+                                  }}
+                                  className={`text-white rounded-full p-1 ${
+                                    index === 0
+                                      ? "opacity-30"
+                                      : "bg-gray-700 hover:bg-gray-600"
+                                  }`}
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000svg"
+                                    width="10"
+                                    height="10"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M15 18l-6-6 6-6" />
+                                  </svg>
+                                </button>
+
+                                {/* Кнопка вправо */}
+                                <button
+                                  type="button"
+                                  disabled={index === dealImages.length - 1}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (index < dealImages.length - 1) {
+                                      const newImages = [...dealImages];
+                                      [newImages[index], newImages[index + 1]] = [
+                                        newImages[index + 1],
+                                        newImages[index],
+                                      ];
+                                      setDealImages(newImages);
+                                    }
+                                  }}
+                                  className={`text-white rounded-full p-1 ${
+                                    index === dealImages.length - 1
+                                      ? "opacity-30"
+                                      : "bg-gray-700 hover:bg-gray-600"
+                                  }`}
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="10"
+                                    height="10"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M9 18l6-6-6-6" />
+                                  </svg>
+                                </button>
+                              </div>
+
+                              {/* Индикатор главного изображения */}
+                              {index === 0 && (
+                                <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-bl-md font-bold">
+                                  Главное
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Кнопки для быстрой установки главного изображения удалены */}
                       </div>
-
-                      {/* Кнопки для быстрой установки главного изображения удалены */}
-                    </div>
-                  )}
-
-                  {/* Подсказка удалена */}
-                </div>
-              )}
-
-              {dealImages.length < 4 && (
-                <>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleDealImageUpload(e.target.files)}
-                    className="hidden"
-                    id="deal-images-upload"
-                    multiple={dealImages.length < 3}
-                  />
-                  <label
-                    htmlFor="deal-images-upload"
-                    className={`block w-full bg-gray-800 text-white rounded-md px-4 py-3 cursor-pointer hover:bg-gray-700 text-center ${
-                      !validationState.dealImages
-                        ? "border border-yellow-500"
-                        : ""
-                    }`}
-                  >
-                    {isUploadingImage ? (
-                      <div className="flex items-center justify-center">
-                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                        Uploading...
-                      </div>
-                    ) : (
-                      <>
-                        <Plus className="h-5 w-5 inline-block mr-2" />
-                        {dealImages.length === 0
-                          ? "Add Images *"
-                          : "Add More Images"}
-                      </>
                     )}
-                  </label>
-                  {!validationState.dealImages && (
-                    <p className="text-orange-500 text-xs mt-1">
-                      At least one image is required
-                    </p>
-                  )}
-                  {validationState.dealImages && dealImages.length > 0 && (
-                    <div className="text-green-500 text-xs font-medium mt-1 flex items-center">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-1"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Images uploaded successfully
-                    </div>
-                  )}
-                </>
-              )}
+
+                    {/* Подсказка удалена */}
+                  </div>
+                )}
+
+                {dealImages.length < 4 && (
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleDealImageUpload(e.target.files)}
+                      className="hidden"
+                      id="deal-images-upload"
+                      multiple={dealImages.length < 3}
+                    />
+                    <label
+                      htmlFor="deal-images-upload"
+                      className={`block w-full bg-gray-800 text-white rounded-md px-4 py-3 cursor-pointer hover:bg-gray-700 text-center ${
+                        !validationState.dealImages
+                          ? "border border-yellow-500"
+                          : ""
+                      }`}
+                      style={{ minHeight: 120 }}
+                    >
+                      {isUploadingImage ? (
+                        <div className="flex items-center justify-center">
+                          <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Uploading...
+                        </div>
+                      ) : (
+                        <>
+                          <Plus className="h-5 w-5 inline-block mr-2" />
+                          {dealImages.length === 0
+                            ? isDragActive
+                              ? "Отпустите файлы для загрузки"
+                              : "Add Images * (или перетащите)"
+                            : isDragActive
+                              ? "Отпустите файлы для загрузки"
+                              : "Add More Images (или перетащите)"}
+                        </>
+                      )}
+                    </label>
+                  </>
+                )}
+                {!validationState.dealImages && dealImages.length === 0 && (
+                  <p className="text-orange-500 text-xs mt-1">
+                    At least one image is required
+                  </p>
+                )}
+                {isDragActive && dealImages.length === 0 && (
+                  <div style={{position: "absolute", inset: 0, borderRadius: 8, border: "2px solid #3b82f6", background: "rgba(59,130,246,0.08)", pointerEvents: "none"}} />
+                )}
+              </div>
             </div>
 
             <div className="relative">

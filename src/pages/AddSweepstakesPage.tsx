@@ -57,6 +57,7 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     initialData?.image || null,
   );
   const { addToModerationQueue } = useModeration();
+  const [isDragActive, setIsDragActive] = useState(false);
 
   // Helper to determine the correct localStorage key
   const getDraftKey = useCallback(() => {
@@ -787,73 +788,111 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
 
             <div className="mb-4">
               <label className="block text-gray-400 mb-2">Image *</label>
-              {imageUrl ? (
-                <div className="relative">
-                  <img
-                    src={imageUrl}
-                    alt="Sweepstakes image"
-                    className="w-full h-48 object-contain rounded-lg bg-gray-800 mb-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSweepstakesImage(null);
-                      setImageUrl(null);
-                      // Clear image from draft as well
-                      const draftKey = getDraftKey();
-                      try {
-                        const currentDraft = JSON.parse(localStorage.getItem(draftKey) || '{}');
-                        delete currentDraft.image; // Remove image property
-                        localStorage.setItem(draftKey, JSON.stringify(currentDraft));
-                      } catch (e) {
-                        console.error("Error clearing image draft from localStorage:", e);
-                      }
-                    }}
-                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                  {validationState.image && (
-                    <div className="absolute top-2 left-2 bg-green-500/80 text-white font-semibold text-xs px-2 py-1 rounded-md">
-                      Изображение загружено
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div
-                  className={`border-2 border-dashed rounded-lg p-4 text-center ${
-                    isUploadingImage
-                      ? "border-orange-500 bg-orange-500/10"
-                      : !validationState.image
-                        ? "border-yellow-500"
-                        : "border-gray-700"
-                  }`}
-                >
-                  <input
-                    type="file"
-                    accept="image/*"
-                    id="sweepstakes-image"
-                    className="hidden"
-                    onChange={(e) => handleImageUpload(e.target.files)}
-                  />
-                  <label
-                    htmlFor="sweepstakes-image"
-                    className="flex flex-col items-center justify-center cursor-pointer"
-                  >
-                    <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-gray-400">
-                      {isUploadingImage
-                        ? "Uploading..."
-                        : "Click to upload image"}
-                    </p>
-                  </label>
-                </div>
-              )}
-              {!validationState.image && !imageUrl && (
-                <p className="text-orange-500 text-xs mt-1">
-                  Image is required
-                </p>
-              )}
+              <div
+                onDragOver={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragActive(true);
+                }}
+                onDragEnter={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragActive(true);
+                }}
+                onDragLeave={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragActive(false);
+                }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragActive(false);
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleImageUpload(e.dataTransfer.files);
+                  }
+                }}
+                className={
+                  (imageUrl
+                    ? ""
+                    :
+                      `border-2 border-dashed rounded-lg p-4 text-center ` +
+                      (isUploadingImage
+                        ? "border-orange-500 bg-orange-500/10"
+                        : !validationState.image
+                          ? "border-yellow-500"
+                          : isDragActive
+                            ? "border-blue-500 bg-blue-500/10"
+                            : "border-gray-700"))
+                }
+                style={{ position: imageUrl ? undefined : "relative", transition: "border-color 0.2s, background 0.2s" }}
+              >
+                {imageUrl ? (
+                  <div className="relative">
+                    <img
+                      src={imageUrl}
+                      alt="Sweepstakes image"
+                      className="w-full h-48 object-contain rounded-lg bg-gray-800 mb-2"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSweepstakesImage(null);
+                        setImageUrl(null);
+                        // Clear image from draft as well
+                        const draftKey = getDraftKey();
+                        try {
+                          const currentDraft = JSON.parse(localStorage.getItem(draftKey) || '{}');
+                          delete currentDraft.image; // Remove image property
+                          localStorage.setItem(draftKey, JSON.stringify(currentDraft));
+                        } catch (e) {
+                          console.error("Error clearing image draft from localStorage:", e);
+                        }
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    {validationState.image && (
+                      <div className="absolute top-2 left-2 bg-green-500/80 text-white font-semibold text-xs px-2 py-1 rounded-md">
+                        Изображение загружено
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id="sweepstakes-image"
+                      className="hidden"
+                      onChange={(e) => handleImageUpload(e.target.files)}
+                    />
+                    <label
+                      htmlFor="sweepstakes-image"
+                      className="flex flex-col items-center justify-center cursor-pointer"
+                      style={{ minHeight: 120 }}
+                    >
+                      <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                      <p className="text-gray-400">
+                        {isUploadingImage
+                          ? "Uploading..."
+                          : isDragActive
+                            ? "Отпустите файл для загрузки"
+                            : "Click or drag image here to upload"}
+                      </p>
+                    </label>
+                  </>
+                )}
+                {!validationState.image && !imageUrl && (
+                  <p className="text-orange-500 text-xs mt-1">
+                    Image is required
+                  </p>
+                )}
+                {isDragActive && !imageUrl && (
+                  <div style={{position: "absolute", inset: 0, borderRadius: 8, border: "2px solid #3b82f6", background: "rgba(59,130,246,0.08)", pointerEvents: "none"}} />
+                )}
+              </div>
             </div>
 
             <div className="relative" ref={editorRef}>
