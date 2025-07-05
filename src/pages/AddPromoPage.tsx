@@ -118,6 +118,18 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
     }
   }, [isEditing, promoData]);
 
+  // Автоматически показываем переводы, если они есть
+  useEffect(() => {
+    if (
+      (formData.title_en && formData.title_en.trim() !== "") ||
+      (formData.description_en && formData.description_en.trim() !== "") ||
+      (formData.title_es && formData.title_es.trim() !== "") ||
+      (formData.description_es && formData.description_es.trim() !== "")
+    ) {
+      setShowTranslations(true);
+    }
+  }, [formData.title_en, formData.description_en, formData.title_es, formData.description_es]);
+
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const categoryRef = useRef<HTMLDivElement>(null);
   const [showTranslations, setShowTranslations] = useState(false);
