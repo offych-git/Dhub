@@ -894,6 +894,20 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
     }
   };
 
+
+
+  // Автоматически показываем переводы, если они есть
+  useEffect(() => {
+    if (
+      (formData.title_en && formData.title_en.trim() !== "") ||
+      (formData.description_en && formData.description_en.trim() !== "") ||
+      (formData.title_es && formData.title_es.trim() !== "") ||
+      (formData.description_es && formData.description_es.trim() !== "")
+    ) {
+      setShowTranslations(true);
+    }
+  }, [formData.title_en, formData.description_en, formData.title_es, formData.description_es]);
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Header */}
@@ -963,6 +977,75 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                   Title is required
                 </p>
               )}
+            </div>
+
+            {/* Price Fields */}
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Current Price *"
+                    className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 border transition-all duration-100 text-center
+                      ${!validationState.currentPrice && formData.currentPrice !== ""
+                        ? "border-yellow-500"
+                        : "border-gray-700"
+                    }`}
+                    value={formData.currentPrice}
+                    onChange={(e) =>
+                      setFormData({ ...formData, currentPrice: e.target.value })
+                    }
+                    required
+                  />
+                  {validationState.currentPrice && formData.currentPrice && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-green-500"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div style={{ minHeight: 20 }}>
+                  {!validationState.currentPrice && (
+                    <p className="text-orange-500 text-xs mt-1">
+                      Current price is required
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Original Price (optional)"
+                    className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 border border-gray-700 text-center transition-all duration-100"
+                    value={formData.originalPrice}
+                    onChange={(e) =>
+                      setFormData({ ...formData, originalPrice: e.target.value })
+                    }
+                  />
+                </div>
+                <div style={{ minHeight: 20 }}>
+                  {!validationState.originalPrice && formData.originalPrice && (
+                    <p className="text-orange-500 text-xs mt-1">
+                      Original price must be a number
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="relative">

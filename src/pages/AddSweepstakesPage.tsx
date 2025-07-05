@@ -787,6 +787,30 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     console.log("Editor content checked");
   };
 
+  // Автоматически показываем переводы, если они есть
+  useEffect(() => {
+    if (
+      (formData.title_en && formData.title_en.trim() !== "") ||
+      (formData.description_en && formData.description_en.trim() !== "") ||
+      (formData.title_es && formData.title_es.trim() !== "") ||
+      (formData.description_es && formData.description_es.trim() !== "")
+    ) {
+      setShowTranslations(true);
+    }
+  }, [formData.title_en, formData.description_en, formData.title_es, formData.description_es]);
+
+  // Автоматически показываем переводы, если они есть
+  useEffect(() => {
+    if (
+      (formData.title_en && formData.title_en.trim() !== "") ||
+      (formData.description_en && formData.description_en.trim() !== "") ||
+      (formData.title_es && formData.title_es.trim() !== "") ||
+      (formData.description_es && formData.description_es.trim() !== "")
+    ) {
+      setShowTranslations(true);
+    }
+  }, [formData.title_en, formData.description_en, formData.title_es, formData.description_es]);
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       <div className="web-page-header fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 px-4 py-3 z-10">
