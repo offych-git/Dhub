@@ -9,6 +9,7 @@ import {
   Info,
   X,
   Upload,
+  RefreshCcw,
 } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { stores } from "../data/mockData";
@@ -21,6 +22,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { supabase } from "../lib/supabase";
 import StoreBottomSheet from "../components/deals/StoreBottomSheet";
 import { useModeration } from "../contexts/ModerationContext";
+import { translateTextOnly } from "../utils/autoTranslate";
 
 interface AddSweepstakesPageProps {
   isEditing?: boolean;
@@ -58,6 +60,9 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
   );
   const { addToModerationQueue } = useModeration();
   const [isDragActive, setIsDragActive] = useState(false);
+  const [showTranslations, setShowTranslations] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
 
   // Helper to determine the correct localStorage key
   const getDraftKey = useCallback(() => {
@@ -100,6 +105,11 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     expiryDate: initialData?.expiryDate
       ? initialData.expiryDate.split("T")[0]
       : "",
+    // Многоязычные поля
+    title_en: initialData?.title_en || "",
+    title_es: initialData?.title_es || "",
+    description_en: initialData?.description_en || "",
+    description_es: initialData?.description_es || "",
   });
 
   const editor = useEditor({
@@ -355,6 +365,11 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       description: loadedData?.description || "",
       dealUrl: loadedData?.dealUrl || "",
       expiryDate: loadedData?.expiryDate || "",
+      // Многоязычные поля
+      title_en: loadedData?.title_en || "",
+      title_es: loadedData?.title_es || "",
+      description_en: loadedData?.description_en || "",
+      description_es: loadedData?.description_es || "",
     });
     setImageUrl(loadedData?.image || null);
 
@@ -461,6 +476,11 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       const sweepstakesData = {
         title: formData.title,
         description: formData.description,
+        // Многоязычные поля
+        title_en: formData.title_en || null,
+        title_es: formData.title_es || null,
+        description_en: formData.description_en || null,
+        description_es: formData.description_es || null,
         current_price: 0,
         original_price: null,
         store_id: selectedStoreId || null,
@@ -704,6 +724,56 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     setIsStoreSheetOpen(false);
   };
 
+  // Функция для перевода текста
+  const handleTranslate = async () => {
+    if (!formData.title.trim() || !formData.description.trim()) {
+      alert("Заполните заголовок и описание на русском языке для перевода");
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const currentDescription = editor ? editor.getHTML() : formData.description;
+      
+      const result = await translateTextOnly(formData.title, currentDescription);
+      
+      if (result.success) {
+        // Заполняем поля переводами
+        setFormData(prev => ({
+          ...prev,
+          title_en: result.translations.title_en,
+          title_es: result.translations.title_es,
+          description_en: result.translations.description_en,
+          description_es: result.translations.description_es,
+        }));
+
+        alert("Перевод выполнен успешно!");
+      } else {
+        alert("Ошибка перевода: " + result.message);
+      }
+    } catch (error) {
+      console.error("Ошибка перевода:", error);
+      alert("Ошибка при переводе. Попробуйте еще раз.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  // Новая функция: показать переводы И сразу перевести
+  const handleShowAndTranslate = async () => {
+    if (!showTranslations) {
+      // Если переводы скрыты, показываем их и сразу переводим
+      setShowTranslations(true);
+      // Небольшая задержка, чтобы поля успели отрендериться
+      setTimeout(() => {
+        handleTranslate();
+      }, 100);
+    } else {
+      // Если переводы уже показаны, просто скрываем
+      setShowTranslations(false);
+    }
+  };
+
   useEffect(() => {
     console.log("AddSweepstakesPage - StoreBottomSheet props:", {
       isOpen: isStoreSheetOpen,
@@ -748,14 +818,8 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Title *"
-                  className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
-                    !validationState.title && formData.title !== ""
-                      ? "border border-red-500"
-                      : !validationState.title
-                        ? "border border-yellow-500"
-                        : ""
-                  }`}
+                  placeholder="Title (Russian) *"
+                  className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${!validationState.title && formData.title !== "" ? "border border-red-500" : !validationState.title ? "border border-yellow-500" : ""}`}
                   value={formData.title}
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
@@ -785,6 +849,138 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
                 </p>
               )}
             </div>
+
+            <div className="relative" ref={editorRef}>
+              <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                <div className="flex flex-wrap items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => editor?.chain().focus().toggleBold().run()}
+                    className={`formatting-button p-2 rounded ${editor?.isActive("bold") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                  >
+                    <Bold className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => editor?.chain().focus().toggleItalic().run()}
+                    className={`formatting-button p-2 rounded ${editor?.isActive("italic") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                  >
+                    <Italic className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      editor?.chain().focus().toggleUnderline().run()
+                    }
+                    className={`formatting-button p-2 rounded ${editor?.isActive("underline") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                  >
+                    <UnderlineIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      editor?.chain().focus().toggleBulletList().run()
+                    }
+                    className={`formatting-button p-2 rounded ${editor?.isActive("bulletList") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                  >
+                    <List className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="ml-auto">
+                  {selectedImageId && (
+                    <button
+                      type="button"
+                      className="delete-image-button flex items-center justify-center px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
+                      onClick={() => {
+                        setSelectedImageId(null);
+                      }}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div
+                className={`bg-gray-800 rounded-lg p-4 min-h-[200px] ${
+                  !validationState.description ? "border border-yellow-500" : ""
+                }`}
+              >
+                {!editor?.getText() && (
+                  <div className="absolute text-gray-500 pointer-events-none p-1">
+                    Description (Russian) *
+                  </div>
+                )}
+                <EditorContent editor={editor} />
+              </div>
+              {!validationState.description && (
+                <p className="text-orange-500 text-xs mt-1">
+                  Description is required
+                </p>
+              )}
+              {validationState.description && formData.description && (
+                <div className="text-green-500 text-xs font-medium mt-1 flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Description looks good!
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 mt-6">
+              <button
+                type="button"
+                onClick={handleShowAndTranslate}
+                className="px-4 py-2 rounded border border-gray-400 bg-white text-gray-800 hover:bg-gray-100 transition"
+                disabled={!formData.title.trim() || !formData.description.trim()}
+              >
+                {showTranslations ? "Скрыть переводы" : "Показать и перевести"}
+              </button>
+              <button
+                type="button"
+                onClick={handleTranslate}
+                disabled={isTranslating || !formData.title.trim() || !formData.description.trim() || !showTranslations}
+                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 transition disabled:bg-gray-100 disabled:text-gray-400"
+                title="Обновить переводы"
+                style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                {isTranslating ? (
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <RefreshCcw className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+            {translateError && (
+              <div className="text-red-500 text-xs mt-1">{translateError}</div>
+            )}
 
             <div className="mb-4">
               <label className="block text-gray-400 mb-2">Image *</label>
@@ -893,107 +1089,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
                   <div style={{position: "absolute", inset: 0, borderRadius: 8, border: "2px solid #3b82f6", background: "rgba(59,130,246,0.08)", pointerEvents: "none"}} />
                 )}
               </div>
-            </div>
-
-            <div className="relative" ref={editorRef}>
-              <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
-                <div className="flex flex-wrap items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => editor?.chain().focus().toggleBold().run()}
-                    className={`formatting-button p-2 rounded ${editor?.isActive("bold") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
-                  >
-                    <Bold className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => editor?.chain().focus().toggleItalic().run()}
-                    className={`formatting-button p-2 rounded ${editor?.isActive("italic") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
-                  >
-                    <Italic className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      editor?.chain().focus().toggleUnderline().run()
-                    }
-                    className={`formatting-button p-2 rounded ${editor?.isActive("underline") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
-                  >
-                    <UnderlineIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      editor?.chain().focus().toggleBulletList().run()
-                    }
-                    className={`formatting-button p-2 rounded ${editor?.isActive("bulletList") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
-                  >
-                    <List className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <div className="ml-auto">
-                  {selectedImageId && (
-                    <button
-                      type="button"
-                      className="delete-image-button flex items-center justify-center px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
-                      onClick={() => {
-                        setSelectedImageId(null);
-                      }}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M3 6h18"></path>
-                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div
-                className={`bg-gray-800 rounded-lg p-4 min-h-[200px] ${
-                  !validationState.description ? "border border-yellow-500" : ""
-                }`}
-              >
-                {!editor?.getText() && (
-                  <div className="absolute text-gray-500 pointer-events-none p-1">
-                    Description *
-                  </div>
-                )}
-                <EditorContent editor={editor} />
-              </div>
-              {!validationState.description && (
-                <p className="text-orange-500 text-xs mt-1">
-                  Description is required
-                </p>
-              )}
-              {validationState.description && formData.description && (
-                <div className="text-green-500 text-xs font-medium mt-1 flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  Description looks good!
-                </div>
-              )}
             </div>
 
             <div>

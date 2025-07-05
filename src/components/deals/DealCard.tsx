@@ -9,6 +9,7 @@ import {
   Edit2,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { supabase } from "../../lib/supabase";
 import AdminActions from "../admin/AdminActions";
 import { useAdmin } from "../../hooks/useAdmin";
@@ -18,6 +19,7 @@ import { highlightText } from "../../utils/highlightText"; // Added import
 import VoteControls from "../deals/VoteControls";
 import { triggerNativeHaptic } from "../../utils/nativeBridge";
 import { decodeHtmlEntities } from "../../utils/htmlUtils";
+import { useLocalizedContent } from "../../utils/localizationUtils";
 
 interface DealCardProps {
   deal: Deal;
@@ -35,6 +37,7 @@ const DealCard: React.FC<DealCardProps> = ({
   const { user } = useAuth();
   const { role } = useAdmin();
   const navigate = useNavigate();
+  const { language } = useLanguage();
   // Determine if this is a sweepstakes based on deal type or other properties
   const isSweepstakes = deal.type === "sweepstakes";
   const [isFavorite, setIsFavorite] = useState(deal.isFavorite);
@@ -42,6 +45,21 @@ const DealCard: React.FC<DealCardProps> = ({
   const isOwnDeal = user && deal.postedBy.id === user.id;
   const [searchParams] = useSearchParams();
   const [dealStatus] = useState(deal.status || "approved");
+  const { getLocalizedDealContent } = useLocalizedContent();
+  
+  // Получаем локализованный контент
+  const localizedContent = getLocalizedDealContent(deal);
+  
+  // ОТЛАДКА: Проверяем локализованный контент
+  console.log("DEBUG DealCard:", {
+    dealId: deal.id,
+    language: language,
+    originalTitle: deal.title,
+    title_en: deal.title_en,
+    title_es: deal.title_es,
+    localizedTitle: localizedContent.title,
+    isTranslated: localizedContent.title !== deal.title
+  });
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -144,8 +162,8 @@ const DealCard: React.FC<DealCardProps> = ({
         >
           <h3 className="text-white font-medium text-sm line-clamp-2 cursor-pointer">
             {searchParams.get("q")
-              ? highlightText(decodeHtmlEntities(deal.title), searchParams.get("q") || "")
-              : decodeHtmlEntities(deal.title)}
+              ? highlightText(decodeHtmlEntities(localizedContent.title), searchParams.get("q") || "")
+              : decodeHtmlEntities(localizedContent.title)}
           </h3>
 
           <div className="mt-1 flex items-center justify-between">
@@ -222,14 +240,14 @@ const DealCard: React.FC<DealCardProps> = ({
           </div>
 
           <div className="mt-0.5 text-gray-400 text-xs">{deal.store.name}</div>
-          {deal.description && (
+          {localizedContent.description && (
             <div
               className="mt-1 text-gray-400 text-xs description-preview line-clamp-2 overflow-hidden"
               style={{ pointerEvents: "none" }}
             >
               {(() => {
                 // Сначала очищаем текст от HTML-тегов
-                const cleanDescription = deal.description
+                const cleanDescription = localizedContent.description
                   // Заменяем <br> тег на ' '
                   .replace(/<br[^>]*>/gi, " ")
                   // Заменяем закрывающие теги на пробел

@@ -65,7 +65,7 @@ const DealsPage: React.FC = () => {
 
         let query = supabase
           .from("get_deals_with_stats")
-          .select("*")
+          .select("*, title_en, title_es, description_en, description_es")
           .not("type", "eq", "sweepstakes");
 
         // Apply tab-specific ordering and filtering directly in the Supabase query
@@ -166,11 +166,27 @@ if (activeTab === "hot") {
           dataLength: data?.length,
           fetchError,
         });
+        
+        // ОТЛАДКА: Проверяем мультиязычные поля
+        if (data && data.length > 0) {
+          console.log("DEBUG: First deal multilingual fields:", {
+            id: data[0].id,
+            title: data[0].title,
+            title_en: data[0].title_en,
+            title_es: data[0].title_es,
+            description: data[0].description?.substring(0, 50),
+            description_en: data[0].description_en?.substring(0, 50),
+            description_es: data[0].description_es?.substring(0, 50),
+            allFields: Object.keys(data[0])
+          });
+        }
         if (fetchError) throw fetchError;
 
         const enrichedDeals = (data || []).map((deal) => ({
           id: deal.id,
           title: decodeHtmlEntities(deal.title),
+          title_en: deal.title_en,
+          title_es: deal.title_es,
           type: deal.type,
           currentPrice: parseFloat(deal.current_price),
           originalPrice: deal.original_price
@@ -195,6 +211,8 @@ if (activeTab === "hot") {
             avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(deal.display_name || deal.email?.split("@")[0] || "Anonymous")}&background=random`,
           },
           description: decodeHtmlEntities(deal.description),
+          description_en: deal.description_en,
+          description_es: deal.description_es,
           url: deal.deal_url,
           createdAt: new Date(deal.created_at),
           is_hot: deal.is_hot,

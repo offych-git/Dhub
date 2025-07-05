@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Info, ChevronDown } from "lucide-react";
+import { ArrowLeft, Info, ChevronDown, RefreshCcw } from "lucide-react";
 import { categories, categoryIcons } from "../data/mockData";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -9,6 +9,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { useGlobalState } from "../contexts/GlobalStateContext";
 import { useAdmin } from "../hooks/useAdmin";
 import { useModeration } from "../contexts/ModerationContext";
+import { translateAfterSave, translateTextOnly } from "../utils/autoTranslate";
 
 interface PromoData {
   id: string;
@@ -18,6 +19,11 @@ interface PromoData {
   category_id: string;
   discount_url: string;
   expires_at: string | null;
+  // Многоязычные поля
+  title_en?: string;
+  title_es?: string;
+  description_en?: string;
+  description_es?: string;
 }
 
 interface AddPromoPageProps {
@@ -78,6 +84,11 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
     category: "",
     discountUrl: "",
     expiryDate: "",
+    // Многоязычные поля
+    title_en: "",
+    title_es: "",
+    description_en: "",
+    description_es: "",
   });
 
   useEffect(() => {
@@ -98,12 +109,20 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
               return `${year}-${month}-${day}`;
             })()
           : "",
+        // Многоязычные поля
+        title_en: promoData.title_en || "",
+        title_es: promoData.title_es || "",
+        description_en: promoData.description_en || "",
+        description_es: promoData.description_es || "",
       });
     }
   }, [isEditing, promoData]);
 
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const categoryRef = useRef<HTMLDivElement>(null);
+  const [showTranslations, setShowTranslations] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
 
   useEffect(() => {
     const isFormValid =
@@ -128,6 +147,11 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
           code: formData.promoCode,
           title: formData.title,
           description: formData.description,
+          // Многоязычные поля
+          title_en: formData.title_en || null,
+          title_es: formData.title_es || null,
+          description_en: formData.description_en || null,
+          description_es: formData.description_es || null,
           category_id: formData.category,
           discount_url: formData.discountUrl,
           // ИСПРАВЛЕНО: Логика сохранения expires_at для AddPromoPage
@@ -294,6 +318,8 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
 
         if (fetchError) throw fetchError;
 
+
+
         // Dispatch update to global state
         dispatch({
           type: "UPDATE_PROMO",
@@ -332,6 +358,11 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
             code: formData.promoCode,
             title: formData.title,
             description: formData.description,
+            // Многоязычные поля
+            title_en: formData.title_en || null,
+            title_es: formData.title_es || null,
+            description_en: formData.description_en || null,
+            description_es: formData.description_es || null,
             category_id: formData.category,
             discount_url: formData.discountUrl,
             // ИСПРАВЛЕНО: Логика сохранения expires_at для AddPromoPage
@@ -349,6 +380,8 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
           .maybeSingle();
 
         if (promoError) throw promoError;
+
+
 
         // Если требуется модерация, то добавляем в очередь модерации
         if (moderationStatus === "pending") {
@@ -398,6 +431,54 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
     setIsCategorySheetOpen(false);
   };
 
+  // Функция для перевода текста
+  const handleTranslate = async () => {
+    if (!formData.title.trim() || !formData.description.trim()) {
+      alert("Заполните заголовок и описание на русском языке для перевода");
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const result = await translateTextOnly(formData.title, formData.description);
+      
+      if (result.success) {
+        // Заполняем поля переводами
+        setFormData(prev => ({
+          ...prev,
+          title_en: result.translations.title_en,
+          title_es: result.translations.title_es,
+          description_en: result.translations.description_en,
+          description_es: result.translations.description_es,
+        }));
+
+        alert("Перевод выполнен успешно!");
+      } else {
+        alert("Ошибка перевода: " + result.message);
+      }
+    } catch (error) {
+      console.error("Ошибка перевода:", error);
+      alert("Ошибка при переводе. Попробуйте еще раз.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  // Новая функция: показать переводы И сразу перевести
+  const handleShowAndTranslate = async () => {
+    if (!showTranslations) {
+      // Если переводы скрыты, показываем их и сразу переводим
+      setShowTranslations(true);
+      // Небольшая задержка, чтобы поля успели отрендериться
+      setTimeout(() => {
+        handleTranslate();
+      }, 100);
+    } else {
+      // Если переводы уже показаны, просто скрываем
+      setShowTranslations(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Header */}
@@ -437,13 +518,13 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
               <input
                 type="url"
                 placeholder="Discount URL *"
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${!error && formData.discountUrl !== "" ? "border border-yellow-500" : ""}`}
                 value={formData.discountUrl}
                 onChange={(e) =>
                   setFormData({ ...formData, discountUrl: e.target.value })
                 }
               />
-              <p className="text-gray-500 text-sm mt-1">
+              <p className="text-orange-500 text-xs mt-1">
                 Add a link where users can find more information.
               </p>
             </div>
@@ -452,7 +533,7 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
               <input
                 type="text"
                 placeholder="Promo Code *"
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${!error && formData.promoCode !== "" ? "border border-red-500" : ""}`}
                 value={formData.promoCode}
                 onChange={(e) =>
                   setFormData({ ...formData, promoCode: e.target.value })
@@ -463,8 +544,8 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
             <div>
               <input
                 type="text"
-                placeholder="Title *"
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                placeholder="Title (Russian) *"
+                className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${!error && formData.title !== "" ? "border border-red-500" : ""}`}
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
@@ -474,15 +555,114 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
 
             <div>
               <textarea
-                placeholder="Description *"
+                placeholder="Description (Russian) *"
                 rows={4}
-                className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 resize-none"
+                className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 resize-none ${!error && formData.description !== "" ? "border border-red-500" : ""}`}
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
               />
+              
+              <div className="flex items-center gap-2 mt-6">
+                <button
+                  type="button"
+                  onClick={handleShowAndTranslate}
+                  className="px-4 py-2 rounded border border-gray-400 bg-white text-gray-800 hover:bg-gray-100 transition"
+                  disabled={!formData.title.trim() || !formData.description.trim()}
+                >
+                  {showTranslations ? "Скрыть переводы" : "Показать и перевести"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTranslate}
+                  disabled={isTranslating || !formData.title.trim() || !formData.description.trim() || !showTranslations}
+                  className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 transition disabled:bg-gray-100 disabled:text-gray-400"
+                  title="Обновить переводы"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  {isTranslating ? (
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <RefreshCcw className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+              {translateError && (
+                <div className="text-red-500 text-xs mt-1">{translateError}</div>
+              )}
             </div>
+
+            {/* Многоязычные поля для заголовка */}
+            {showTranslations && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-400 mb-2 text-sm font-medium">
+                    Заголовок (English)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter English title"
+                    className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${!error && formData.title_en !== "" ? "border border-red-500" : ""}`}
+                    value={formData.title_en}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title_en: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 mb-2 text-sm font-medium">
+                    Заголовок (Spanish)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter Spanish title"
+                    className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${!error && formData.title_es !== "" ? "border border-red-500" : ""}`}
+                    value={formData.title_es}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title_es: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Многоязычные поля для описания */}
+            {showTranslations && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-400 mb-2 text-sm font-medium">
+                    Описание (English)
+                  </label>
+                  <textarea
+                    placeholder="Enter English description"
+                    rows={4}
+                    className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 resize-none ${!error && formData.description_en !== "" ? "border border-red-500" : ""}`}
+                    value={formData.description_en}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description_en: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 mb-2 text-sm font-medium">
+                    Описание (Spanish)
+                  </label>
+                  <textarea
+                    placeholder="Enter Spanish description"
+                    rows={4}
+                    className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 resize-none ${!error && formData.description_es !== "" ? "border border-red-500" : ""}`}
+                    value={formData.description_es}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description_es: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <button
@@ -514,13 +694,13 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
             <div>
               <input
                 type="date"
-                className="w-full bg-gray-800 text-white rounded-md px-4 py-3"
+                className={`w-full bg-gray-800 text-white rounded-md px-4 py-3 ${!error && formData.expiryDate !== "" ? "border border-red-500" : ""}`}
                 value={formData.expiryDate}
                 onChange={(e) =>
                   setFormData({ ...formData, expiryDate: e.target.value })
                 }
               />
-              <p className="text-gray-500 text-sm mt-1">
+              <p className="text-orange-500 text-xs mt-1">
                 Expired date (optional) - must be in the future
               </p>
             </div>

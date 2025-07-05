@@ -18,6 +18,7 @@ import VoteControls from "../components/deals/VoteControls.tsx";
 import { triggerNativeHaptic } from "../utils/nativeBridge";
 import ReactGA4 from 'react-ga4'; // <-- Добавлен импорт ReactGA4
 import { LinkifiedHtml } from "../utils/linkUtils";
+import { useLocalizedContent } from '../utils/localizationUtils';
 
 const DealDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -42,6 +43,8 @@ const DealDetailPage: React.FC = () => {
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
     const isExpired =
         deal?.expires_at && new Date(deal.expires_at) < new Date();
+    const { getLocalizedDealContent } = useLocalizedContent();
+    const localizedContent = deal ? getLocalizedDealContent(deal) : { title: '', description: '' };
 
     // Получение списка изображений для карусели
     const dealImages = useMemo(() => {
@@ -233,7 +236,9 @@ const DealDetailPage: React.FC = () => {
                         commentElement.classList.remove("bg-orange-500/20");
                         commentElement.classList.add("bg-orange-500/10");
                         setTimeout(() => {
-                            commentElement.classList.remove("bg-orange-500/10");
+                            commentElement.classList.remove(
+                                "bg-orange-500/10",
+                            );
                         }, 1000);
                     }, 1000);
 
@@ -348,6 +353,9 @@ const DealDetailPage: React.FC = () => {
                 .eq("id", id)
                 .maybeSingle();
 
+            // Логируем данные из Supabase
+            console.log('SUPABASE DATA:', data);
+
             if (error) throw error;
 
             if (!data) {
@@ -365,6 +373,11 @@ const DealDetailPage: React.FC = () => {
             setDeal({
                 id: data.id,
                 title: data.title,
+                title_en: data.title_en,
+                title_es: data.title_es,
+                description: data.description,
+                description_en: data.description_en,
+                description_es: data.description_es,
                 currentPrice: Number(data.current_price),
                 originalPrice: data.original_price
                     ? Number(data.original_price)
@@ -372,11 +385,10 @@ const DealDetailPage: React.FC = () => {
                 store: { id: data.store_id, name: data.store_id },
                 category: { id: data.category_id, name: data.category_id },
                 image: data.image_url,
-                additional_images: data.additional_images || [], // Явно передаем дополнительные изображения
-                description: data.description,
+                additional_images: data.additional_images || [],
                 url: data.deal_url,
                 expires_at: data.expires_at,
-                created_at: data.created_at, // Добавляем оригинальное поле created_at
+                created_at: data.created_at,
                 postedAt: new Date(data.created_at).toLocaleDateString(),
                 postedBy: {
                     id: data.profiles?.id || "anonymous",
@@ -655,6 +667,10 @@ const handleVisitDealClick = () => {
         );
     };
 
+    // Диагностика
+    console.log('DEAL FIELDS IN DETAIL:', deal);
+    console.log('LOCALIZED CONTENT:', localizedContent);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-900">
@@ -827,7 +843,7 @@ console.log("--------------------");
                         fullImg.className =
                             "max-w-full max-h-[90vh] object-contain";
                         fullImg.onError = handleImageError;
-                        fullImg.draggable = false; // Отключаем стандартное перетаски �ание
+                        fullImg.draggable = false; // Отключаем стандартное перетаскивание
 
                         // Добавляем обработчики событий касания для свайпов
                         let touchStartX = 0;
@@ -1055,8 +1071,8 @@ console.log("--------------------");
                 <div className="flex items-center justify-between">
                     <h2 className="text-white text-xl font-medium">
                         {searchQuery
-                            ? highlightText(deal.title, searchQuery)
-                            : deal.title}
+                            ? highlightText(localizedContent.title, searchQuery)
+                            : localizedContent.title}
                     </h2>
                     <div className="flex items-center space-x-2">
                         <button
@@ -1217,7 +1233,7 @@ console.log("--------------------");
                 <div className="mt-6">
                     <h3 className="text-white font-medium mb-2">Description</h3>
                     <LinkifiedHtml
-                        content={deal.description || ''}
+                        content={localizedContent.description || ''}
                         searchQuery={searchQuery}
                         className="description-text font-sans text-sm bg-transparent overflow-visible whitespace-pre-wrap border-0 p-0 m-0"
                     />

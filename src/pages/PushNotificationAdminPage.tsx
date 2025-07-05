@@ -27,9 +27,14 @@ interface User {
   push_tokens?: string[]; // Массив токенов для множественных устройств
   deviceCount?: number;   // Количество устройств
   devices?: Array<{       // Детали устройств
+    createdAt: string;
     token: string;
+    hasToken: boolean;
     type: string;
     platform: string;
+    lastActive?: string;
+    appVersion?: string;
+    deviceId?: string;
   }>;
 }
 
@@ -106,11 +111,23 @@ const PushNotificationAdminPage: React.FC = () => {
   
   // UI states
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true); // Отдельное состояние для загрузки пользователей
   const [alerts, setAlerts] = useState<Array<{id: number, message: string, type: 'success' | 'error' | 'info'}>>([]);
   const [alertCounter, setAlertCounter] = useState(0);
   const [currentStep, setCurrentStep] = useState<'setup' | 'compose' | 'send'>('setup');
   const [testMode, setTestMode] = useState(true); // Начинаем с тестового режима
   const [userProfileStatus, setUserProfileStatus] = useState<'unknown' | 'checking' | 'found' | 'not_found' | 'no_token'>('unknown');
+  
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deviceFilter, setDeviceFilter] = useState<'all' | 'single' | 'multiple'>('all');
+  const [platformFilter, setPlatformFilter] = useState<string>('all');
+  const [deviceTypeFilter, setDeviceTypeFilter] = useState<string>('all');
+  const [dataQualityFilter, setDataQualityFilter] = useState<'all' | 'good' | 'unknown'>('all');
+  
+  // Available filter options (populated from data)
+  const [availablePlatforms, setAvailablePlatforms] = useState<string[]>([]);
+  const [availableDeviceTypes, setAvailableDeviceTypes] = useState<string[]>([]);
 
   // Alert functions
   const showAlert = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -152,108 +169,84 @@ const PushNotificationAdminPage: React.FC = () => {
     }
   };
 
-  // Load users with push tokens
+  // Load users (simplified, no language column required)
   const loadUsers = async () => {
+    setIsLoadingUsers(true);
     try {
-      console.log('🔍 Loading users with push tokens...');
-      
-      // Сначала пробуем загрузить из новой таблицы user_devices
-      let { data: devicesData, error: devicesError } = await supabase
+      // 1. Все user_id из user_devices
+      const { data: allDevices, error: devErr } = await supabase
         .from('user_devices')
-        .select(`
-          user_id,
-          push_token,
-          device_type,
-          platform,
-          profiles!inner(id, email, language)
-        `)
-        .not('push_token', 'is', null);
+        .select('*');
+      if (devErr) throw devErr;
 
-      if (!devicesError && devicesData && devicesData.length > 0) {
-        console.log('✅ Loaded users from user_devices table:', devicesData.length);
-        
-        // Группируем устройства по пользователям
-        const userMap = new Map();
-        
-        devicesData.forEach((device: any) => {
-          const userId = device.user_id;
-          const profile = device.profiles;
-          
-          if (!userMap.has(userId)) {
-            userMap.set(userId, {
-              id: userId,
-              email: profile?.email || 'Unknown',
-              language: profile?.language || 'ru',
-              push_tokens: [], // Массив токенов для всех устройств
-              devices: []
-            });
-          }
-          
-          const user = userMap.get(userId);
-          user.push_tokens.push(device.push_token);
-          user.devices.push({
-            token: device.push_token,
-            type: device.device_type,
-            platform: device.platform
+      // 2. Все user_id из profiles с push_token
+      const { data: profiles, error: pErr } = await supabase
+        .from('profiles')
+        .select('id, email, push_token');
+      if (pErr) throw pErr;
+
+      // 3. Собираем уникальные user_id
+      const deviceUserIds = new Set(allDevices.map(d => d.user_id));
+      const profileUserIds = new Set(profiles.map(p => p.id));
+      const allUserIds = new Set([...deviceUserIds, ...profileUserIds]);
+
+      // 4. Группируем устройства по user_id
+      const devicesByUser: Record<string, any[]> = {};
+      allDevices.forEach((d: any) => {
+        if (!devicesByUser[d.user_id]) devicesByUser[d.user_id] = [];
+        devicesByUser[d.user_id].push(d);
+      });
+
+      // 5. Собираем финальный список пользователей
+      const usersList: User[] = Array.from(allUserIds)
+        .map((userId: string) => {
+          const profile = profiles.find(p => p.id === userId);
+          const userDevices = devicesByUser[userId] || [];
+          // Собираем уникальные токены из устройств и, при необходимости, из старого поля profiles
+          const tokenSet = new Set<string>();
+          userDevices.forEach((d: any) => {
+            if (d.push_token) tokenSet.add(d.push_token);
           });
-        });
-        
-        // Преобразуем Map в массив и добавляем совместимость со старым форматом
-        const usersWithDevices = Array.from(userMap.values()).map(user => ({
-          ...user,
-          push_token: user.push_tokens[0], // Для совместимости со старым кодом
-          deviceCount: user.push_tokens.length
-        }));
-        
-        setUsers(usersWithDevices);
-        console.log('📱 Users with multiple devices loaded:', usersWithDevices.length);
-        
-      } else {
-        console.log('⚠️ user_devices table not found or empty, falling back to profiles...');
-        
-        // Fallback: загружаем из старой таблицы profiles
-        let { data, error } = await supabase
-          .from('profiles')
-          .select('id, email, push_token, language')
-          .not('push_token', 'is', null);
-        
-        // If language column doesn't exist, load without it
-        if (error && error.message.includes('column profiles.language does not exist')) {
-          console.warn('Language column not found, loading without language data');
-          const result = await supabase
-            .from('profiles')
-            .select('id, email, push_token')
-            .not('push_token', 'is', null);
-          
-          data = result.data?.map(user => ({ 
-            ...user, 
+          if (profile?.push_token && !tokenSet.has(profile.push_token)) {
+            tokenSet.add(profile.push_token);
+          }
+          const tokens = Array.from(tokenSet);
+
+          return {
+            id: userId,
+            email: profile?.email || `User ${userId.slice(0, 8)}...`,
             language: 'ru',
-            push_tokens: [user.push_token], // Преобразуем в массив для совместимости
-            deviceCount: 1
-          })) || [];
-          error = result.error;
-        } else if (data) {
-          // Преобразуем старый формат в новый для совместимости
-          data = data.map(user => ({
-            ...user,
-            push_tokens: [user.push_token],
-            deviceCount: 1
-          }));
-        }
-        
-        if (error) throw error;
-        setUsers(data || []);
-        console.log('📱 Users loaded from profiles (fallback):', data?.length || 0);
-      }
-      
-      // Если пользователь найден и у него есть токен, автоматически выбираем его
-      if (userProfileStatus === 'found' && user?.id) {
-        setSelectedUsers([user.id]);
-      }
-      
-    } catch (error) {
-      console.error('Error loading users:', error);
-      showAlert('Ошибка загрузки пользователей: ' + (error as Error).message, 'error');
+            push_token: tokens[0] || '',
+            push_tokens: tokens,
+            deviceCount: userDevices.length,
+            devices: userDevices.map((d: any) => ({
+              createdAt: d.created_at,
+              token: d.push_token,
+              hasToken: !!d.push_token && d.push_token !== '',
+              type: d.device_type,
+              platform: d.platform,
+              lastActive: d.last_active,
+              appVersion: d.app_version,
+              deviceId: d.device_identifier,
+            })),
+          };
+        })
+        // Показываем только пользователей, у которых есть хотя бы один push_token
+        .filter(user => user.push_token);
+
+      setUsers(usersList);
+
+      // 6. Обновляем фильтры
+      const platforms = [...new Set(usersList.flatMap(u => (u.devices ?? []).map(d => d.platform)))];
+      const deviceTypes = [...new Set(usersList.flatMap(u => (u.devices ?? []).map(d => d.type)))];
+      setAvailablePlatforms(platforms as string[]);
+      setAvailableDeviceTypes(deviceTypes as string[]);
+    } catch (e: any) {
+      console.error('loadUsers error:', e);
+      showAlert(`Ошибка загрузки пользователей: ${e.message}`, 'error');
+      setUsers([]);
+    } finally {
+      setIsLoadingUsers(false);
     }
   };
 
@@ -348,13 +341,85 @@ const PushNotificationAdminPage: React.FC = () => {
 
   // Get filtered users by language
   const getFilteredUsers = () => {
-    if (selectedLanguage === 'all') {
-      return users;
-    }
-    return users.filter(user => {
-      const userLang = user.language || 'unknown';
-      return userLang === selectedLanguage;
+    let filtered = users;
+    
+    console.log('🔍 Filtering users:', {
+      totalUsers: users.length,
+      searchQuery: searchQuery.trim(),
+      deviceFilter,
+      platformFilter,
+      deviceTypeFilter,
+      dataQualityFilter
     });
+    
+    // Language filter
+    if (selectedLanguage !== 'all') {
+      filtered = filtered.filter(user => {
+        const userLang = user.language || 'unknown';
+        return userLang === selectedLanguage;
+      });
+    }
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(user => 
+        user.email?.toLowerCase().includes(query) ||
+        user.id.toLowerCase().includes(query)
+      );
+    }
+    
+    // Device count filter
+    if (deviceFilter !== 'all') {
+      filtered = filtered.filter(user => {
+        const deviceCount = user.deviceCount || 1;
+        return deviceFilter === 'single' ? deviceCount === 1 : deviceCount > 1;
+      });
+    }
+    
+    // Platform filter
+    if (platformFilter !== 'all') {
+      console.log('🔍 Platform filter active:', platformFilter);
+      const beforeCount = filtered.length;
+      filtered = filtered.filter(user => {
+        if (!user.devices || user.devices.length === 0) return false;
+        return user.devices.some(device => device.platform === platformFilter);
+      });
+      console.log(`🎯 Platform filter: ${beforeCount} → ${filtered.length} users`);
+    }
+    
+    // Device type filter  
+    if (deviceTypeFilter !== 'all') {
+      console.log('🔍 Device type filter active:', deviceTypeFilter);
+      const beforeCount = filtered.length;
+      filtered = filtered.filter(user => {
+        if (!user.devices || user.devices.length === 0) return false;
+        return user.devices.some(device => device.type === deviceTypeFilter);
+      });
+      console.log(`🎯 Device type filter: ${beforeCount} → ${filtered.length} users`);
+    }
+    
+    // Data quality filter
+    if (dataQualityFilter !== 'all') {
+      console.log('🔍 Data quality filter active:', dataQualityFilter);
+      const beforeCount = filtered.length;
+      filtered = filtered.filter(user => {
+        if (!user.devices || user.devices.length === 0) return dataQualityFilter === 'unknown';
+        
+        const hasGoodData = user.devices.some(device => 
+          device.platform !== 'unknown' && 
+          device.type !== 'unknown' && 
+          device.appVersion && 
+          device.appVersion !== 'unknown'
+        );
+        
+        return dataQualityFilter === 'good' ? hasGoodData : !hasGoodData;
+      });
+      console.log(`🎯 Data quality filter: ${beforeCount} → ${filtered.length} users`);
+    }
+    
+    console.log('✅ Filtered result:', filtered.length, 'users');
+    return filtered;
   };
 
   // Send notification
@@ -449,11 +514,15 @@ const PushNotificationAdminPage: React.FC = () => {
 
   // Load data on component mount
   useEffect(() => {
+    console.log('🔄 useEffect triggered:', { isAdmin, userId: user?.id });
     if (isAdmin) {
+      console.log('✅ Admin confirmed, loading data...');
       loadStats();
       loadLanguageStats();
       checkUserProfile();
       loadUsers();
+    } else {
+      console.log('❌ Not admin, skipping data load');
     }
   }, [isAdmin, user?.id]);
 
@@ -499,7 +568,7 @@ const PushNotificationAdminPage: React.FC = () => {
     if (testMode) {
       return selectedUsers.length > 0 || userProfileStatus === 'found';
     }
-    return users.length > 0;
+    return getFilteredUsers().length > 0;
   };
 
   const canSend = () => {
@@ -755,18 +824,162 @@ const PushNotificationAdminPage: React.FC = () => {
 
                   {/* Recipients Selection */}
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="font-medium text-gray-900 mb-3">
-                      Получатели тестирования ({selectedUsers.length} выбрано)
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-medium text-gray-900">
+                        Получатели тестирования ({selectedUsers.length} из {getFilteredUsers().length} выбрано)
+                      </h3>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const filteredIds = getFilteredUsers().map(u => u.id);
+                            const allSelected = filteredIds.every(id => selectedUsers.includes(id));
+                            if (allSelected) {
+                              setSelectedUsers([]);
+                            } else {
+                              setSelectedUsers(filteredIds);
+                            }
+                          }}
+                          className="text-xs px-2 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
+                        >
+                          {getFilteredUsers().length > 0 && getFilteredUsers().every(u => selectedUsers.includes(u.id)) 
+                            ? 'Снять все' 
+                            : 'Выбрать всех'}
+                        </button>
+                        {user?.id && (
+                          <button
+                            onClick={() => setSelectedUsers([user.id])}
+                            className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                          >
+                            Только я
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     
-                    {users.length === 0 ? (
+                    {/* Search and Filters */}
+                    <div className="mb-4 space-y-3">
+                      {/* Search */}
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Поиск по email или ID..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                      </div>
+                      
+                      {/* Filters */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                        <select
+                          value={deviceFilter}
+                          onChange={(e) => setDeviceFilter(e.target.value as any)}
+                          className="px-2 py-1 border border-gray-300 rounded text-xs"
+                        >
+                          <option value="all">Все устройства</option>
+                          <option value="single">1 устройство</option>
+                          <option value="multiple">Несколько устройств</option>
+                        </select>
+                        
+                        <select
+                          value={platformFilter}
+                          onChange={(e) => setPlatformFilter(e.target.value)}
+                          className="px-2 py-1 border border-gray-300 rounded text-xs"
+                        >
+                          <option value="all">Все платформы</option>
+                          {availablePlatforms.length > 0 ? (
+                            availablePlatforms.map(platform => (
+                              <option key={platform} value={platform}>
+                                {platform === 'android' ? 'Android' : 
+                                 platform === 'ios' ? 'iOS' : 
+                                 platform === 'unknown' ? 'Неизвестно' :
+                                 platform || 'Неизвестно'}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="android">Android</option>
+                              <option value="ios">iOS</option>
+                              <option value="unknown">Неизвестно</option>
+                            </>
+                          )}
+                        </select>
+                        
+                        <select
+                          value={deviceTypeFilter}
+                          onChange={(e) => setDeviceTypeFilter(e.target.value)}
+                          className="px-2 py-1 border border-gray-300 rounded text-xs"
+                        >
+                          <option value="all">Все типы</option>
+                          {availableDeviceTypes.length > 0 ? (
+                            availableDeviceTypes.map(type => (
+                              <option key={type} value={type}>
+                                {type === 'physical' ? 'Физические' :
+                                 type === 'simulator' ? 'Симуляторы' :
+                                 type === 'expo_go' ? 'Expo Go' :
+                                 type === 'development_build' ? 'Dev Build' :
+                                 type === 'production' ? 'Production' :
+                                 type === 'unknown' ? 'Неизвестно' :
+                                 type || 'Неизвестно'}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="physical">Физические</option>
+                              <option value="simulator">Симуляторы</option>
+                              <option value="expo_go">Expo Go</option>
+                              <option value="development_build">Dev Build</option>
+                              <option value="production">Production</option>
+                              <option value="unknown">Неизвестно</option>
+                            </>
+                          )}
+                        </select>
+                        
+                        <select
+                          value={dataQualityFilter}
+                          onChange={(e) => setDataQualityFilter(e.target.value as any)}
+                          className="px-2 py-1 border border-gray-300 rounded text-xs"
+                        >
+                          <option value="all">Все данные</option>
+                          <option value="good">Полные данные</option>
+                          <option value="unknown">Неизвестные данные</option>
+                        </select>
+                        
+                        <button
+                          onClick={() => {
+                            setSearchQuery('');
+                            setDeviceFilter('all');
+                            setPlatformFilter('all');
+                            setDeviceTypeFilter('all');
+                            setDataQualityFilter('all');
+                          }}
+                          className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                        >
+                          Сбросить
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {isLoadingUsers ? (
                       <div className="text-center py-8 text-gray-500">
                         <Users className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                         <p>Загружаю список пользователей...</p>
                       </div>
+                    ) : users.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Users className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                        <p>Пользователи с push-токенами не найдены</p>
+                        <p className="text-sm mt-2">Проверьте подключение к базе данных</p>
+                      </div>
                     ) : (
                       <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {users.map(userItem => (
+                        {getFilteredUsers().length === 0 ? (
+                          <div className="text-center py-4 text-gray-500">
+                            <p>Пользователи не найдены</p>
+                            <p className="text-sm">Попробуйте изменить фильтры или поисковый запрос</p>
+                          </div>
+                        ) : (
+                          getFilteredUsers().map(userItem => (
                           <label key={userItem.id} className="flex items-center gap-3 p-2 hover:bg-white rounded cursor-pointer">
                             <input
                               type="checkbox"
@@ -804,20 +1017,65 @@ const PushNotificationAdminPage: React.FC = () => {
                                   : `Токен: ${userItem.push_token?.substring(0, 20)}...`
                                 }
                               </p>
-                              {userItem.devices && userItem.devices.length > 0 && (
-                                <div className="text-xs text-blue-600 mt-1">
-                                  <span className="font-medium">Устройства: </span>
-                                  {userItem.devices.map((d, idx) => (
-                                    <span key={idx} className="inline-block mr-2 mb-1">
-                                      {d.platform === 'android' ? '🤖' : d.platform === 'ios' ? '📱' : '💻'} 
-                                      {d.platform} ({d.type === 'expo_go' ? 'Expo Go' : d.type === 'development_build' ? 'Dev Build' : d.type})
-                                    </span>
-                                  ))}
+                              {userItem.devices && userItem.devices.length > 0 ? (
+                                <div className="mt-2">
+                                  {/* Mobile (xs) view */}
+                                  <div className="sm:hidden text-xs text-gray-600">
+                                    {(() => {
+                                      const d = [...userItem.devices]
+                                        .sort((a,b)=> new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+                                      if (!d) return null;
+                                      return (
+                                        <span>
+                                          <span className="font-mono text-blue-700">
+                                            {d.deviceId?.slice(0, 18)}
+                                          </span>
+                                          {' · '}{d.platform}
+                                          {d.appVersion ? ` · v${d.appVersion}` : ''}
+                                          {d.hasToken && ' ✅'}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
+
+                                  {/* Desktop / tablet table */}
+                                  <div className="hidden sm:block overflow-x-auto">
+                                    <table className="min-w-full text-xs border border-gray-200">
+                                      <thead className="bg-gray-100">
+                                        <tr>
+                                          <th className="px-2 py-1 border">Дата</th>
+                                          <th className="px-2 py-1 border">ID устройства</th>
+                                          <th className="px-2 py-1 border">Платформа</th>
+                                          <th className="px-2 py-1 border">Тип</th>
+                                          <th className="px-2 py-1 border">Версия</th>
+                                          <th className="px-2 py-1 border">Токен?</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {userItem.devices
+                                           .sort((a,b)=> new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                           .slice(0,1)
+                                           .map((d, idx)=>(
+                                            <tr key={d.deviceId || idx} className="border-t">
+                                              <td className="px-2 py-1 border whitespace-nowrap">{new Date(d.createdAt).toLocaleDateString()}</td>
+                                              <td className="px-2 py-1 border font-mono text-blue-700 whitespace-nowrap">{d.deviceId}</td>
+                                              <td className="px-2 py-1 border capitalize">{d.platform}</td>
+                                              <td className="px-2 py-1 border">{d.type}</td>
+                                              <td className="px-2 py-1 border">{d.appVersion}</td>
+                                              <td className="px-2 py-1 border text-center">{d.hasToken ? '✅' : '—'}</td>
+                                            </tr>
+                                          ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
                                 </div>
+                              ) : (
+                                <span className="italic text-gray-500 ml-1">нет данных</span>
                               )}
                             </div>
                           </label>
-                        ))}
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
@@ -829,10 +1087,10 @@ const PushNotificationAdminPage: React.FC = () => {
                     Массовая рассылка
                   </h3>
                   <div className="text-gray-600 mb-4">
-                    <p>Уведомление будет отправлено <strong>{users.length} пользователям</strong> с push-токенами</p>
+                    <p>Уведомление будет отправлено <strong>{getFilteredUsers().length} пользователям</strong> с push-токенами</p>
                     <p className="text-sm mt-2">
                       📱 Общее количество устройств: <strong>
-                        {users.reduce((total, user) => total + (user.deviceCount || 1), 0)}
+                        {getFilteredUsers().reduce((total, user) => total + (user.deviceCount || 1), 0)}
                       </strong>
                   </p>
                   </div>
