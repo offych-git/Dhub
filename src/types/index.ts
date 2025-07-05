@@ -1,6 +1,8 @@
 export interface Deal {
   id: string;
   title: string;
+  title_en?: string;
+  title_es?: string;
   currentPrice: number;
   originalPrice?: number;
   category: {
@@ -25,6 +27,8 @@ export interface Deal {
     avatar: string;
   };
   description: string;
+  description_en?: string;
+  description_es?: string;
   url: string;
   createdAt?: Date;
   status?: string;

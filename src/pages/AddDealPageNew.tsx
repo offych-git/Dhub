@@ -14,6 +14,7 @@ import {
   Plus,
   ArrowLeftCircle,
   ArrowRightCircle,
+  RefreshCcw,
 } from "lucide-react";
 import { categories, stores, categoryIcons } from "../data/mockData";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -31,6 +32,7 @@ import CategorySimpleBottomSheet from "../components/deals/CategorySimpleBottomS
 import StoreBottomSheet from "../components/deals/StoreBottomSheet";
 import { useGlobalState } from "../contexts/GlobalStateContext"; // Import useGlobalState
 import { useModeration } from "../contexts/ModerationContext";
+import { translateAfterSave, translateTextOnly } from "../utils/autoTranslate";
 
 interface ImageWithId {
   file: File;
@@ -81,6 +83,9 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
   const [mainImageIndex, setMainImageIndex] = useState(0); // Оставляем для совместимости с существующим кодом
   const { addToModerationQueue } = useModeration();
   const [isDragActive, setIsDragActive] = useState(false);
+  const [showTranslations, setShowTranslations] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
 
   useEffect(() => {
     const pageTitle = "Add New Deal"; // Или ваш динамический заголовок
@@ -138,6 +143,11 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
     dealUrl: initialData?.deal_url || "",
     expiryDate: initialData?.expiry_date || initialData?.expires_at || "",
     isHot: initialData?.is_hot || false,
+    // Многоязычные поля
+    title_en: initialData?.title_en || "",
+    title_es: initialData?.title_es || "",
+    description_en: initialData?.description_en || "",
+    description_es: initialData?.description_es || "",
   });
 
   const compressImage = async (file: File): Promise<File> => {
@@ -243,7 +253,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
       Underline,
       Image,
     ],
-    content: "",
+    content: formData.description || "",
     parseOptions: {
       preserveWhitespace: "full",
     },
@@ -265,10 +275,112 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-
       setFormData((prev) => ({
         ...prev,
         description: html,
+      }));
+    },
+  });
+
+  // Создаем редакторы для переводов
+  const editorEn = useEditor({
+    extensions: [
+      StarterKit.configure({
+        bulletList: {
+          HTMLAttributes: {
+            class: "list-disc pl-4",
+          },
+        },
+        paragraph: {
+          HTMLAttributes: {
+            class: "mb-3",
+          },
+        },
+        hardBreak: {
+          keepMarks: true,
+          HTMLAttributes: {
+            class: "inline-block",
+          },
+        },
+      }),
+      Underline,
+    ],
+    content: formData.description_en || "",
+    parseOptions: {
+      preserveWhitespace: "full",
+    },
+    editorProps: {
+      attributes: {
+        class: "prose prose-invert max-w-none focus:outline-none min-h-[150px]",
+      },
+      handleKeyDown: (view, event) => {
+        if (event.key === "Enter") {
+          view.dispatch(
+            view.state.tr
+              .replaceSelectionWith(view.state.schema.nodes.hardBreak.create())
+              .scrollIntoView(),
+          );
+          return true;
+        }
+        return false;
+      },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      setFormData((prev) => ({
+        ...prev,
+        description_en: html,
+      }));
+    },
+  });
+
+  const editorEs = useEditor({
+    extensions: [
+      StarterKit.configure({
+        bulletList: {
+          HTMLAttributes: {
+            class: "list-disc pl-4",
+          },
+        },
+        paragraph: {
+          HTMLAttributes: {
+            class: "mb-3",
+          },
+        },
+        hardBreak: {
+          keepMarks: true,
+          HTMLAttributes: {
+            class: "inline-block",
+          },
+        },
+      }),
+      Underline,
+    ],
+    content: formData.description_es || "",
+    parseOptions: {
+      preserveWhitespace: "full",
+    },
+    editorProps: {
+      attributes: {
+        class: "prose prose-invert max-w-none focus:outline-none min-h-[150px]",
+      },
+      handleKeyDown: (view, event) => {
+        if (event.key === "Enter") {
+          view.dispatch(
+            view.state.tr
+              .replaceSelectionWith(view.state.schema.nodes.hardBreak.create())
+              .scrollIntoView(),
+          );
+          return true;
+        }
+        return false;
+      },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      setFormData((prev) => ({
+        ...prev,
+        description_es: html,
       }));
     },
   });
@@ -446,9 +558,18 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
 
       console.log("Saving description:", enhancedDescription);
 
+      // Получаем HTML из редакторов переводов
+      const descriptionEn = editorEn ? editorEn.getHTML() : formData.description_en;
+      const descriptionEs = editorEs ? editorEs.getHTML() : formData.description_es;
+
       const dealData = {
         title: formData.title,
         description: enhancedDescription,
+        // Многоязычные поля
+        title_en: formData.title_en || null,
+        title_es: formData.title_es || null,
+        description_en: descriptionEn || null,
+        description_es: descriptionEs || null,
         current_price: Number(formData.currentPrice),
         original_price: formData.originalPrice
           ? Number(formData.originalPrice)
@@ -484,6 +605,11 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           // Включите сюда все поля из формы, которые нужно обновить
           title: formData.title,
           description: enhancedDescription,
+          // Многоязычные поля
+          title_en: formData.title_en || null,
+          title_es: formData.title_es || null,
+          description_en: descriptionEn || null,
+          description_es: descriptionEs || null,
           current_price: Number(formData.currentPrice),
           original_price: formData.originalPrice
             ? Number(formData.originalPrice)
@@ -619,6 +745,8 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           );
         }
 
+
+
         // Если редактирование из модерации, перенаправляем обратно на страницу модерации,
         // в противном случае - на страницу деталей
         if (autoApprove) {
@@ -646,7 +774,8 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
 
         if (dealError) {
           console.error("Error creating deal:", dealError);
-          throw new Error("Failed to create deal");
+          console.error("Deal data that failed:", dealData);
+          throw new Error(`Failed to create deal: ${dealError.message || dealError.details || 'Unknown error'}`);
         }
 
         // Отмечаем все сделки как устаревшие, если есть dispatch
@@ -665,6 +794,8 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           );
         }
 
+
+
         navigate(`/deals/${deal.id}`);
         // Добавляем новую сделку в очередь модерации
         if (deal && deal.id) {
@@ -674,10 +805,11 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
       }
     } catch (error) {
       console.error("Error in handleSubmit:", error);
+      console.error("Full error object:", JSON.stringify(error, null, 2));
       setError(
         error instanceof Error
           ? error.message
-          : `Failed to ${isEditing ? "update" : "create"} deal`,
+          : `Failed to ${isEditing ? "update" : "create"} deal: ${String(error)}`,
       );
     } finally {
       setLoading(false);
@@ -709,6 +841,57 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
   const handleUrlInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value;
     setFormData((prev) => ({ ...prev, dealUrl: url }));
+  };
+
+  // Функция для перевода текста
+  const handleTranslate = async () => {
+    setTranslateError(null);
+    if (!formData.title.trim() || !formData.description.trim()) {
+      setTranslateError("Заполните заголовок и описание на русском языке для перевода");
+      return;
+    }
+    setIsTranslating(true);
+    try {
+      const currentDescription = editor ? editor.getHTML() : formData.description;
+      const result = await translateTextOnly(formData.title, currentDescription);
+      if (result.success) {
+        setFormData(prev => ({
+          ...prev,
+          title_en: result.translations.title_en,
+          title_es: result.translations.title_es,
+          description_en: result.translations.description_en,
+          description_es: result.translations.description_es,
+        }));
+        // Сохраняем html/форматирование в редакторах переводов
+        if (editorEn) {
+          editorEn.commands.setContent(result.translations.description_en);
+        }
+        if (editorEs) {
+          editorEs.commands.setContent(result.translations.description_es);
+        }
+      } else {
+        setTranslateError(result.message || "Ошибка перевода");
+      }
+    } catch (error) {
+      setTranslateError("Ошибка при переводе. Попробуйте еще раз.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  // Новая функция: показать переводы И сразу перевести
+  const handleShowAndTranslate = async () => {
+    if (!showTranslations) {
+      // Если переводы скрыты, показываем их и сразу переводим
+      setShowTranslations(true);
+      // Небольшая задержка, чтобы поля успели отрендериться
+      setTimeout(() => {
+        handleTranslate();
+      }, 100);
+    } else {
+      // Если переводы уже показаны, просто скрываем
+      setShowTranslations(false);
+    }
   };
 
   return (
@@ -744,7 +927,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Title *"
+                  placeholder="Title (Russian) *"
                   className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
                     !validationState.title && formData.title !== ""
                       ? "border border-red-500"
@@ -781,6 +964,197 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                 </p>
               )}
             </div>
+
+            <div className="relative">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => editor?.chain().focus().toggleBold().run()}
+                  className={`formatting-button p-2 rounded ${editor?.isActive("bold") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                >
+                  <Bold className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editor?.chain().focus().toggleItalic().run()}
+                  className={`formatting-button p-2 rounded ${editor?.isActive("italic") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                >
+                  <Italic className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    editor?.chain().focus().toggleUnderline().run()
+                  }
+                  className={`formatting-button p-2 rounded ${editor?.isActive("underline") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                >
+                  <UnderlineIcon className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    editor?.chain().focus().toggleBulletList().run()
+                  }
+                  className={`formatting-button p-2 rounded ${editor?.isActive("bulletList") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                >
+                  <List className="h-5 w-5" />
+                </button>
+              </div>
+              <div
+                className={`bg-gray-800 rounded-lg p-4 min-h-[200px] ${
+                  !validationState.description ? "border border-yellow-500" : ""
+                }`}
+              >
+                {!editor?.getText() && (
+                  <div className="absolute text-gray-500 pointer-events-none p-1">
+                    Description (Russian) *
+                  </div>
+                )}
+                <EditorContent editor={editor} />
+              </div>
+              <div className="flex items-center gap-2 mt-6">
+                <button
+                  type="button"
+                  onClick={handleShowAndTranslate}
+                  className="px-4 py-2 rounded border border-gray-400 bg-white text-gray-800 hover:bg-gray-100 transition"
+                  disabled={!formData.title.trim() || !formData.description.trim()}
+                >
+                  {showTranslations ? "Скрыть переводы" : "Показать и перевести"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTranslate}
+                  disabled={isTranslating || !formData.title.trim() || !formData.description.trim() || !showTranslations}
+                  className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 transition disabled:bg-gray-100 disabled:text-gray-400"
+                  title="Обновить переводы"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  {isTranslating ? (
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <RefreshCcw className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+              {translateError && (
+                <div className="text-red-500 text-xs mt-1">{translateError}</div>
+              )}
+            </div>
+
+            {/* Translation Fields */}
+            {showTranslations && (
+              <div className="space-y-4 mt-4">
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Title (English)"
+                    className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                    value={formData.title_en}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title_en: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Title (Spanish)"
+                    className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                    value={formData.title_es}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title_es: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <div className="relative">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => editorEn?.chain().focus().toggleBold().run()}
+                        className={`formatting-button p-2 rounded ${editorEn?.isActive("bold") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                      >
+                        <Bold className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => editorEn?.chain().focus().toggleItalic().run()}
+                        className={`formatting-button p-2 rounded ${editorEn?.isActive("italic") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                      >
+                        <Italic className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => editorEn?.chain().focus().toggleUnderline().run()}
+                        className={`formatting-button p-2 rounded ${editorEn?.isActive("underline") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                      >
+                        <UnderlineIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => editorEn?.chain().focus().toggleBulletList().run()}
+                        className={`formatting-button p-2 rounded ${editorEn?.isActive("bulletList") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                      >
+                        <List className="h-5 w-5" />
+                      </button>
+                    </div>
+                    <div className="bg-gray-800 rounded-lg p-4 min-h-[100px]">
+                      {!editorEn?.getText() && (
+                        <div className="absolute text-gray-500 pointer-events-none p-1">
+                          Description (English)
+                        </div>
+                      )}
+                      <EditorContent editor={editorEn} />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div className="relative">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => editorEs?.chain().focus().toggleBold().run()}
+                        className={`formatting-button p-2 rounded ${editorEs?.isActive("bold") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                      >
+                        <Bold className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => editorEs?.chain().focus().toggleItalic().run()}
+                        className={`formatting-button p-2 rounded ${editorEs?.isActive("italic") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                      >
+                        <Italic className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => editorEs?.chain().focus().toggleUnderline().run()}
+                        className={`formatting-button p-2 rounded ${editorEs?.isActive("underline") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                      >
+                        <UnderlineIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => editorEs?.chain().focus().toggleBulletList().run()}
+                        className={`formatting-button p-2 rounded ${editorEs?.isActive("bulletList") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
+                      >
+                        <List className="h-5 w-5" />
+                      </button>
+                    </div>
+                    <div className="bg-gray-800 rounded-lg p-4 min-h-[100px]">
+                      {!editorEs?.getText() && (
+                        <div className="absolute text-gray-500 pointer-events-none p-1">
+                          Description (Spanish)
+                        </div>
+                      )}
+                      <EditorContent editor={editorEs} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <div className="relative">
@@ -826,96 +1200,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                 </p>
               )}
             </div>
-
-            <div className="flex space-x-4">
-              <div className="flex-1 relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Current Price *"
-                  className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
-                    !validationState.currentPrice &&
-                    formData.currentPrice !== ""
-                      ? "border border-red-500"
-                      : !validationState.currentPrice
-                        ? "border border-yellow-500"
-                        : ""
-                  }`}
-                  value={formData.currentPrice}
-                  onChange={(e) =>
-                    setFormData({ ...formData, currentPrice: e.target.value })
-                  }
-                  required
-                />
-                {validationState.currentPrice && formData.currentPrice && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 text-green-500"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                )}
-                {!validationState.currentPrice && (
-                  <p className="text-orange-500 text-xs mt-1">
-                    Valid current price is required
-                  </p>
-                )}
-              </div>
-              <div className="flex-1 relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Original Price"
-                  className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 ${
-                    !validationState.originalPrice
-                      ? "border border-red-500"
-                      : ""
-                  }`}
-                  value={formData.originalPrice}
-                  onChange={(e) =>
-                    setFormData({ ...formData, originalPrice: e.target.value })
-                  }
-                />
-                {validationState.originalPrice && formData.originalPrice && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 text-green-500"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                )}
-                {!validationState.originalPrice && (
-                  <p className="text-red-500 text-xs mt-1">
-                    Original price should be greater than or equal to current
-                    price
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {calculateDiscount() !== null && (
-              <div className="text-green-500 text-sm">
-                Discount: {calculateDiscount()}%
-              </div>
-            )}
 
             {/* Deal Images */}
             <div>
@@ -1184,77 +1468,6 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                   <div style={{position: "absolute", inset: 0, borderRadius: 8, border: "2px solid #3b82f6", background: "rgba(59,130,246,0.08)", pointerEvents: "none"}} />
                 )}
               </div>
-            </div>
-
-            <div className="relative">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => editor?.chain().focus().toggleBold().run()}
-                  className={`formatting-button p-2 rounded ${editor?.isActive("bold") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
-                >
-                  <Bold className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => editor?.chain().focus().toggleItalic().run()}
-                  className={`formatting-button p-2 rounded ${editor?.isActive("italic") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
-                >
-                  <Italic className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    editor?.chain().focus().toggleUnderline().run()
-                  }
-                  className={`formatting-button p-2 rounded ${editor?.isActive("underline") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
-                >
-                  <UnderlineIcon className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    editor?.chain().focus().toggleBulletList().run()
-                  }
-                  className={`formatting-button p-2 rounded ${editor?.isActive("bulletList") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}
-                >
-                  <List className="h-5 w-5" />
-                </button>
-              </div>
-              <div
-                className={`bg-gray-800 rounded-lg p-4 min-h-[200px] ${
-                  !validationState.description ? "border border-yellow-500" : ""
-                }`}
-              >
-                {!editor?.getText() && (
-                  <div className="absolute text-gray-500 pointer-events-none p-1">
-                    Description *
-                  </div>
-                )}
-                <EditorContent editor={editor} />
-              </div>
-              {!validationState.description && (
-                <p className="text-orange-500 text-xs mt-1">
-                  Description is required
-                </p>
-              )}
-              {validationState.description && formData.description && (
-                <div className="text-green-500 text-xs font-medium mt-1 flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  Description looks good!
-                </div>
-              )}
             </div>
 
             <div>
