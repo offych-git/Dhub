@@ -24,6 +24,7 @@ import VoteControls from "../components/deals/VoteControls";
 import { useLanguage } from "../contexts/LanguageContext";
 import { triggerNativeHaptic } from "../utils/nativeBridge";
 import { decodeHtmlEntities } from "../utils/htmlUtils";
+import { useLocalizedContent } from "../utils/localizationUtils";
 
 interface PromoCode {
   id: string;
@@ -65,6 +66,7 @@ const PromosPage: React.FC = () => {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const location = useLocation();
+  const { language, getLocalizedPromoContent } = useLocalizedContent();
 
   useEffect(() => {
     setPage(1);
@@ -422,198 +424,200 @@ const PromosPage: React.FC = () => {
           <div className="text-red-500 text-center py-8">{error}</div>
         ) : filteredPromoCodes.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredPromoCodes.map((promo) => (
-              <Link
-                key={promo.id}
-                to={`/promos/${promo.id}`}
-                className="bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors flex flex-col h-full relative"
-                style={{ overflow: 'visible' }}
-              >
-                <div className="p-3 flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-gray-400 text-xs">
-                      {formatTimeAgo(promo.created_at)}
+            {filteredPromoCodes.map((promo) => {
+              const localized = getLocalizedPromoContent(promo);
+              return (
+                <Link
+                  key={promo.id}
+                  to={`/promos/${promo.id}`}
+                  className="bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors flex flex-col h-full relative"
+                  style={{ overflow: 'visible' }}
+                >
+                  <div className="p-3 flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-gray-400 text-xs">
+                        {formatTimeAgo(promo.created_at)}
+                      </div>
+                      <VoteControls
+                        dealId={promo.id}
+                        popularity={promo.votes}
+                        userVoteType={promo.userVote}
+                        type="promo"
+                      />
                     </div>
-                    <VoteControls
-                      dealId={promo.id}
-                      popularity={promo.votes}
-                      userVoteType={promo.userVote}
-                      type="promo"
-                    />
-                    {/*<VoteControls dealId={promo.id} type="promo" />*/}
-                  </div>
 
-                  <div className="mb-2">
-                    <div className="flex items-center">
-                      <h3 className="text-white font-medium line-clamp-1">
-                        {decodeHtmlEntities(promo.title)}
-                      </h3>
-                      {promo.status === "pending" && (
-                        <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
-                          {t("common.statusPending")}
-                        </span>
-                      )}
-                      {promo.status === "rejected" && (
-                        <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
-                          {t("common.statusRejected")}
-                        </span>
-                      )}
-                      {promo.expires_at &&
-                        new Date(promo.expires_at) < new Date() && (
-                          <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
-                            Expired
+                    <div className="mb-2">
+                      <div className="flex items-center">
+                        <h3 className="text-white font-medium line-clamp-1">
+                          {decodeHtmlEntities(localized.title)}
+                        </h3>
+                        {promo.status === "pending" && (
+                          <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
+                            {t("common.statusPending")}
                           </span>
                         )}
+                        {promo.status === "rejected" && (
+                          <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
+                            {t("common.statusRejected")}
+                          </span>
+                        )}
+                        {promo.expires_at &&
+                          new Date(promo.expires_at) < new Date() && (
+                            <span className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
+                              {t('common.expired')}
+                            </span>
+                          )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="mb-2">
-                    <p className="text-gray-400 text-sm line-clamp-2">
-                      {promo.description}
-                    </p>
-                  </div>
+                    <div className="mb-2">
+                      <p className="text-gray-400 text-sm line-clamp-2">
+                        {localized.description}
+                      </p>
+                    </div>
 
-                  <div className="flex items-center space-x-2 mb-2">
-<div className="bg-gray-700 px-2 py-1 rounded border border-gray-600">
-                  <span className="text-orange-500 font-mono text-sm">
-                    {promo.code}
-                  </span>
-                </div>
-                    {user && (
-                      <button
-                        className={`text-sm transition-colors duration-200 ${
-                          copiedCodeId === promo.id
-                            ? "text-green-500"
-                            : "text-orange-500"
-                        }`}
-                        onClick={(e) => handleCopyCode(e, promo.code, promo.id)}
-                      >
-                        {copiedCodeId === promo.id ? "Copied!" : "Copy"}
-                      </button>
-                    )}
-                    {promo.expires_at && (
-                      <div
-                        className="flex items-center text-gray-400 text-xs ml-auto"
-                        title="Expiration Date"
-                      >
-                        <Calendar className="h-3 w-3 mr-1" />
-                        <span>
-                          Expires {formatExpiryDate(promo.expires_at)}
+                    <div className="flex items-center space-x-2 mb-2">
+                      <div className="bg-gray-700 px-2 py-1 rounded border border-gray-600">
+                        <span className="text-orange-500 font-mono text-sm">
+                          {promo.code}
                         </span>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center">
-                      <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-700">
-                        <img
-                          src={promo.user.avatarUrl}
-                          alt={promo.user.displayName}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span className="text-gray-400 ml-1">
-                        {promo.user.displayName}
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      <button
-                        onClick={(e) => toggleFavorite(e, promo.id)}
-                        className={`p-1 rounded-full ${favorites[promo.id] ? "text-red-500" : "text-gray-400"}`}
-                      >
-                        <Heart
-                          className="h-4 w-4"
-                          fill={favorites[promo.id] ? "currentColor" : "none"}
-                        />
-                      </button>
-
-                      <div className="ml-3 text-gray-400 flex items-center">
-                        <MessageSquare className="h-4 w-4 mr-1" />
-                        <span className="text-xs">{promo.comments}</span>
-                      </div>
-
-                      <button
-                        className="ml-3 text-orange-500 flex items-center"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (navigator.share) {
-                            // Формируем правильный URL для конкретного промокода
-                            const promoUrl = `${window.location.origin}/promos/${promo.id}`;
-                            navigator
-                              .share({
-                                title: decodeHtmlEntities(promo.title),
-                                url: promoUrl,
-                              })
-                              .catch(console.error);
-                          } else {
-                            // Формируем правильный URL для копирования
-                            const promoUrl = `${window.location.origin}/promos/${promo.id}`;
-                            navigator.clipboard.writeText(promoUrl);
-                            alert("Ссылка скопирована в буфер обмена!");
-                          }
-                        }}
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </button>
-                      {user &&
-                        user.id === promo.user.id &&
-                        new Date().getTime() -
-                          new Date(promo.created_at).getTime() <
-                          24 * 60 * 60 * 1000 && (
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              navigate(`/promos/${promo.id}/edit`);
-                            }}
-                            className="ml-3 text-orange-500 flex items-center"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      <button className="ml-3 text-orange-500 flex items-center">
-                        <span className="text-xs mr-1">View</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </button>
-
-                      {/* Индикатор модерации */}
-                      {(role === "admin" ||
-                        role === "moderator" ||
-                        (user && user.id === promo.user.id)) && (
-                        <div
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                          className="ml-3 relative"
-                          style={{ overflow: 'visible' }}
+                      {user && (
+                        <button
+                          className={`text-sm transition-colors duration-200 ${
+                            copiedCodeId === promo.id
+                              ? "text-green-500"
+                              : "text-orange-500"
+                          }`}
+                          onClick={(e) => handleCopyCode(e, promo.code, promo.id)}
                         >
-                          <AdminActions
-                            className="text-orange-500 flex items-center"
-                            type="promo"
-                            id={promo.id}
-                            userId={promo.user.id}
-                            createdAt={promo.created_at}
-                            expiresAt={promo.expires_at}
-                            onAction={fetchPromoCodes}
-                          />
+                          {copiedCodeId === promo.id ? t('buttons.copied') : t('buttons.copy')}
+                        </button>
+                      )}
+                      {promo.expires_at && (
+                        <div
+                          className="flex items-center text-gray-400 text-xs ml-auto"
+                          title={t('common.expiration_date')}
+                        >
+                          <Calendar className="h-3 w-3 mr-1" />
+                          <span>
+                            {t('common.expires')} {formatExpiryDate(promo.expires_at)}
+                          </span>
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
 
-                <div className="bg-orange-500 text-center text-white py-2 text-sm font-medium">
-                  Get Discount
-                </div>
-              </Link>
-            ))}
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-700">
+                          <img
+                            src={promo.user.avatarUrl}
+                            alt={promo.user.displayName}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="text-gray-400 ml-1">
+                          {promo.user.displayName}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <button
+                          onClick={(e) => toggleFavorite(e, promo.id)}
+                          className={`p-1 rounded-full ${favorites[promo.id] ? "text-red-500" : "text-gray-400"}`}
+                        >
+                          <Heart
+                            className="h-4 w-4"
+                            fill={favorites[promo.id] ? "currentColor" : "none"}
+                          />
+                        </button>
+
+                        <div className="ml-3 text-gray-400 flex items-center">
+                          <MessageSquare className="h-4 w-4 mr-1" />
+                          <span className="text-xs">{promo.comments}</span>
+                        </div>
+
+                        <button
+                          className="ml-3 text-orange-500 flex items-center"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (navigator.share) {
+                              // Формируем правильный URL для конкретного промокода
+                              const promoUrl = `${window.location.origin}/promos/${promo.id}`;
+                              navigator
+                                .share({
+                                  title: decodeHtmlEntities(localized.title),
+                                  url: promoUrl,
+                                })
+                                .catch(console.error);
+                            } else {
+                              // Формируем правильный URL для копирования
+                              const promoUrl = `${window.location.origin}/promos/${promo.id}`;
+                              navigator.clipboard.writeText(promoUrl);
+                              alert(t('common.link_copied'));
+                            }
+                          }}
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </button>
+                        {user &&
+                          user.id === promo.user.id &&
+                          new Date().getTime() -
+                            new Date(promo.created_at).getTime() <
+                            24 * 60 * 60 * 1000 && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                navigate(`/promos/${promo.id}/edit`);
+                              }}
+                              className="ml-3 text-orange-500 flex items-center"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        <button className="ml-3 text-orange-500 flex items-center">
+                          <span className="text-xs mr-1">{t('buttons.viewDealShort')}</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </button>
+
+                        {/* Индикатор модерации */}
+                        {(role === "admin" ||
+                          role === "moderator" ||
+                          (user && user.id === promo.user.id)) && (
+                          <div
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            className="ml-3 relative"
+                            style={{ overflow: 'visible' }}
+                          >
+                            <AdminActions
+                              className="text-orange-500 flex items-center"
+                              type="promo"
+                              id={promo.id}
+                              userId={promo.user.id}
+                              createdAt={promo.created_at}
+                              expiresAt={promo.expires_at}
+                              onAction={fetchPromoCodes}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-orange-500 text-center text-white py-2 text-sm font-medium">
+                    {t('buttons.get_discount')}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <div className="text-gray-400 text-center py-8">
-            No promo codes found
+            {t('common.no_promos_found')}
           </div>
         )}
       </div>

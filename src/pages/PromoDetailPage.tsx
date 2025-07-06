@@ -16,6 +16,7 @@ import { highlightText } from "../utils/highlightText";
 import { triggerNativeHaptic } from "../utils/nativeBridge";
 import ReactGA4 from 'react-ga4'; // Добавлен импорт
 import { LinkifiedHtml } from "../utils/linkUtils";
+import { useLocalizedContent } from "../utils/localizationUtils";
 
 const PromoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +32,8 @@ const PromoDetailPage: React.FC = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const isExpired =
     promo?.expires_at && new Date(promo.expires_at) < new Date();
+  const { getLocalizedPromoContent } = useLocalizedContent();
+  const localizedContent = promo ? getLocalizedPromoContent(promo) : { title: '', description: '' };
 
 const handleVisitStoreClick = () => {
   if (!promo) return;
@@ -40,11 +43,7 @@ const handleVisitStoreClick = () => {
   ReactGA4.event({
     category: 'Outbound Link',
     action: 'Click Visit Store',
-    label: promo.title,
-    item_id: promo.id,
-    item_name: promo.title,
-    content_type: 'promo',
-    destination_url: promo.discount_url
+    label: promo.title
   });
 };
 
@@ -161,11 +160,7 @@ const handleVisitStoreClick = () => {
         ReactGA4.event({
             category: "Content View",
             action: "View Item Detail",
-            label: `Promo: ${promo.title}`,
-            item_id: promo.id,
-            item_name: promo.title,
-            content_type: 'promo',
-            // store_name и category_name убраны, т.к. этих данных нет в объекте promo
+            label: `Promo: ${promo.title}`
         });
         console.log(`GA4: View Item Detail event sent for Promo ID: ${promo.id}`);
     }
@@ -391,8 +386,8 @@ const handleVisitStoreClick = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-white text-xl font-medium">
             {searchQuery
-              ? highlightText(promo.title, searchQuery)
-              : promo.title}
+              ? highlightText(localizedContent.title, searchQuery)
+              : localizedContent.title}
           </h2>
           <div className="flex items-center space-x-2">
             <button
@@ -481,7 +476,7 @@ const handleVisitStoreClick = () => {
 
           {/* ЭТОТ БЛОК ТЕПЕРЬ ВСЕГДА ВИДИМ */}
           <LinkifiedHtml
-            content={promo.description || ''}
+            content={localizedContent.description || ''}
             searchQuery={searchQuery}
             className="text-gray-300"
           />

@@ -189,6 +189,8 @@ const SweepstakesPage: React.FC = () => {
         return {
           id: deal.id,
           title: decodeHtmlEntities(deal.title),
+          title_en: deal.title_en,
+          title_es: deal.title_es,
           currentPrice: parseFloat(deal.current_price),
           originalPrice: deal.original_price ? parseFloat(deal.original_price) : undefined,
           store: { id: deal.store_id, name: deal.store_id || 'Sweepstakes' },
@@ -207,6 +209,8 @@ const SweepstakesPage: React.FC = () => {
             avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=random`
           },
           description: deal.description,
+          description_en: deal.description_en,
+          description_es: deal.description_es,
           url: deal.deal_url,
           createdAt: new Date(deal.created_at),
           is_hot: deal.is_hot,
@@ -226,7 +230,7 @@ const SweepstakesPage: React.FC = () => {
       setIsFetchingMore(false);
     } catch (err: any) {
       console.error('Error fetching sweepstakes:', err);
-      setError('Failed to load sweepstakes');
+      setError(t('errors.failed_to_load_deals_list'));
     } finally {
       setLoading(false);
     }
@@ -239,7 +243,7 @@ const SweepstakesPage: React.FC = () => {
     <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
       {/* Информационная строка о розыгрышах */}
       <div className="text-[10px] text-center py-1 px-2">
-        We may get paid by brands for sweepstakes, including promoted items.
+        {t('common.affiliate_disclosure')}
       </div>
 
       <div className="px-4 pb-20">

@@ -17,6 +17,8 @@ import VoteControls from "../components/deals/VoteControls";
 import { triggerNativeHaptic } from "../utils/nativeBridge";
 import ReactGA4 from 'react-ga4'; // Добавлен импорт
 import { LinkifiedHtml } from "../utils/linkUtils";
+import { useLocalizedContent } from "../utils/localizationUtils";
+import { useLanguage } from '../contexts/LanguageContext';
 
 const SweepstakesDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -41,6 +43,9 @@ const SweepstakesDetailPage: React.FC = () => {
     const isExpired =
         sweepstakes?.expires_at &&
         new Date(sweepstakes.expires_at) < new Date();
+    const { getLocalizedSweepstakesContent } = useLocalizedContent();
+    const localizedContent = sweepstakes ? getLocalizedSweepstakesContent(sweepstakes) : { title: '', description: '' };
+    const { t, isInitialized } = useLanguage();
 
     const sweepstakesImages = useMemo(() => {
         if (!sweepstakes) return [];
@@ -135,10 +140,7 @@ const SweepstakesDetailPage: React.FC = () => {
             ReactGA4.event({
                 category: "Content View",
                 action: "View Item Detail",
-                label: `Sweepstakes: ${sweepstakes.title}`,
-                item_id: sweepstakes.id,
-                item_name: sweepstakes.title,
-                content_type: 'sweepstakes',
+                label: `Sweepstakes: ${sweepstakes.title}`
             });
             console.log(`GA4: View Item Detail event sent for Sweepstakes ID: ${sweepstakes.id}`);
         }
@@ -177,8 +179,12 @@ const SweepstakesDetailPage: React.FC = () => {
             setSweepstakes({
                 id: data.id,
                 title: data.title,
+                title_en: data.title_en,
+                title_es: data.title_es,
                 image: data.image_url,
                 description: data.description,
+                description_en: data.description_en,
+                description_es: data.description_es,
                 url: data.deal_url,
                 postedAt: new Date(data.created_at).toLocaleDateString(),
                 createdAtISO: data.created_at,
@@ -341,11 +347,7 @@ const handleVisitSweepstakesClick = () => {
   ReactGA4.event({
     category: 'Outbound Link',
     action: 'Click Participate',
-    label: sweepstakes.title,
-    item_id: sweepstakes.id,
-    item_name: sweepstakes.title,
-    content_type: 'sweepstakes',
-    destination_url: sweepstakes.url
+    label: sweepstakes.title
   });
 };
 
@@ -472,10 +474,13 @@ const handleVisitSweepstakesClick = () => {
         }
     }, [location.hash]);
 
-    if (loading) {
+    if (loading || !isInitialized) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-900">
-                <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="text-center">
+                    <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-white">{!isInitialized ? 'Loading language...' : 'Loading sweepstakes details...'}</p>
+                </div>
             </div>
         );
     }
@@ -759,7 +764,7 @@ const handleVisitSweepstakesClick = () => {
                         <button
                             onClick={goToPreviousImage}
                             className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30"
-                            aria-label="Previous image"
+                            aria-label={t('common.previous_image')}
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -779,7 +784,7 @@ const handleVisitSweepstakesClick = () => {
                         <button
                             onClick={goToNextImage}
                             className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30"
-                            aria-label="Next image"
+                            aria-label={t('common.next_image')}
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -825,8 +830,8 @@ const handleVisitSweepstakesClick = () => {
                 <div className="flex items-center justify-between">
                     <h2 className="text-white text-xl font-medium">
                         {searchQuery
-                            ? highlightText(sweepstakes.title, searchQuery)
-                            : sweepstakes.title}
+                            ? highlightText(localizedContent.title, searchQuery)
+                            : localizedContent.title}
                     </h2>
                     <div className="flex items-center space-x-2">
                         <button
@@ -952,27 +957,27 @@ const handleVisitSweepstakesClick = () => {
                     className="mt-4 bg-orange-500 text-white py-3 rounded-md flex items-center justify-center font-medium"
                     onClick={handleVisitSweepstakesClick}
                 >
-                    <span>Участвовать в розыгрыше</span>
+                    <span>{t('buttons.enter_sweepstake')}</span>
                     <ExternalLink className="h-4 w-4 ml-2" />
                 </a>
 
                 <div className="mt-6">
-                    <h3 className="text-white font-medium mb-2">Описание</h3>
+                    <h3 className="text-white font-medium mb-2">{t('sweepstakeDetail.description')}</h3>
                     <LinkifiedHtml
-                        content={sweepstakes.description || ''}
+                        content={localizedContent.description || ''}
                         searchQuery={searchQuery}
                         className="description-text font-sans text-sm bg-transparent overflow-visible whitespace-pre-wrap border-0 p-0 m-0"
                     />
                 </div>
 
                 <div className="text-center text-gray-500 text-sm mt-6 mb-6">
-                    If you purchase something through a post on our site, WeDealz may get a small share of the sale.
+                    {t('common.affiliate_disclosure')}
                 </div>
 
                 <div className="mt-6">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-white font-medium">
-                            Comments ({commentCount})
+                            {t('common.comments')} ({commentCount})
                         </h3>
                         <select
                             value={sortBy}
@@ -986,9 +991,9 @@ const handleVisitSweepstakesClick = () => {
                             }
                             className="bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none flex-shrink-0"
                         >
-                            <option value="newest">Newest</option>
+                            <option value="newest">{t('common.newest')}</option>
                             <option value="oldest">Oldest</option>
-                            <option value="popular">Popular</option>
+                            <option value="popular">{t('common.popular')}</option>
                         </select>
                     </div>
 
@@ -1009,7 +1014,7 @@ const handleVisitSweepstakesClick = () => {
                         </div>
                     ) : (
                         <div className="bg-gray-800 rounded-md p-4 text-gray-400 text-center">
-                            No comments yet. Be the first to comment!
+                            {t('comments.empty')} {t('comments.be_first')}
                         </div>
                     )}
                 </div>

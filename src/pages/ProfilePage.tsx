@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAdmin } from "../hooks/useAdmin";
 import { useModeration } from "../contexts/ModerationContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 // Компонент для отображения количества элементов в очереди модерации
 const ModerationCount: React.FC = () => {
@@ -51,6 +52,7 @@ const ProfilePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const { isAdmin, isLoading: isAdminLoading, role } = useAdmin();
+  const { t } = useLanguage();
 
   const getUserStatusColor = (status: string) => {
     switch (status) {
@@ -461,7 +463,7 @@ const ProfilePage: React.FC = () => {
                   <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-64 opacity-0 transition-opacity duration-200 pointer-events-none z-50">
                     <div className="bg-white dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300 py-2 px-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                       <div className="font-medium mb-1 text-gray-900 dark:text-white">
-                        Status Progression:
+                        {t('profile.status_tooltip_header')}:
                       </div>
                       <div className="space-y-1">
                         <div>Newcomer (0)</div>
@@ -493,12 +495,12 @@ const ProfilePage: React.FC = () => {
                     if (userStatus === "Admin" || userStatus === "Moderator") {
                       return (
                         <>
-                          Special status
+                          {t('profile.special_status')}
                           <ModerationCount />
                         </>
                       );
                     } else if (userStatus === "Deal Master") {
-                      return `${totalContributions}/1000+ contributions`;
+                      return t('profile.contributions_master', { count: totalContributions });
                     } else {
                       const nextThreshold =
                         totalContributions < 50
@@ -516,14 +518,18 @@ const ProfilePage: React.FC = () => {
                         100,
                         (totalContributions / nextThreshold) * 100,
                       );
-                      return `${totalContributions}/${nextThreshold} contributions (${Math.floor(progress)}%)`;
+                      return t('profile.contributions_progress', { 
+                        current: totalContributions, 
+                        next: nextThreshold, 
+                        percent: Math.floor(progress) 
+                      });
                     }
                   })()}
                 </div>
               </div>
             </div>
             <div className="text-center border-l border-gray-700">
-              <div className="text-gray-400 text-sm mb-1">Rating</div>
+              <div className="text-gray-400 text-sm mb-1">{t('profile.rating')}</div>
               <div className="text-xl font-bold text-orange-500">
                 {Math.min(
                   5,
@@ -543,7 +549,7 @@ const ProfilePage: React.FC = () => {
                 onClick={() => navigate("/saved")}
                 className="text-white flex-1 text-left"
               >
-                Saved Items
+                {t('navigation.savedItems')}
               </button>
               <span className="ml-auto text-gray-400">{savedItemsCount}</span>
             </div>
@@ -553,7 +559,7 @@ const ProfilePage: React.FC = () => {
                 onClick={() => navigate("/posted")}
                 className="text-white flex-1 text-left"
               >
-                My Posted Items
+                {t('profile.myPostedItems')}
               </button>
               <span className="ml-auto text-gray-400">{stats.dealsCount}</span>
             </div>
@@ -563,7 +569,7 @@ const ProfilePage: React.FC = () => {
                 onClick={() => navigate("/settings/notifications")}
                 className="text-white flex-1 text-left"
               >
-                Notification Settings
+                {t('navigation.notificationSettings')}
               </button>
             </div>
             <div className="px-4 py-3 flex items-center">
@@ -589,7 +595,7 @@ const ProfilePage: React.FC = () => {
                 onClick={() => navigate("/user-subscriptions")}
                 className="text-white flex-1 text-left"
               >
-                My Subscriptions
+                {t('profile.subscriptions')}
               </button>
             </div>
             <div className="px-4 py-3 flex items-center">
@@ -598,7 +604,7 @@ const ProfilePage: React.FC = () => {
                 onClick={() => navigate("/comments")}
                 className="text-white flex-1 text-left"
               >
-                My Comments
+                {t('profile.myComments')}
               </button>
               <span className="ml-auto text-gray-400">
                 {stats.commentsCount}
@@ -615,7 +621,7 @@ const ProfilePage: React.FC = () => {
                       onClick={() => navigate("/moderation")}
                       className="text-white flex-1 text-left"
                     >
-                      Модерация
+                      {t('navigation.moderation')}
                     </button>
                     <ModerationCount />
                   </div>

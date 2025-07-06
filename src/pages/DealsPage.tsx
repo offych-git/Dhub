@@ -242,7 +242,7 @@ if (activeTab === "hot") {
         setHasMore(shouldHaveMore);
       } catch (err) {
         console.error("Error fetching deals:", err);
-        setError("Failed to load deals");
+        setError(t('errors.failed_to_load_deals_list'));
       } finally {
         setLoading(false);
         setFetchingMore(false);
@@ -368,16 +368,10 @@ if (activeTab === "hot") {
     return b.createdAt.getTime() - a.createdAt.getTime(); // Default sort for 'new' and 'hot' (if no specific hot sorting in DB)
   });
 
-  const translations = {
-    en: "Nothing found for your query",
-    ru: "Ничего не найдено по вашему запросу",
-    es: "Nada encontrado para su consulta",
-  };
-
   return (
     <div className="pb-16 pt-0 bg-gray-900 min-h-screen">
       <div className="text-[10px] text-center py-1 px-2">
-        We may get paid by brands for deals, including promoted items.
+        {t('common.affiliate_disclosure')}
       </div>
       <Tabs activeTab={activeTab} onTabChange={handleTabChange} />
       <FilterBar
@@ -424,12 +418,8 @@ if (activeTab === "hot") {
         !fetchingMore && (
           <div className="text-gray-400 text-center py-8">
             {searchQuery
-              ? translations[t("locale") as keyof typeof translations] ||
-                translations.ru
-              : t(
-                  "common.no_items_in_category",
-                  "Нет элементов в выбранной категории",
-                )}
+              ? t('common.no_results_for_query')
+              : t('common.no_items_in_category')}
           </div>
         )
       )}

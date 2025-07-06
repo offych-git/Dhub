@@ -463,10 +463,8 @@ const AddPromoPage: React.FC<AddPromoPageProps> = ({
           description_en: result.translations.description_en,
           description_es: result.translations.description_es,
         }));
-
-        alert("Перевод выполнен успешно!");
       } else {
-        alert("Ошибка перевода: " + result.message);
+        console.error("Ошибка перевода:", result.error);
       }
     } catch (error) {
       console.error("Ошибка перевода:", error);

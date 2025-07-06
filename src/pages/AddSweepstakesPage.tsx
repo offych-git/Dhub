@@ -176,6 +176,22 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
     },
   });
 
+  // Добавляю редакторы для английского и испанского описания
+  const editorEn = useEditor({
+    extensions: [StarterKit, Underline],
+    content: formData.description_en,
+    onUpdate: ({ editor }) => {
+      setFormData((prev) => ({ ...prev, description_en: editor.getHTML() }));
+    },
+  });
+  const editorEs = useEditor({
+    extensions: [StarterKit, Underline],
+    content: formData.description_es,
+    onUpdate: ({ editor }) => {
+      setFormData((prev) => ({ ...prev, description_es: editor.getHTML() }));
+    },
+  });
+
   // Отладочная информация при инициализации компонента
   useEffect(() => {
     console.log("📋 AddSweepstakesPage инициализирована");
@@ -746,10 +762,6 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
           description_en: result.translations.description_en,
           description_es: result.translations.description_es,
         }));
-
-        alert("Перевод выполнен успешно!");
-      } else {
-        alert("Ошибка перевода: " + result.message);
       }
     } catch (error) {
       console.error("Ошибка перевода:", error);
@@ -810,6 +822,18 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
       setShowTranslations(true);
     }
   }, [formData.title_en, formData.description_en, formData.title_es, formData.description_es]);
+
+  useEffect(() => {
+    if (editorEn && formData.description_en !== editorEn.getHTML()) {
+      editorEn.commands.setContent(formData.description_en || "");
+    }
+  }, [formData.description_en, editorEn]);
+
+  useEffect(() => {
+    if (editorEs && formData.description_es !== editorEs.getHTML()) {
+      editorEs.commands.setContent(formData.description_es || "");
+    }
+  }, [formData.description_es, editorEs]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
@@ -1224,6 +1248,61 @@ const AddSweepstakesPage: React.FC<AddSweepstakesPageProps> = ({
                 </p>
               )}
             </div>
+
+            {showTranslations && (
+              <div className="space-y-4 mt-4">
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Title (English)"
+                    className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                    value={formData.title_en}
+                    onChange={e => setFormData({ ...formData, title_en: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Title (Spanish)"
+                    className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3"
+                    value={formData.title_es}
+                    onChange={e => setFormData({ ...formData, title_es: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <div className="relative">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <button type="button" onClick={() => editorEn?.chain().focus().toggleBold().run()} className={`formatting-button p-2 rounded ${editorEn?.isActive("bold") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}><b>B</b></button>
+                      <button type="button" onClick={() => editorEn?.chain().focus().toggleItalic().run()} className={`formatting-button p-2 rounded ${editorEn?.isActive("italic") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}><i>I</i></button>
+                      <button type="button" onClick={() => editorEn?.chain().focus().toggleUnderline().run()} className={`formatting-button p-2 rounded ${editorEn?.isActive("underline") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}>U</button>
+                      <button type="button" onClick={() => editorEn?.chain().focus().toggleBulletList().run()} className={`formatting-button p-2 rounded ${editorEn?.isActive("bulletList") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}>•</button>
+                    </div>
+                    <div className="bg-gray-800 rounded-lg p-4 min-h-[100px]">
+                      {!editorEn?.getText() && (
+                        <div className="absolute text-gray-500 pointer-events-none p-1">Description (English)</div>
+                      )}
+                      <EditorContent editor={editorEn} />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div className="relative">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <button type="button" onClick={() => editorEs?.chain().focus().toggleBold().run()} className={`formatting-button p-2 rounded ${editorEs?.isActive("bold") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}><b>B</b></button>
+                      <button type="button" onClick={() => editorEs?.chain().focus().toggleItalic().run()} className={`formatting-button p-2 rounded ${editorEs?.isActive("italic") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}><i>I</i></button>
+                      <button type="button" onClick={() => editorEs?.chain().focus().toggleUnderline().run()} className={`formatting-button p-2 rounded ${editorEs?.isActive("underline") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}>U</button>
+                      <button type="button" onClick={() => editorEs?.chain().focus().toggleBulletList().run()} className={`formatting-button p-2 rounded ${editorEs?.isActive("bulletList") ? "bg-gray-700 text-white active" : "text-gray-400 hover:text-white"}`}>•</button>
+                    </div>
+                    <div className="bg-gray-800 rounded-lg p-4 min-h-[100px]">
+                      {!editorEs?.getText() && (
+                        <div className="absolute text-gray-500 pointer-events-none p-1">Description (Spanish)</div>
+                      )}
+                      <EditorContent editor={editorEs} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="bg-gray-800 rounded-md p-4">
               <h3 className="text-white font-medium mb-2">Preview</h3>

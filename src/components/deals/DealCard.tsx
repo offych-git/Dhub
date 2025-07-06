@@ -37,7 +37,7 @@ const DealCard: React.FC<DealCardProps> = ({
   const { user } = useAuth();
   const { role } = useAdmin();
   const navigate = useNavigate();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   // Determine if this is a sweepstakes based on deal type or other properties
   const isSweepstakes = deal.type === "sweepstakes";
   const [isFavorite, setIsFavorite] = useState(deal.isFavorite);
@@ -173,7 +173,7 @@ const DealCard: React.FC<DealCardProps> = ({
                   <span className="text-orange-500 font-bold text-base">
                     {deal.currentPrice === 0 ? (
                       <span className="px-2.5 py-1 bg-orange-500/20 text-orange-500 rounded-md text-sm font-semibold">
-                        FREE
+                        {t('common.free')}
                       </span>
                     ) : (
                       `$${deal.currentPrice.toFixed(2)}`
@@ -197,13 +197,13 @@ const DealCard: React.FC<DealCardProps> = ({
 
             {deal.status === "rejected" && (
               <div className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
-                Rejected
+                {t('common.rejected')}
               </div>
             )}
 
             {isOwnDeal && dealStatus === "pending" && (
               <div className="ml-2 px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-500 rounded-full">
-                Pending Review
+                {t('common.pending_review')}
               </div>
             )}
 
@@ -211,7 +211,7 @@ const DealCard: React.FC<DealCardProps> = ({
               deal.status !== "rejected" &&
               (isExpired ? (
                 <div className="ml-2 px-2 py-0.5 text-xs bg-red-500/20 text-red-500 rounded-full">
-                  Expired
+                  {t('common.expired')}
                 </div>
               ) : (
                 <div className="flex items-center text-gray-400 text-xs font-medium">
@@ -367,7 +367,7 @@ const DealCard: React.FC<DealCardProps> = ({
               }
             }}
           >
-            <span className="text-xs mr-1">View</span>
+            <span className="text-xs mr-1">{t('buttons.viewDealShort')}</span>
             <ExternalLink className="h-3 w-3" />
           </button>
 

@@ -6,6 +6,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import AddDealMenu from "../deals/AddDealMenu";
 import NotificationBell from "../notifications/NotificationBell";
 import SearchBar from "./SearchBar";
+import LanguageSelector from "./LanguageSelector";
 import {
   registerSideMenuHandler,
   registerAddMenuHandler,
@@ -68,7 +69,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, style }) => {
       case "/settings/notifications":
         return t("navigation.notificationSettings");
       case "/sweepstakes":
-        return "Sweepstakes";
+        return t("navigation.sweepstakes");
       case "/moderation":
         return t("navigation.moderation");
       case "/moderation/settings":
@@ -92,6 +93,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, style }) => {
           </button>
           <h1 className="text-2xl font-bold text-white flex-1">{getTitle()}</h1>
           <div className="flex items-center space-x-2">
+            {/* <LanguageSelector /> */}
             <button onClick={() => setIsSearchVisible(prev => !prev)} className="p-2">
               <Search className="h-6 w-6 text-white" />
             </button>

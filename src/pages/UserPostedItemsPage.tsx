@@ -296,7 +296,11 @@ const UserPostedItemsPage: React.FC = () => {
           const commonFields = {
             id: item.id,
             title: item.title,
+            title_en: item.title_en,
+            title_es: item.title_es,
             description: item.description,
+            description_en: item.description_en,
+            description_es: item.description_es,
             createdAt: item.created_at,
             postedAt: {
               relative: formatTimeAgo_local(item.created_at),
@@ -306,9 +310,9 @@ const UserPostedItemsPage: React.FC = () => {
               id: profileData.id || "anon",
               name:
                 profileData.display_name ||
-                profileData.email?.split("@")[0] ||
+                profileData.email?.split("@")?.[0] ||
                 "Anonymous",
-              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.display_name || profileData.email?.split("@")[0] || "A")}&background=random`,
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.display_name || profileData.email?.split("@")?.[0] || "A")}&background=random`,
             },
             comments:
               activeTab === "promos"
@@ -352,7 +356,11 @@ const UserPostedItemsPage: React.FC = () => {
           const commonFields = {
             id: item.id,
             title: item.title,
+            title_en: item.title_en,
+            title_es: item.title_es,
             description: item.description,
+            description_en: item.description_en,
+            description_es: item.description_es,
             createdAt: item.created_at,
             postedAt: {
               relative: formatTimeAgo_local(item.created_at),

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import imageCompression from 'browser-image-compression';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
 import { createMentionNotification } from '../../utils/mentions';
 import { handleImageError } from '../../utils/imageUtils';
@@ -21,6 +22,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
   onCancel
 }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [comment, setComment] = useState('');
   const [mentionSearch, setMentionSearch] = useState('');
   const [images, setImages] = useState<File[]>([]);
@@ -292,7 +294,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
           ref={inputRef}
           value={comment}
           onChange={handleInputChange}
-          placeholder={parentId ? "Write a reply..." : "Add a comment..."}
+          placeholder={parentId ? t('commentInput.reply_placeholder') : t('commentInput.placeholder')}
           className="w-full bg-gray-700 text-white placeholder-gray-400 rounded-md px-4 py-2 resize-none"
           rows={3}
         />
@@ -326,7 +328,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
             disabled={images.length >= 2}
             className={`text-gray-600 dark:text-gray-400 hover:text-orange-500 disabled:opacity-50`}
           >
-            📎 Add image
+            <span role="img" aria-label="clip">📎</span> {t('buttons.add_image')}
           </button>
           <input
             ref={fileInputRef}
@@ -342,7 +344,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
                 onClick={onCancel}
                 className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-orange-500 dark:hover:text-white font-medium"
               >
-                Cancel
+                {t('buttons.cancel')}
               </button>
             )}
             <button
@@ -353,7 +355,7 @@ const CommentInput: React.FC<CommentInputProps> = ({
               {isSubmitting ? (
                 <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-2"></div>
               ) : (
-                parentId ? 'Reply' : 'Comment'
+                parentId ? t('buttons.reply') : t('buttons.comment')
               )}
             </button>
           </div>

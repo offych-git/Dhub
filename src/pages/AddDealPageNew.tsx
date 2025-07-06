@@ -982,63 +982,63 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
             {/* Price Fields */}
             <div className="flex items-start gap-4">
               <div className="flex-1">
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Current Price *"
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Current Price *"
                     className={`w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 border transition-all duration-100 text-center
                       ${!validationState.currentPrice && formData.currentPrice !== ""
                         ? "border-yellow-500"
                         : "border-gray-700"
-                    }`}
-                    value={formData.currentPrice}
-                    onChange={(e) =>
-                      setFormData({ ...formData, currentPrice: e.target.value })
-                    }
-                    required
-                  />
-                  {validationState.currentPrice && formData.currentPrice && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-green-500"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
+                  }`}
+                  value={formData.currentPrice}
+                  onChange={(e) =>
+                    setFormData({ ...formData, currentPrice: e.target.value })
+                  }
+                  required
+                />
+                {validationState.currentPrice && formData.currentPrice && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-green-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                )}
                 </div>
-                <div style={{ minHeight: 20 }}>
-                  {!validationState.currentPrice && (
-                    <p className="text-orange-500 text-xs mt-1">
+                <div style={{ minHeight: !validationState.currentPrice ? 20 : 0 }}>
+                {!validationState.currentPrice && (
+                  <p className="text-orange-500 text-xs mt-1">
                       Current price is required
-                    </p>
-                  )}
-                </div>
+                  </p>
+                )}
+              </div>
               </div>
               <div className="flex-1">
                 <div className="relative">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
                     placeholder="Original Price (optional)"
                     className="w-full bg-gray-800 text-white placeholder-gray-500 rounded-md px-4 py-3 border border-gray-700 text-center transition-all duration-100"
-                    value={formData.originalPrice}
-                    onChange={(e) =>
-                      setFormData({ ...formData, originalPrice: e.target.value })
-                    }
-                  />
+                  value={formData.originalPrice}
+                  onChange={(e) =>
+                    setFormData({ ...formData, originalPrice: e.target.value })
+                  }
+                />
                 </div>
-                <div style={{ minHeight: 20 }}>
+                <div style={{ minHeight: !validationState.originalPrice && formData.originalPrice ? 20 : 0 }}>
                   {!validationState.originalPrice && formData.originalPrice && (
                     <p className="text-orange-500 text-xs mt-1">
                       Original price must be a number
@@ -1047,6 +1047,12 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                 </div>
               </div>
             </div>
+            {/* Discount percent display */}
+            {calculateDiscount() !== null && calculateDiscount() > 0 && (
+              <div className="mt-0.5 mb-1 text-green-500 font-semibold text-sm leading-tight">
+                -{calculateDiscount()}%
+              </div>
+            )}
 
             <div className="relative">
               <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -1260,18 +1266,18 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
                   </span>
                   <div className="flex items-center">
                     {validationState.category && formData.category && (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
                         className="h-5 w-5 text-green-500 mr-2"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                     )}
                     <ChevronDown className="h-5 w-5 text-gray-400" />
                   </div>
@@ -1280,8 +1286,8 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
               {!validationState.category && (
                 <p className="text-orange-500 text-xs mt-1">
                   Category selection is required
-                </p>
-              )}
+                  </p>
+                )}
             </div>
 
             {/* Deal Images */}

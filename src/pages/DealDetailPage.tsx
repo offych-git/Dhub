@@ -19,6 +19,7 @@ import { triggerNativeHaptic } from "../utils/nativeBridge";
 import ReactGA4 from 'react-ga4'; // <-- Добавлен импорт ReactGA4
 import { LinkifiedHtml } from "../utils/linkUtils";
 import { useLocalizedContent } from '../utils/localizationUtils';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const DealDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -45,6 +46,7 @@ const DealDetailPage: React.FC = () => {
         deal?.expires_at && new Date(deal.expires_at) < new Date();
     const { getLocalizedDealContent } = useLocalizedContent();
     const localizedContent = deal ? getLocalizedDealContent(deal) : { title: '', description: '' };
+    const { t, language, isInitialized } = useLanguage();
 
     // Получение списка изображений для карусели
     const dealImages = useMemo(() => {
@@ -671,10 +673,13 @@ const handleVisitDealClick = () => {
     console.log('DEAL FIELDS IN DETAIL:', deal);
     console.log('LOCALIZED CONTENT:', localizedContent);
 
-    if (loading) {
+    if (loading || !isInitialized) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-900">
-                <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="text-center">
+                    <div className="h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-white">{!isInitialized ? 'Loading language...' : 'Loading deal details...'}</p>
+                </div>
             </div>
         );
     }
@@ -721,7 +726,7 @@ console.log("--------------------");
                             <ArrowLeft className="h-6 w-6" />
                         </button>
                         <h1 className="text-white font-medium ml-4 truncate">
-                            Deal Details
+                            {t('navigation.dealDetails', 'Детали скидки')}
                         </h1>
                     </div>
                     <AdminActions
@@ -1003,7 +1008,7 @@ console.log("--------------------");
                         <button
                             onClick={goToPreviousImage}
                             className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30"
-                            aria-label="Previous image"
+                            aria-label={t('common.previous_image')}
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -1024,7 +1029,7 @@ console.log("--------------------");
                         <button
                             onClick={goToNextImage}
                             className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-3 z-10 shadow-md border border-white/30"
-                            aria-label="Next image"
+                            aria-label={t('common.next_image')}
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -1225,13 +1230,12 @@ console.log("--------------------");
                     className="mt-4 bg-orange-500 text-white py-3 rounded-md flex items-center justify-center font-medium"
                     onClick={handleVisitDealClick}
                 >
-                    <span>Visit Deal</span>
+                    <span>{t('buttons.viewDealShort')}</span>
                     <ExternalLink className="h-4 w-4 ml-2" />
                 </a>
 
-
                 <div className="mt-6">
-                    <h3 className="text-white font-medium mb-2">Description</h3>
+                    <h3 className="text-white font-medium mb-2">{t('dealDetail.description')}</h3>
                     <LinkifiedHtml
                         content={localizedContent.description || ''}
                         searchQuery={searchQuery}
@@ -1239,16 +1243,14 @@ console.log("--------------------");
                     />
                 </div>
 
-                {/* Блок с ценовой историей был удалён */}
-
-<div className="text-center text-gray-500 text-sm mt-6 mb-6">
-                    If you purchase something through a post on our site, WeDealz may get a small share of the sale.
+                <div className="text-center text-gray-500 text-sm mt-6 mb-6">
+                    {t('common.affiliate_disclosure')}
                 </div>
 
                 <div className="mt-6" id="comments-section">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-white font-medium">
-                            Comments ({commentCount})
+                            {t('common.comments')} ({commentCount})
                         </h3>
                         <select
                             value={sortBy}
@@ -1262,9 +1264,9 @@ console.log("--------------------");
                             }
                             className="bg-gray-800 text-white text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none flex-shrink-0"
                         >
-                            <option value="newest">Newest</option>
-                            <option value="oldest">Oldest</option>
-                            <option value="popular">Popular</option>
+                            <option value="newest">{t('common.newest')}</option>
+                            <option value="oldest">{t('common.oldest', 'Сначала старые')}</option>
+                            <option value="popular">{t('common.popular', 'Популярные')}</option>
                         </select>
                     </div>
 
@@ -1276,7 +1278,6 @@ console.log("--------------------");
                         />
                     </div>
 
-                    {/* Render comments as a tree */}
                     {comments.length > 0 ? (
                         <div className="space-y-4">
                             {comments.map((comment) =>
@@ -1285,7 +1286,7 @@ console.log("--------------------");
                         </div>
                     ) : (
                         <div className="bg-gray-800 rounded-md p-4 text-gray-400 text-center">
-                            No comments yet. Be the first to comment!
+                            {t('comments.empty')} {t('comments.be_first')}
                         </div>
                     )}
                 </div>

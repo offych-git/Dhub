@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface TabsProps {
   activeTab: string;
@@ -6,6 +7,7 @@ interface TabsProps {
 }
 
 const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange }) => {
+  const { t } = useLanguage();
   const [selectedTab, setSelectedTab] = useState(activeTab); // Added state to manage active tab
 
   useEffect(() => {
@@ -20,10 +22,10 @@ const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange }) => {
   }, [selectedTab]);
 
   const tabs = [
-    { id: 'hot', label: 'HOT' },
-    { id: 'new', label: 'NEW' },
-    { id: 'discussed', label: 'MOST DISCUSSED' },
-    { id: 'free', label: 'FREE' }
+    { id: 'hot', label: t('tabs.hot') },
+    { id: 'new', label: t('tabs.new') },
+    { id: 'discussed', label: t('tabs.discussed') },
+    { id: 'free', label: t('tabs.free') }
   ];
 
   return (
@@ -31,7 +33,7 @@ const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange }) => {
       {tabs.map((tab) => (
         <button
           key={tab.id}
-          className={`py-3 px-4 text-sm font-medium ${
+          className={`py-3 px-4 text-sm font-medium text-center ${
             selectedTab === tab.id
               ? 'text-white border-b-2 border-orange-500'
               : 'text-gray-400'

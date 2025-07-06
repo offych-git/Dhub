@@ -76,9 +76,25 @@ export function useLocalizedContent() {
     )
   });
   
+  const getLocalizedSweepstakesContent = (sweepstakes: any) => ({
+    title: getLocalizedTitle(
+      sweepstakes.title,
+      sweepstakes.title_en,
+      sweepstakes.title_es,
+      language
+    ),
+    description: getLocalizedDescription(
+      sweepstakes.description || '',
+      sweepstakes.description_en,
+      sweepstakes.description_es,
+      language
+    )
+  });
+  
   return {
     getLocalizedDealContent,
     getLocalizedPromoContent,
+    getLocalizedSweepstakesContent,
     language
   };
 } 

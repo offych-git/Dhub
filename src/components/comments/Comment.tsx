@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Reply, ThumbsUp, MoreVertical } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import CommentInput from './CommentInput';
 import { createMentionNotification } from '../../utils/mentions';
 import { supabase } from '../../lib/supabase';
@@ -47,6 +48,7 @@ const Comment: React.FC<CommentProps> = ({
   depth = 0
 }) => {
   const { user: currentUser } = useAuth();
+  const { t } = useLanguage();
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [showReplies, setShowReplies] = useState(depth < 2);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
@@ -205,7 +207,7 @@ const Comment: React.FC<CommentProps> = ({
               className={`flex items-center ${showReplyInput ? 'text-orange-500' : 'text-gray-600 dark:text-gray-400 hover:text-orange-500 disabled:opacity-50'}`}
             >
               <Reply className="h-4 w-4 mr-1" />
-              <span>Reply</span>
+              <span>{t('buttons.reply')}</span>
             </button>
           )}
           <button
@@ -239,7 +241,7 @@ const Comment: React.FC<CommentProps> = ({
           onClick={() => setShowReplies(true)}
           className="mt-2 text-orange-500 text-sm hover:text-orange-400"
         >
-          Show {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+          {t('comments.show_replies')}
         </button>
       )}
 
@@ -261,7 +263,7 @@ const Comment: React.FC<CommentProps> = ({
               className="mt-2 text-orange-500 text-sm hover:text-orange-400"
               onClick={() => setShowAllReplies(true)}
             >
-              Show {replies.length - 3} more repl{replies.length - 3 === 1 ? 'y' : 'ies'}
+              {t('comments.show_more_replies')}
             </button>
           )}
         </>
