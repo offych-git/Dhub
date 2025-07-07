@@ -224,7 +224,7 @@ export const translations = {
       get_discount: "Get Discount",
       viewDealShort: "View",
       enter: "Enter",
-      enter_sweepstake: "Enter Sweepstake",
+      enter_sweepstake: "Enter Sweepstakes",
       login_to_enter: "Sign in to enter",
       visit_store: "Visit Store",
       copy_code: "Copy Code",
