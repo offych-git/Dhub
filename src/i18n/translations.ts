@@ -12,6 +12,7 @@ export const translations = {
       myComments: "My Comments",
       notificationSettings: "Notification Settings",
       dealDetails: "Deal Details",
+      promoDetails: "Promo Details",
       sweepstakeDetails: "Sweepstake Details",
     },
     filters: {
@@ -402,6 +403,7 @@ export const translations = {
       myComments: "Мои комментарии",
       notificationSettings: "Настройки уведомлений",
       dealDetails: "Детали скидки",
+      promoDetails: "Детали промокода",
       sweepstakeDetails: "Детали розыгрыша",
     },
     filters: {
@@ -791,6 +793,7 @@ export const translations = {
       myComments: "Mis Comentarios",
       notificationSettings: "Configuración de Notificaciones",
       dealDetails: "Detalles de la Oferta",
+      promoDetails: "Detalles del Código Promo",
       sweepstakeDetails: "Detalles del Sorteo",
     },
     filters: {

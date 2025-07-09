@@ -17,6 +17,7 @@ import { triggerNativeHaptic } from "../utils/nativeBridge";
 import ReactGA4 from 'react-ga4'; // Добавлен импорт
 import { LinkifiedHtml } from "../utils/linkUtils";
 import { useLocalizedContent } from "../utils/localizationUtils";
+import { useLanguage } from '../contexts/LanguageContext';
 
 const PromoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +35,7 @@ const PromoDetailPage: React.FC = () => {
     promo?.expires_at && new Date(promo.expires_at) < new Date();
   const { getLocalizedPromoContent } = useLocalizedContent();
   const localizedContent = promo ? getLocalizedPromoContent(promo) : { title: '', description: '' };
+  const { t, language, isInitialized } = useLanguage();
 
 const handleVisitStoreClick = () => {
   if (!promo) return;
@@ -111,7 +113,7 @@ const handleVisitStoreClick = () => {
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   useEffect(() => {
-            const pageTitle = "Promo Details";
+            const pageTitle = t('navigation.promoDetails');
 
         // НЕ устанавливаем заголовок страницы в браузере - используем дефолтный из index.html
         // document.title = `${pageTitle} - WeDealz`;
@@ -139,7 +141,7 @@ const handleVisitStoreClick = () => {
     }, 50);
 
             return () => clearTimeout(timerId);
-    }, []);
+    }, [t]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -371,7 +373,7 @@ const handleVisitStoreClick = () => {
             <button onClick={() => navigate("/promos")} className="text-white">
               <ArrowLeft className="h-6 w-6" />
             </button>
-            <h1 className="text-white font-medium ml-4">Promo Details</h1>
+            <h1 className="text-white font-medium ml-4">{t('navigation.promoDetails')}</h1>
           </div>
           <AdminActions
             type="promo"
