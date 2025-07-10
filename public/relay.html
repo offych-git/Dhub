@@ -1,29 +1,146 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Password Reset Relay</title>
-    <script>
-        // Этот скрипт выполняется сразу при загрузке страницы
-        (function() {
-            // Проверяем, есть ли в URL хэш (часть после символа #)
-            if (window.location.hash) {
-                // Берём всё, что находится после #. Там будут ваши access_token и refresh_token.
-                const params = window.location.hash.substring(1);
-
-                // Укажите здесь схему вашего диплинка.
-                // ВАЖНО: в конце должен быть вопросительный знак.
-                const deepLink = 'wedealzapp://auth/callback?' + params;
-
-                // Немедленно перенаправляем пользователя в мобильное приложение со всеми токенами
-                window.location.replace(deepLink);
-            } else {
-                // Эта часть сработает, если что-то пошло не так
-                document.body.innerText = "Ошибка: не найдена информация для входа. Пожалуйста, вернитесь в почту и попробуйте снова.";
-            }
-        })();
-    </script>
+  <meta charset="UTF-8">
+  <title>Password Reset Relay</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 80px;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+    .status {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+    .debug {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin: 20px auto;
+      max-width: 600px;
+      text-align: left;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .error {
+      color: #d32f2f;
+      background: #ffebee;
+    }
+    .success {
+      color: #388e3c;
+      background: #e8f5e8;
+    }
+    .hidden { display: none; }
+  </style>
 </head>
 <body>
-    <p>Redirecting to app...</p>
+  <h2 class="status" id="status">🔄 Redirecting to app...</h2>
+  <div id="debug" class="debug"></div>
+  
+  <script>
+    // ===== WEDEALZ PASSWORD RESET RELAY v2.0 =====
+    // Updated: 2025-01-10
+    console.log('🔐 [RELAY v2.0] Starting password reset relay...');
+    
+    const debugElement = document.getElementById('debug');
+    const statusElement = document.getElementById('status');
+    
+    function updateStatus(message, isError = false) {
+      statusElement.textContent = message;
+      statusElement.className = 'status ' + (isError ? 'error' : 'success');
+      console.log('🔐 [RELAY]', message);
+    }
+    
+    function addDebugInfo(info) {
+      debugElement.textContent += JSON.stringify(info, null, 2) + '\n\n';
+      debugElement.scrollTop = debugElement.scrollHeight;
+    }
+
+    try {
+      // Parse params from URL fragment (after #)
+      const fullURL = window.location.href;
+      const hash = window.location.hash.substring(1); // Remove the # symbol
+      
+      addDebugInfo({
+        timestamp: new Date().toISOString(),
+        fullURL: fullURL,
+        hash: hash,
+        userAgent: navigator.userAgent
+      });
+      
+      if (!hash) {
+        throw new Error('No URL fragment found. Expected format: #access_token=...&refresh_token=...');
+      }
+      
+      const urlParams = new URLSearchParams(hash);
+      
+      const accessToken = urlParams.get('access_token');
+      const refreshToken = urlParams.get('refresh_token');
+      const type = urlParams.get('type');
+      const email = urlParams.get('email');
+
+      const parsedParams = {
+        accessToken: accessToken ? 'Present' : 'Missing',
+        refreshToken: refreshToken ? 'Present' : 'Missing',
+        type,
+        email,
+        allParams: Object.fromEntries(urlParams.entries())
+      };
+      
+      addDebugInfo({
+        step: 'URL_PARSING',
+        result: parsedParams
+      });
+
+      // Validate required parameters
+      if (!accessToken || !refreshToken) {
+        throw new Error(`Missing required tokens: access_token=${!!accessToken}, refresh_token=${!!refreshToken}`);
+      }
+      
+      if (type !== 'recovery') {
+        console.warn('🔐 [RELAY] Unexpected type:', type, 'expected: recovery');
+      }
+
+      // Create deep link to app with tokens
+      const deepLink = `wedealzapp://auth/reset-password?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}&type=recovery${email ? `&email=${encodeURIComponent(email)}` : ''}`;
+      
+      addDebugInfo({
+        step: 'DEEP_LINK_CREATION',
+        deepLink: deepLink
+      });
+      
+      updateStatus('✅ Redirecting to app...');
+      
+      // Redirect to app immediately
+      console.log('🔐 [RELAY] Redirecting to:', deepLink);
+      window.location.href = deepLink;
+      
+      // Fallback message after 3 seconds
+      setTimeout(() => {
+        updateStatus('⚠️ App should have opened. If not, please ensure WeDealz app is installed.');
+        addDebugInfo({
+          step: 'FALLBACK_MESSAGE',
+          note: 'Deep link redirect may have failed'
+        });
+      }, 3000);
+      
+    } catch (error) {
+      console.error('🔐 [RELAY] Error:', error);
+      updateStatus('❌ Error: ' + error.message, true);
+      addDebugInfo({
+        step: 'ERROR',
+        error: error.message,
+        stack: error.stack
+      });
+      
+      // Show debug info on error
+      debugElement.className = 'debug error';
+    }
+  </script>
 </body>
 </html>
