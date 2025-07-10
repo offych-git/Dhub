@@ -934,9 +934,13 @@ const handleVisitSweepstakesClick = () => {
                                     <circle cx="18" cy="18" r="4" />
                                     <path d="M18 16.5v1.5h1.5" />
                                 </svg>
-                                {new Date(
-                                    sweepstakes.expiresAt,
-                                ).toLocaleDateString()}
+                                {(() => {
+                                    const [year, month, day] = new Date(sweepstakes.expiresAt)
+                                        .toISOString()
+                                        .split('T')[0]
+                                        .split('-');
+                                    return `${day}.${month}.${year}`;
+                                })()}
                             </>
                         )}
                     </div>

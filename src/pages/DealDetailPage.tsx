@@ -1207,9 +1207,13 @@ console.log("--------------------");
                                         <circle cx="18" cy="18" r="4" />
                                         <path d="M18 16.5v1.5h1.5" />
                                     </svg>
-                                    {new Date(
-                                        deal.expires_at,
-                                    ).toLocaleDateString()}
+                                    {(() => {
+                                        const [year, month, day] = new Date(deal.expires_at)
+                                            .toISOString()
+                                            .split('T')[0]
+                                            .split('-');
+                                        return `${day}.${month}.${year}`;
+                                    })()}
                                 </>
                             )}
                         </div>

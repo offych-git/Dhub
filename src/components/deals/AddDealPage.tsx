@@ -440,7 +440,9 @@ const AddDealPage: React.FC<AddDealPageProps> = ({ isEditing = false, dealId, in
                 description: formData.description,
                 category_id: formData.category,
                 deal_url: formData.dealUrl,
-                expires_at: formData.expiryDate || null,
+                expires_at: formData.expiryDate
+                    ? `${formData.expiryDate}T23:59:59.999Z`
+                    : null,
                 is_hot: formData.isHot,
                 store_id: selectedStoreId
               };

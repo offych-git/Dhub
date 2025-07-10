@@ -579,7 +579,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
         image_url: mainImageUrl,
         deal_url: formData.dealUrl,
         expires_at: formData.expiryDate
-          ? `${formData.expiryDate}T12:00:00.000Z`
+          ? `${formData.expiryDate}T23:59:59.999Z`
           : null,
         is_hot: formData.isHot,
       };
@@ -619,7 +619,7 @@ const AddDealPageNew: React.FC<AddDealPageNewProps> = ({
           image_url: mainImageUrl,
           deal_url: formData.dealUrl,
           expires_at: formData.expiryDate
-            ? `${formData.expiryDate}T12:00:00.000Z`
+            ? `${formData.expiryDate}T23:59:59.999Z`
             : null,
           is_hot: formData.isHot,
 
