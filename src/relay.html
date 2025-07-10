@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Password Reset Relay</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 80px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h2 id="status">Redirecting to app...</h2>
+  <script>
+    // Supabase project config (from your codebase)
+    const SUPABASE_URL = 'https://jekhlytotqaxlpnkrolq.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impla2hseXRvdHFheGxwbmtyb2xxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MDgyNzYsImV4cCI6MjA2MTA4NDI3Nn0.iur-F5_IAr2iyziRXE8SGdIkuRMWgVhq8R4dMfSMI8c';
+
+    // Parse params from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const type = urlParams.get('type');
+    const email = urlParams.get('email');
+
+    if (!token || type !== 'recovery') {
+      document.getElementById('status').textContent = 'Invalid or missing token.';
+      throw new Error('No token or wrong type');
+    }
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    (async () => {
+      document.getElementById('status').textContent = 'Authorizing...';
+      // 1. Exchange token for session
+      const { data, error } = await supabase.auth.exchangeCodeForSession(token);
+      if (error) {
+        document.getElementById('status').textContent = 'Error: ' + error.message;
+        return;
+      }
+      // 2. Get tokens
+      const { access_token, refresh_token, user } = data.session;
+      // 3. Build deep link
+      const deeplink = `wedealzapp://auth/reset-password?access_token=${encodeURIComponent(access_token)}&refresh_token=${encodeURIComponent(refresh_token)}&email=${encodeURIComponent(email || user.email)}`;
+      // 4. Redirect to app
+      window.location.replace(deeplink);
+    })();
+  </script>
+</body>
+</html>
