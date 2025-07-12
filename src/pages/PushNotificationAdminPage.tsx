@@ -67,6 +67,7 @@ const PushNotificationAdminPage: React.FC = () => {
   const [category, setCategory] = useState('');
   const [notificationUrl, setNotificationUrl] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('all'); // 'all' или конкретный язык
+  const [testDealId, setTestDealId] = useState('');
   
   // Language-specific message templates
   const getMessageTemplates = (lang: string) => {
@@ -462,6 +463,18 @@ const PushNotificationAdminPage: React.FC = () => {
       // Отправляем targetUserIds вместо targetTokens - так Edge Function сам соберет все токены
       console.log(`📤 Sending to ${recipients.length} users (all their devices will receive notification)`);
 
+      const extractDealId = (input: string) => {
+        // Если это UUID, возвращаем как есть
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input)) {
+          return input;
+        }
+        // Если это URL, парсим ID из URL
+        const match = input.match(/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/i);
+        return match ? match[1] : '';
+      };
+
+      const dealIdForPush = testMode ? extractDealId(testDealId) : '';
+
       const { data, error } = await supabase.functions.invoke('send-push-notification-v2', {
         body: {
           targetUserIds: recipients, // Используем targetUserIds для множественных устройств!
@@ -471,6 +484,7 @@ const PushNotificationAdminPage: React.FC = () => {
             type: testMode ? 'test' : notificationType,
             category: testMode ? '' : category,
             url: testMode ? '' : notificationUrl,
+            entity_id: dealIdForPush,
             timestamp: new Date().toISOString()
           }
         }
@@ -1271,6 +1285,21 @@ const PushNotificationAdminPage: React.FC = () => {
                        placeholder="https://wedealz.com/deals/123"
                      />
                    </div>
+                 </div>
+               )}
+
+                             {testMode && (
+                 <div className="mb-4">
+                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                     ID или URL карточки (опционально)
+                   </label>
+                   <input
+                     type="text"
+                     className="input w-full border rounded px-3 py-2"
+                     placeholder="8ea1e16a-8649-4b78-a884-50d49342d234 или https://wedealz.com/deals/8ea1e16a-8649-4b78-a884-50d49342d234"
+                     value={testDealId}
+                     onChange={e => setTestDealId(e.target.value)}
+                   />
                  </div>
                )}
 
