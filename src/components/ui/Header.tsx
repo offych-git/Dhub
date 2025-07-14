@@ -84,9 +84,9 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, style }) => {
       className="bg-gray-900 fixed top-0 left-0 right-0 z-20"
       style={style}
     >
-      <PromoBanner />
+      {false && <PromoBanner />}
 
-      <div className="py-2 px-4 flex flex-col">
+      <div className="py-1 px-4 flex flex-col">
         <div className="flex items-center w-full">
           <button onClick={onMenuClick} className="mr-4">
             <Menu className="h-6 w-6 text-white" />

@@ -85,7 +85,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   return (
-    <div className="px-4 mb-4 mt-[5px]">
+    <div className="px-4 mb-0 mt-[5px]">
       <div className="flex items-center text-gray-400 mb-2">
         <span>{t('filters.title')}</span>
         <div className="flex space-x-2 ml-4">

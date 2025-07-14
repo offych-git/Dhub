@@ -171,7 +171,7 @@ const AppLayout: React.FC = () => {
 
       {/* Добавляем flex-grow, чтобы эта область растягивалась и занимала все свободное место */}
       <div
-        className={`content-area-for-padding flex-grow ${showSiteChrome ? "pt-28" : "pt-0"}`}
+        className={`content-area-for-padding flex-grow ${showSiteChrome ? "pt-14" : "pt-0"}`}
       >
         <Outlet />
       </div>
