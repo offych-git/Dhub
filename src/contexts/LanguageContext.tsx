@@ -29,11 +29,6 @@ function setLanguageToLocalStorage(lang: Language) {
 
 // Функция для получения системного языка браузера
 const getSystemLanguage = (): Language => {
-  if (typeof window !== 'undefined' && window.navigator) {
-    const browserLang = window.navigator.language.split('-')[0].toLowerCase();
-    if (browserLang === 'ru') return 'ru';
-    if (browserLang === 'es') return 'es';
-  }
   return 'en';
 };
 
