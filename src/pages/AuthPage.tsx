@@ -4,6 +4,7 @@ import { Mail, Facebook, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { checkAuthStatus, validateSupabaseConfig } from '../utils/authDebug';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface AuthPageProps {
   isResetPasswordPage?: boolean;
@@ -14,6 +15,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { signIn, signUp, signInWithFacebook, resetPassword, updatePassword, user } = useAuth();
+  const { t } = useLanguage();
 
   // --- ЭТИ ПЕРЕМЕННЫЕ ДОЛЖНЫ БЫТЬ ОБЪЯВЛЕНЫ СРАЗУ ПОСЛЕ ВЫЗОВА ВСЕХ ХУКОВ (useLocation, useSearchParams, useAuth) ---
   const redirectTo = searchParams.get('redirect');
@@ -410,31 +412,20 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       console.log(`[AUTH_EMAIL_AUTH] Processing: ${isResetPassword ? 'Password Reset' : isSignUp ? 'Sign Up' : 'Sign In'} for email: ${email}`);
       if (isResetPassword && !accessToken) {
         console.log('[AUTH_EMAIL_AUTH] Calling resetPassword...');
-        await resetPassword(email);
+        
+        // Явно указываем, куда перенаправить пользователя после клика в письме
+        await resetPassword(email, {
+          redirectTo: 'https://wedealz.com/auth/reset-password'
+        });
+
         setSuccessMessage('Инструкции по сбросу пароля отправлены на ваш email');
         setIsResetPassword(false);
       } else if (isSignUp) {
         console.log('[AUTH_EMAIL_AUTH] Calling signUp...');
         try {
-          const result = await signUp(email, password);
-          console.log('[AUTH_EMAIL_AUTH] Результат регистрации:', result);
-          if (result?.user?.identities?.length === 0) {
-            setError('Аккаунт с этим email уже существует. Пожалуйста, выполните вход.');
-            setIsSignUp(false);
-            console.warn('[AUTH_EMAIL_AUTH] SignUp failed: Account already exists.');
-          } else if (result?.user?.confirmed_at) {
-            setSuccessMessage('Аккаунт создан и подтвержден успешно!');
-            if (finalRedirectTitle) {
-              document.title = finalRedirectTitle;
-            }
-            console.log('[AUTH_EMAIL_AUTH] SignUp successful and confirmed. Redirecting to /');
-            setTimeout(() => navigate(decodedRedirectTo, { replace: true }), 2000);
-          } else if (result?.user) {
+          await signUp(email, password);
             setSuccessMessage('Аккаунт создан! Пожалуйста, проверьте ваш email для подтверждения аккаунта перед входом.');
-            console.log('[AUTH_EMAIL_AUTH] SignUp successful, but email confirmation pending.');
-          } else {
-            throw new Error('Регистрация не удалась с неизвестной ошибкой');
-          }
+          console.log('[AUTH_EMAIL_AUTH] SignUp successful, email confirmation pending.');
         } catch (signupErr: any) {
           console.error('[AUTH_EMAIL_AUTH] Error during signUp:', signupErr);
           if (signupErr.message?.includes('already registered') ||
@@ -448,8 +439,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
       } else {
         console.log('[AUTH_EMAIL_AUTH] Calling signIn...');
         try {
-          const signInResult = await signIn(email, password);
-          console.log('[AUTH_EMAIL_AUTH] Вход успешно выполнен:', signInResult);
+          await signIn(email, password);
+          console.log('[AUTH_EMAIL_AUTH] Вход успешно выполнен');
           if (finalRedirectTitle) {
             document.title = finalRedirectTitle;
           }
@@ -521,12 +512,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
           className="flex items-center text-gray-400 hover:text-white mb-6"
         >
           <ArrowLeft className="h-5 w-5 mr-2" />
-          Back
+          {t('common.back', 'Back')}
         </button>
 
         <h1
           className="text-3xl font-bold text-white text-center mb-8">
-          {accessToken ? 'Создание нового пароля' : isResetPassword ? 'Сброс пароля' : isSignUp ? 'Создание аккаунта' : 'Добро пожаловать'}
+          {accessToken ? t('auth.create_new_password_title', 'Create new password') : isResetPassword ? t('auth.reset_password_title', 'Reset password') : isSignUp ? t('auth.create_account_title', 'Create account') : t('auth.welcome_title', 'Welcome')}
         </h1>
 
         {error && (
@@ -552,7 +543,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
             ) : (
               <>
                 <Facebook className="h-5 w-5 mr-2" />
-                Продолжить с Facebook
+                {t('auth.continue_with_facebook', 'Continue with Facebook')}
               </>
             )}
           </button>
@@ -565,8 +556,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
           </div>
           <div className="relative flex justify-center text-sm">
             <span className="px-2 bg-gray-900 text-gray-400">
-              {isResetPassword ?
-'Введите ваш email' : 'Или продолжить с'}
+              {isResetPassword ? t('auth.enter_your_email', 'Enter your email') : t('auth.or_continue_with', 'Or continue with')}
             </span>
           </div>
         </div>
@@ -579,7 +569,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
                 inputMode="email"
                 autoComplete="email"
                 pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-                placeholder="Email адрес"
+                placeholder={t('auth.email_placeholder', 'Email address')}
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -596,7 +586,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
               <input
                 type={showPassword ? "text" : "password"}
                 autoComplete={isSignUp ? "new-password" : "current-password"}
-                placeholder={isSignUp ? "Пароль" : "Пароль"}
+                placeholder={t('auth.password_placeholder', 'Password')}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -634,7 +624,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
               <input
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
-                placeholder="Подтвердите новый пароль"
+                placeholder={t('auth.confirm_new_password_placeholder', 'Confirm new password')}
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
@@ -681,7 +671,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
                   className="h-4 w-4 text-orange-500 rounded border-gray-700 bg-gray-800"
                 />
                 <label htmlFor="remember-me" className="ml-2 text-gray-400">
-                  Запомнить меня
+                  {t('auth.remember_me', 'Remember me')}
                 </label>
               </div>
               {!isSignUp &&
@@ -695,7 +685,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
                   }}
                   className="text-orange-500 hover:text-orange-400"
                 >
-                  Забыли пароль?
+                  {t('auth.forgot_password', 'Forgot password?')}
                 </button>
                 )}
             </div>
@@ -711,7 +701,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
               <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
               <>
-                {accessToken ? 'Обновить пароль' : isResetPassword ? 'Отправить инструкции' : isSignUp ? 'Регистрация' : 'Вход'}
+                {accessToken ? t('buttons.update_password', 'Update password') : isResetPassword ? t('buttons.send_instructions', 'Send instructions') : isSignUp ? t('buttons.register', 'Sign Up') : t('buttons.login', 'Login')}
                 <ArrowRight className="h-5 w-5 ml-2" />
               </>
               )}
@@ -720,7 +710,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
 
         {!isResetPassword && (
           <p className="text-center text-gray-400 mt-4">
-            {isSignUp ? 'Уже есть аккаунт?' : "Нет аккаунта?"}{' '}
+            {isSignUp ? t('auth.already_have_account', 'Already have an account?') : t('auth.no_account', "Don't have an account?")}{' '}
             <button
               onClick={() => {
                 setIsSignUp(!isSignUp);
@@ -729,7 +719,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
               }}
               className="text-orange-500 font-medium"
             >
-              {isSignUp ? 'Вход' : 'Регистрация'}
+              {isSignUp ? t('buttons.login', 'Login') : t('buttons.register', 'Sign Up')}
             </button>
           </p>
         )}
@@ -743,14 +733,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ isResetPasswordPage = false }) => {
             }}
             className="text-orange-500 font-medium mt-4 w-full text-center"
           >
-            Вернуться к входу
+            {t('buttons.back_to_login', 'Back to login')}
           </button>
         )}
 
         <p className="text-center text-gray-400 mt-4 text-sm">
-          Продолжая, вы соглашаетесь с нашей{' '}
+          {t('auth.agree_to_privacy_policy_part1', 'By continuing, you agree to our')}{' '}
           <Link to="/privacy-policy" className="text-orange-500 hover:text-orange-400">
-            Политикой конфиденциальности
+            {t('auth.privacy_policy', 'Privacy Policy')}
           </Link>
         </p>
       </div>

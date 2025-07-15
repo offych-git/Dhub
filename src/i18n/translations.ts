@@ -122,6 +122,16 @@ export const translations = {
       agree_to_privacy_policy_part1: "By continuing, you agree to our",
       privacy_policy: "Privacy Policy",
     },
+    authErrors: {
+      email_not_confirmed: "Email not confirmed",
+      invalid_login: "Invalid email or password",
+      user_not_found: "User not found",
+      password_incorrect: "Incorrect password",
+      account_blocked: "Account is blocked",
+      too_many_attempts: "Too many attempts. Please try again later.",
+      user_already_registered: "User already registered with this email",
+      unknown: "Unknown authentication error"
+    },
     settings: {
       title: "Settings",
       theme: "Theme",
@@ -513,6 +523,16 @@ export const translations = {
       agree_to_privacy_policy_part1: "Продолжая, вы соглашаетесь с нашей",
       privacy_policy: "Политикой конфиденциальности",
     },
+    authErrors: {
+      email_not_confirmed: "Email не подтвержден",
+      invalid_login: "Неверный email или пароль",
+      user_not_found: "Пользователь не найден",
+      password_incorrect: "Неверный пароль",
+      account_blocked: "Аккаунт заблокирован",
+      too_many_attempts: "Слишком много попыток. Попробуйте позже.",
+      user_already_registered: "Пользователь с таким email уже зарегистрирован",
+      unknown: "Неизвестная ошибка авторизации"
+    },
     settings: {
       title: "Настройки",
       theme: "Тема",
@@ -900,6 +920,16 @@ export const translations = {
       account_created_check_email: "¡Cuenta creada! Por favor revisa tu email para confirmar antes de iniciar sesión.",
       agree_to_privacy_policy_part1: "Al continuar, aceptas nuestra",
       privacy_policy: "Política de Privacidad",
+    },
+    authErrors: {
+      email_not_confirmed: "Email not confirmed",
+      invalid_login: "Invalid email or password",
+      user_not_found: "User not found",
+      password_incorrect: "Incorrect password",
+      account_blocked: "Account is blocked",
+      too_many_attempts: "Too many attempts. Please try again later.",
+      user_already_registered: "User already registered with this email",
+      unknown: "Unknown authentication error"
     },
     settings: {
       title: "Configuración",
