@@ -305,7 +305,7 @@ const PushNotificationAdminPage: React.FC = () => {
       // Try to load with language column first
       let { data, error } = await supabase
         .from('profiles')
-        .select('language, push_token')
+        .select('push_token')
         .not('push_token', 'is', null);
       
       // If language column doesn't exist, create default stats
